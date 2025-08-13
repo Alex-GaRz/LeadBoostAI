@@ -1,7 +1,7 @@
 # LeadBoost - Aplicación de Email Marketing con IA
 
 Una aplicación web completa para automatización de campañas de email marketing con inteligencia artificial, desarrollada con React, TypeScript y Firebase.
-
+ola
 ## 🚀 Características
 
 - **Autenticación completa** con Firebase Auth (Email/Password y Google)
