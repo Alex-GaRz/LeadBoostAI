@@ -3,8 +3,7 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
-  serverTimestamp,
-  DocumentData 
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { User } from 'firebase/auth';
@@ -13,8 +12,12 @@ export interface ClientProfile {
   uid: string;
   email: string;
   displayName: string;
+  userName?: string;
   createdAt?: any;
   updatedAt?: any;
+  profileCompleted?: boolean;
+    personName?: string;
+  companyName?: string;
 }
 
 // Crear perfil de cliente automáticamente
@@ -32,13 +35,22 @@ export const createClientProfile = async (user: User): Promise<void> => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
-      
       await setDoc(clientRef, profileData);
     }
   } catch (error) {
     console.error('Error creating client profile:', error);
     throw new Error('Error al crear perfil de cliente');
   }
+};
+
+/**
+ * Actualiza o fusiona los datos del usuario en Firestore (colección 'clients')
+ * @param uid string - UID del usuario
+ * @param data object - Datos a actualizar/añadir
+ */
+export const updateUserProfile = async (uid: string, data: Record<string, any>) => {
+  const userRef = doc(db, 'clients', uid);
+  await setDoc(userRef, { ...data, profileCompleted: true }, { merge: true });
 };
 
 // Obtener perfil de cliente

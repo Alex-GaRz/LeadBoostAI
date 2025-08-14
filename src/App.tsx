@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import PostRegisterPage from './pages/PostRegisterPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 
@@ -43,6 +44,10 @@ function App() {
                 <DashboardPage />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="/post-register"
+            element={<PostRegisterPage />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

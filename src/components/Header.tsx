@@ -48,9 +48,9 @@ const Header: React.FC = () => {
                   className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-colors"
                 >
                   <User className="w-4 h-4" />
-                  <span className="hidden sm:block">
-                    Hola, {profile?.displayName || 'Usuario'}
-                  </span>
+                       <span className="hidden sm:block">
+                         {profile?.displayName || 'Usuario'}
+                       </span>
                 </Link>
                 <button
                   onClick={handleSignOut}

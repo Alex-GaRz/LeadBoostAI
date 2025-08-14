@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import PostRegisterForm from './PostRegisterForm';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Chrome } from 'lucide-react';
 import { registerWithEmail, loginWithEmail, loginWithGoogle, AuthError } from '../firebase/authService';
+import { updateUserProfile } from '../firebase/firestoreService';
 
 interface AuthFormProps {
   type: 'login' | 'register';
@@ -14,6 +16,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPostRegisterForm, setShowPostRegisterForm] = useState(false);
   const navigate = useNavigate();
 
   const isLogin = type === 'login';
@@ -26,10 +29,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     try {
       if (isLogin) {
         await loginWithEmail(email, password);
+        navigate('/dashboard');
       } else {
-        await registerWithEmail(email, password);
+  const userCredential = await registerWithEmail(email, password);
+  // Guardar el nombre completo como displayName en Firestore
+  await updateUserProfile(userCredential.user.uid, { displayName: name });
+  navigate('/post-register');
+        // No navegar aquí, solo mostrar el formulario post-registro
       }
-      navigate('/dashboard');
     } catch (err: any) {
       const authError = err as AuthError;
       setError(authError.message);
@@ -53,6 +60,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     }
   };
 
+  // Mostrar el formulario post-registro solo si es registro y showPostRegisterForm está activo
+  if (!isLogin && showPostRegisterForm) {
+    return <PostRegisterForm onComplete={() => navigate('/dashboard')} />;
+  }
+
+  // Siempre mostrar el formulario de autenticación si no se cumple la condición anterior
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

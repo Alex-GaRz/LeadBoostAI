@@ -23,7 +23,7 @@ const DashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Hola, {profile?.displayName || 'Usuario'} 👋
+                 Hola, {profile?.companyName || 'Usuario'} 👋
               </h1>
               <div className="flex items-center mt-2 text-gray-600">
                 <Calendar className="w-4 h-4 mr-2" />
