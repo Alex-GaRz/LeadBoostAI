@@ -13,10 +13,10 @@ export interface ClientProfile {
   email: string;
   displayName: string;
   userName?: string;
+  userRole?: string;
   createdAt?: any;
   updatedAt?: any;
   profileCompleted?: boolean;
-    personName?: string;
   companyName?: string;
 }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PostRegisterForm from './PostRegisterForm';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Chrome } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Chrome } from 'lucide-react';
 import { registerWithEmail, loginWithEmail, loginWithGoogle, AuthError } from '../firebase/authService';
 import { updateUserProfile } from '../firebase/firestoreService';
 
@@ -12,7 +12,7 @@ interface AuthFormProps {
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  // const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,10 +31,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         await loginWithEmail(email, password);
         navigate('/dashboard');
       } else {
-  const userCredential = await registerWithEmail(email, password);
-  // Guardar el nombre completo como displayName en Firestore
-  await updateUserProfile(userCredential.user.uid, { displayName: name });
-  navigate('/post-register');
+        const userCredential = await registerWithEmail(email, password);
+        // Guardar el nombre completo como displayName y el email en Firestore
+        await updateUserProfile(userCredential.user.uid, { displayName: name, email });
+        navigate('/post-register');
         // No navegar aquí, solo mostrar el formulario post-registro
       }
     } catch (err: any) {
@@ -105,28 +105,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {!isLogin && (
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  Nombre completo
-                </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required={!isLogin}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Tu nombre completo"
-                  />
-                </div>
-              </div>
-            )}
+            {/* Eliminado campo de nombre completo, ahora se pregunta en el segundo formulario */}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">

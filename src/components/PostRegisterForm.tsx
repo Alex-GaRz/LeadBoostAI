@@ -14,8 +14,8 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
     companySector: '',
     country: '',
     numberOfEmployees: '',
-    userRole: '',
-    personName: '',
+  userName: '',
+  userRole: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,11 +34,12 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
       await updateUserProfile(user.uid, {
         ...form,
         displayName: form.companyName,
-        userName: form.userRole, // O puedes agregar un campo 'name' en el formulario si prefieres el nombre personal
+  userName: form.userName,
+  userRole: form.userRole,
+        email: user.email,
         numberOfEmployees: Number(form.numberOfEmployees),
         updatedAt: new Date(),
         profileCompleted: true,
-      personName: form.personName,
       });
       if (onComplete) onComplete();
     } catch (err: any) {
@@ -67,16 +68,16 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
           )}
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Nombre de la empresa</label>
+              <label htmlFor="userName" className="block text-sm font-medium text-gray-700">Nombre completo</label>
               <input
-                id="companyName"
-                name="companyName"
+                id="userName"
+                name="userName"
                 type="text"
                 required
-                value={form.companyName}
+                value={form.userName}
                 onChange={handleChange}
                 className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Nombre de la empresa"
+                placeholder="Nombre completo"
               />
             </div>
             <div>
@@ -94,6 +95,19 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
               />
             </div>
             <div>
+              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Nombre de la empresa</label>
+              <input
+                id="companyName"
+                name="companyName"
+                type="text"
+                required
+                value={form.companyName}
+                onChange={handleChange}
+                className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Nombre de la empresa"
+              />
+            </div>
+            <div>
               <label htmlFor="companySector" className="block text-sm font-medium text-gray-700">Sector de la empresa</label>
               <input
                 id="companySector"
@@ -104,19 +118,6 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
                 onChange={handleChange}
                 className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Sector de la empresa"
-              />
-            </div>
-            <div>
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700">País</label>
-              <input
-                id="country"
-                name="country"
-                type="text"
-                required
-                value={form.country}
-                onChange={handleChange}
-                className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="País"
               />
             </div>
             <div>
@@ -131,6 +132,19 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
                 onChange={handleChange}
                 className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Número de empleados"
+              />
+            </div>
+            <div>
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700">País</label>
+              <input
+                id="country"
+                name="country"
+                type="text"
+                required
+                value={form.country}
+                onChange={handleChange}
+                className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="País"
               />
             </div>
             <div>
