@@ -18,24 +18,24 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100">
+  <header className="shadow-sm border-b" style={{ background: '#0a2540' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#2d4792' }}>
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">LeadBoost</span>
+            <span className="text-xl font-bold" style={{ color: '#F5F5F5' }}>Incrementy</span>
           </Link>
           
           <nav className="hidden md:flex space-x-8">
-            <Link to="/" className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <Link to="/" className="transition-colors" style={{ color: '#F5F5F5' }}>
               Inicio
             </Link>
-            <a href="#features" className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <a href="#features" className="transition-colors" style={{ color: '#F5F5F5' }}>
               Características
             </a>
-            <a href="#pricing" className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <a href="#pricing" className="transition-colors" style={{ color: '#F5F5F5' }}>
               Precios
             </a>
           </nav>
@@ -45,7 +45,8 @@ const Header: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Link
                   to="/dashboard"
-                  className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-colors"
+                  className="flex items-center space-x-2 transition-colors"
+                  style={{ color: '#F5F5F5' }}
                 >
                   <User className="w-4 h-4" />
                        <span className="hidden sm:block">
@@ -54,7 +55,8 @@ const Header: React.FC = () => {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors"
+                  className="flex items-center space-x-1 transition-colors"
+                  style={{ color: '#F5F5F5' }}
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="hidden sm:block">Salir</span>
@@ -64,13 +66,17 @@ const Header: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Link
                   to="/login"
-                  className="text-gray-600 hover:text-indigo-600 transition-colors"
+                  className="px-4 py-2 rounded-lg transition-colors"
+                  style={{ color: '#0a2540', background: '#F5F5F5' }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#2d4792'; e.currentTarget.style.color = '#F5F5F5'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#0a2540'; }}
                 >
                   Iniciar Sesión
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="text-white px-4 py-2 rounded-lg transition-colors"
+                  style={{ background: '#1b3b89' }}
                 >
                   Crear Cuenta
                 </Link>

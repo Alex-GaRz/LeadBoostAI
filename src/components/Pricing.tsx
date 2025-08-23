@@ -7,61 +7,49 @@ const Pricing: React.FC = () => {
     {
       name: 'Starter',
       price: 'Gratis',
-      description: 'Ideal para probar funcionalidades y equipos pequeños',
+      description: 'Perfecto para probar la plataforma y empezar con campañas básicas.',
       popular: false,
       features: [
-        'Hasta 1,000 contactos',
-        'Segmentación automática de audiencia',
-        'Personalización de mensajes automática',
-        'Analytics básicos',
-        'Hasta 500 envíos/mes',
-        'Campañas email simples',
-        'Plantillas personalizadas y editor drag & drop',
-        'Reportes básicos: open rates',
-        'Soporte por email y chat'
+        '1 campaña activa (elige entre Google Ads, Meta Ads o Email Marketing)',
+        '500 envíos de email/mes',
+        '1 plantilla de contenido (imagen estándar)',
+        'Reporte básico de rendimiento',
+        'Acceso a dashboard con métricas esenciales',
+        'Ideal para pequeñas tiendas que quieren probar sin compromiso.'
       ]
     },
     {
       name: 'Pro',
-      price: '29',
-      description: 'Perfecto para negocios en crecimiento con marketing activo y gestión IA automatizada',
+      price: '99',
+      description: 'El plan más popular, diseñado para e-commerce en crecimiento.',
       popular: true,
       features: [
-        'Todo lo del plan Starter, además:',
-        'Hasta 10,000 contactos',
-        'Campañas Avanzadas',
-        'Automatización básica (drip emails)',
-        'Campañas de re-engagement',
-        'Recomendación de contenido adaptado',
-        'Optimización automática de asuntos',
-        'Integraciones externas: CRM - ecomm',
-        'A/B testing avanzado / segmented',
-        'API webhooks por otros SAAS',
-        'Soporte prioritario por teléfono',
-        'Reportes avanzados'
+        'Incluye todo en Starter, más:',
+        'Hasta 5 campañas activas (multicanal: Google Ads + Meta Ads + Email Marketing)',
+        '10,000 envíos de email/mes',
+        '10 plantillas de contenido (imágenes optimizadas para anuncios)',
+        '2 videos cortos publicitarios/mes',
+        'Reportes avanzados + insights de optimización con IA',
+        'Análisis básico de competencia (benchmarks y sugerencias de mejora)',
+        'Soporte prioritario por chat',
+        'Ideal para marcas de Shopify y e-commerce que buscan aumentar ventas de forma constante.'
       ]
     },
     {
       name: 'Business',
-      price: '299',
-      description: 'Para empresas que necesitan características avanzadas, predictivo, multidominio y análisis profundo',
+      price: '499',
+      description: 'Para empresas que necesitan gestión avanzada y escalado completo.',
       popular: false,
       features: [
-        'Todo lo del plan Pro, además:',
-        'Hasta 100,000 contactos (configuración)',
-        '8 campañas scoring intelligent',
-        'Lead scoring automático',
-        'Predictive churn analysis',
-        'Reporting de contenido via optimizaciones',
-        'Chat predition',
-        'Optimización algoritmo de delivery avanzada',
-        'API testing automático / predictivo',
-        'Integraciones avanzadas con metabase',
-        'Multiple y Advanced CRM intelligence',
-        'Reportes y dashboards personalizados',
-        'Integración personalizada',
-        'AI para gestión de correos',
-        'Onboarding guiado e consultoria inicial'
+        'Incluye todo en Pro, más:',
+        'Campañas ilimitadas en todas las plataformas',
+        '100,000 envíos de email/mes',
+        'Contenido premium: 30 imágenes y 5 videos/mes',
+        'Investigación de mercado y análisis completo de la competencia',
+        'Optimización personalizada con estratega dedicado',
+        'Reportes avanzados + reuniones mensuales de consultoría',
+        'Soporte 24/7 con account manager',
+        'Pensado para empresas en expansión que quieren escalar agresivamente y superar a la competencia.'
       ]
     }
   ];
@@ -72,7 +60,7 @@ const Pricing: React.FC = () => {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Planes que se adaptan a{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+            <span className="text-transparent bg-clip-text" style={{ background: '#2d4792', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               tu crecimiento
             </span>
           </h2>
@@ -88,13 +76,14 @@ const Pricing: React.FC = () => {
               key={index}
               className={`bg-white rounded-2xl shadow-lg p-8 relative ${
                 plan.popular 
-                  ? 'border-2 border-indigo-500 transform scale-105' 
+                  ? 'border-2 transform scale-105' 
                   : 'border border-gray-200'
               }`}
+              style={plan.popular ? { borderColor: '#2d4792' } : {}}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-1 rounded-full flex items-center space-x-1">
+                  <div className="text-white px-4 py-1 rounded-full flex items-center space-x-1" style={{ background: '#2d4792' }}>
                     <Star className="w-4 h-4" />
                     <span className="text-sm font-semibold">Más Popular</span>
                   </div>
@@ -129,9 +118,10 @@ const Pricing: React.FC = () => {
                 to="/register"
                 className={`w-full py-3 px-6 rounded-lg font-semibold text-center block transition-all duration-200 ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg'
+                    ? 'text-white shadow-lg'
                     : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                 }`}
+                style={plan.popular ? { background: '#2d4792' } : {}}
               >
                 {plan.price === 'Gratis' ? 'Comenzar Gratis' : 'Comenzar Prueba'}
               </Link>

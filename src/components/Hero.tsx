@@ -4,21 +4,18 @@ import { ArrowRight, BarChart3, Mail, Zap } from 'lucide-react';
 
 const Hero: React.FC = () => {
   return (
-    <section className="bg-gradient-to-br from-indigo-50 via-white to-cyan-50 py-20">
+  <section className="bg-white py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="text-center lg:text-left">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Automatiza tus campañas de{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
-                email marketing
-              </span>{' '}
-              con IA
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+              Impulsa el crecimiento de tu e-commerce con{' '}
+              <span className="text-transparent bg-clip-text" style={{ background: '#2d4792', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                campañas digitales y contenido impulsado por IA
+              </span>
             </h1>
             <p className="mt-6 text-xl text-gray-600 max-w-2xl">
-              Aumenta tus conversiones hasta un 300% con nuestra plataforma de 
-              automatización inteligente que personaliza cada mensaje según el 
-              comportamiento de tus usuarios.
+              Gestionamos y optimizamos tus campañas de Google Ads, Meta Ads y Email Marketing, creamos contenido atractivo (imágenes y videos) y analizamos a tu competencia para que vendas más y escales más rápido.
             </p>
             <div className="mt-8">
               <Link
@@ -56,14 +53,14 @@ const Hero: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-purple-50 rounded-lg p-4">
+              <div className="rounded-lg p-4" style={{ background: '#e6eaf6' }}>
                 <div className="flex items-center space-x-2 mb-2">
-                  <BarChart3 className="w-4 h-4 text-purple-600" />
-                  <span className="text-sm font-medium text-purple-900">Campañas Automatizadas</span>
+                  <BarChart3 className="w-4 h-4" style={{ color: '#2d4792' }} />
+                  <span className="text-sm font-medium" style={{ color: '#2d4792' }}>Campañas Automatizadas</span>
                 </div>
-                <div className="text-2xl font-bold text-purple-600">Active</div>
-                <div className="w-full bg-purple-200 rounded-full h-2 mt-2">
-                  <div className="bg-purple-600 h-2 rounded-full" style={{ width: '78%' }}></div>
+                <div className="text-2xl font-bold" style={{ color: '#2d4792' }}>Active</div>
+                <div className="w-full rounded-full h-2 mt-2" style={{ background: '#b3c0e6' }}>
+                  <div className="h-2 rounded-full" style={{ width: '78%', background: '#2d4792' }}></div>
                 </div>
               </div>
             </div>

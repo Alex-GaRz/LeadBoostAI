@@ -70,25 +70,25 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">L</span>
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: '#2d4792' }}>
+            <span className="text-white font-bold text-xl font-serif">I</span>
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
+  <h2 className="mt-6 text-center text-3xl font-bold" style={{ color: '#2d4792' }}>
           {isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+  <p className="mt-2 text-center text-sm" style={{ color: '#2d4792' }}>
           {isLogin ? (
             <>
               ¿No tienes una cuenta?{' '}
-              <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <Link to="/register" className="font-medium" style={{ color: '#2d4792' }}>
                 Crear cuenta
               </Link>
             </>
           ) : (
             <>
               ¿Ya tienes una cuenta?{' '}
-              <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <Link to="/login" className="font-medium" style={{ color: '#2d4792' }}>
                 Iniciar sesión
               </Link>
             </>
@@ -166,7 +166,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors"
+                style={{ background: '#1b3b89' }}
               >
                 {loading ? 'Cargando...' : isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
               </button>

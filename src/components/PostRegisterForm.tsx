@@ -53,11 +53,11 @@ const PostRegisterForm: React.FC<PostRegisterFormProps> = ({ onComplete }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: '#2d4792' }}>
             <span className="text-white font-bold text-xl">L</span>
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">Completa tu perfil</h2>
+  <h2 className="mt-6 text-center text-3xl font-bold" style={{ color: '#2d4792' }}>Completa tu perfil</h2>
       </div>
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
