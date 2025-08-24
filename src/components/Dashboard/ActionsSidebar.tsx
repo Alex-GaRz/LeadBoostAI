@@ -38,14 +38,15 @@ const ActionsSidebar: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
+  <h3 className="text-lg font-semibold mb-4" style={{ color: '#2d4792' }}>Acciones Rápidas</h3>
       
       <div className="space-y-3">
         {actions.map((action, index) => (
           <button
             key={index}
             onClick={action.onClick}
-            className={`w-full flex items-center justify-center px-4 py-3 text-white font-medium rounded-lg transition-colors ${action.color}`}
+            className={`w-full flex items-center justify-center px-4 py-3 font-medium rounded-lg transition-colors`}
+            style={{ background: index === 0 ? '#2d4792' : index === 1 ? '#22c55e' : '#64748b', color: '#fff' }}
           >
             <action.icon className="w-5 h-5 mr-2" />
             {action.title}
@@ -56,10 +57,11 @@ const ActionsSidebar: React.FC = () => {
         
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center justify-center px-4 py-3 text-red-600 border border-red-200 hover:bg-red-50 font-medium rounded-lg transition-colors"
+          className="w-full flex items-center justify-center px-4 py-3 font-medium rounded-lg transition-colors"
+          style={{ background: '#fff', color: '#e11d48', border: '1px solid #e11d48' }}
         >
           <LogOut className="w-5 h-5 mr-2" />
-          Cerrar Sesión
+          Cerrar sesión
         </button>
       </div>
 

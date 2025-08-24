@@ -55,9 +55,9 @@ const LeadsTable: React.FC = () => {
   ];
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Últimos Leads</h3>
+  <div className="bg-white rounded-lg border border-[#2d4792]">
+      <div className="px-6 py-4 border-b border-[#2d4792]">
+        <h3 className="text-lg font-semibold" style={{ color: '#2d4792' }}>Últimos Leads</h3>
       </div>
       
       <div className="overflow-x-auto">
@@ -88,7 +88,18 @@ const LeadsTable: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${lead.scoreColor}`}>
+                  <span
+                    className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                    style={{
+                      background:
+                        lead.score === 'IDEAL'
+                          ? '#2d4792'
+                          : lead.score === 'Buena'
+                          ? '#22c55e'
+                          : '#facc15',
+                      color: '#fff',
+                    }}
+                  >
                     {lead.score}
                   </span>
                 </td>
@@ -99,7 +110,7 @@ const LeadsTable: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <button className="inline-flex items-center px-3 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-md transition-colors">
+                  <button className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md transition-colors" style={{ color: '#2d4792', background: '#e6eaf6' }}>
                     <Eye className="w-4 h-4 mr-1" />
                     Ver Detalles
                   </button>
