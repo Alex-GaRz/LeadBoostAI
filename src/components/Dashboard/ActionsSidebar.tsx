@@ -1,9 +1,24 @@
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React from 'react';
-import { List, Plus, Settings, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, Layers, Image, Users, BarChart3, Settings, Zap, LogOut } from 'lucide-react';
 import { signOut } from '../../firebase/authService';
-import { useNavigate } from 'react-router-dom';
 
-const ActionsSidebar: React.FC = () => {
+const menuItems = [
+  { label: 'Inicio', to: '/dashboard', icon: Home },
+  { label: 'Campañas', to: '/dashboard/campanas', icon: Layers },
+  { label: 'Contenido para anuncios', to: '/dashboard/contenido', icon: Image },
+  { label: 'Analisis de competidores', to: '/dashboard/competidores', icon: Users },
+  { label: 'Reportes', to: '/dashboard/reportes', icon: BarChart3 },
+  { label: 'Configuración', to: '/dashboard/configuracion', icon: Settings }
+];
+
+interface ActionsSidebarProps {
+  collapsed: boolean;
+  setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed }) => {
+  const location = useLocation();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -14,76 +29,52 @@ const ActionsSidebar: React.FC = () => {
       console.error('Error signing out:', error);
     }
   };
-
-  const actions = [
-    {
-      title: 'Ver Todos los Leads',
-      icon: List,
-      onClick: () => console.log('Ver todos los leads'),
-      color: 'bg-indigo-600 hover:bg-indigo-700'
-    },
-    {
-      title: 'Crear Campaña',
-      icon: Plus,
-      onClick: () => console.log('Crear campaña'),
-      color: 'bg-green-600 hover:bg-green-700'
-    },
-    {
-      title: 'Configuración',
-      icon: Settings,
-      onClick: () => console.log('Configuración'),
-      color: 'bg-gray-600 hover:bg-gray-700'
-    }
-  ];
-
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-  <h3 className="text-lg font-semibold mb-4" style={{ color: '#2d4792' }}>Acciones Rápidas</h3>
-      
-      <div className="space-y-3">
-        {actions.map((action, index) => (
-          <button
-            key={index}
-            onClick={action.onClick}
-            className={`w-full flex items-center justify-center px-4 py-3 font-medium rounded-lg transition-colors`}
-            style={{ background: index === 0 ? '#2d4792' : index === 1 ? '#22c55e' : '#64748b', color: '#fff' }}
-          >
-            <action.icon className="w-5 h-5 mr-2" />
-            {action.title}
-          </button>
-        ))}
-        
-        <hr className="my-4" />
-        
+    <aside className={`h-screen ${collapsed ? 'w-20' : 'w-64'} bg-[#0a2540] border-r-0 fixed left-0 top-0 flex flex-col z-30 transition-all duration-300`}>
+      <div className="flex items-center h-16 px-2 border-b border-gray-200 justify-between">
+        {collapsed ? (
+          <span className="flex items-center justify-center w-full">
+            <Zap className="w-6 h-6 text-white" />
+          </span>
+        ) : (
+          <span className="flex items-center text-xl font-bold text-white pl-2">
+            <Zap className="w-6 h-6 mr-2 text-white" /> Incrementy
+          </span>
+        )}
         <button
-          onClick={handleSignOut}
-          className="w-full flex items-center justify-center px-4 py-3 font-medium rounded-lg transition-colors"
-          style={{ background: '#fff', color: '#e11d48', border: '1px solid #e11d48' }}
+          className="p-2 rounded hover:bg-[#2d4792] transition-colors ml-auto"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
-          <LogOut className="w-5 h-5 mr-2" />
-          Cerrar sesión
+          {collapsed ? <ChevronRight className="w-5 h-5 text-white" /> : <ChevronLeft className="w-5 h-5 text-white" />}
         </button>
       </div>
-
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">Resumen Semanal</h4>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Nuevos Generados</span>
-            <span className="font-medium">6,4%</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Leads Calificados</span>
-            <span className="font-medium">78%</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">ROI Campaigns</span>
-            <span className="font-medium">2,34x</span>
-          </div>
-        </div>
+  <nav className="flex-1 py-6 px-2 space-y-2">
+        {menuItems.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className={`flex items-center py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${collapsed ? 'justify-center' : 'w-full px-4'} ${location.pathname === item.to ? 'bg-white text-[#2d4792]' : 'text-white hover:bg-[#2d4792]'}`}
+            title={item.label}
+          >
+            <item.icon className={`w-5 h-5 ${!collapsed ? 'mr-3' : ''} ${location.pathname === item.to ? 'text-[#2d4792]' : 'text-white'}`} />
+            {!collapsed && item.label}
+          </Link>
+        ))}
+      </nav>
+      {/* Botón Cerrar Sesión al fondo */}
+      <div className="mt-auto border-t border-gray-200 px-2 pb-4 pt-4">
+        <button
+          onClick={handleSignOut}
+          className={`w-full flex items-center justify-start ${collapsed ? 'px-0 justify-center' : 'px-4'} py-3 rounded-lg font-medium bg-[#0a2540] text-white hover:bg-[#1b3b89] transition-colors`}
+        >
+          <LogOut className="w-5 h-5 mr-2" />
+          {!collapsed && <span>Cerrar Sesión</span>}
+        </button>
       </div>
-    </div>
+    </aside>
   );
 };
 
 export default ActionsSidebar;
+

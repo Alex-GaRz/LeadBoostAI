@@ -1,13 +1,14 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
-import DashboardStats from '../components/Dashboard/DashboardStats';
-import LeadsTable from '../components/Dashboard/LeadsTable';
-import ActionsSidebar from '../components/Dashboard/ActionsSidebar';
+import DashboardLayout from '../components/Dashboard/DashboardLayout';
+import CreateCampaignButton from '../components/Dashboard/CreateCampaignButton';
+import RecentCampaigns from '../components/Dashboard/RecentCampaigns';
+import CompetitorAnalysis from '../components/Dashboard/CompetitorAnalysis';
+import ReportsInsights from '../components/Dashboard/ReportsInsights';
 import { Calendar } from 'lucide-react';
 
 const DashboardPage: React.FC = () => {
   const { profile } = useAuth();
-
   const currentDate = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
     year: 'numeric',
@@ -16,37 +17,25 @@ const DashboardPage: React.FC = () => {
   });
 
   return (
-  <div className="min-h-screen bg-white">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Hola, {profile?.companyName || 'Usuario'}
-          </h1>
-              <div className="flex items-center mt-2" style={{ color: '#b0bed9' }}>
-                <Calendar className="w-4 h-4 mr-2" />
-                <span className="capitalize">{currentDate}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  {/* Header eliminado, saludo ahora solo en el header global */}
 
-        {/* Stats */}
-        <DashboardStats />
+        {/* Botón Crear nueva Campaña */}
+        <CreateCampaignButton />
 
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <LeadsTable />
-          </div>
-          <div>
-            <ActionsSidebar />
-          </div>
-        </div>
+  {/* Campañas recientes */}
+  <RecentCampaigns />
+
+  {/* Análisis de competidores */}
+  <CompetitorAnalysis />
+
+  {/* Reportes e Insights */}
+  <ReportsInsights />
+
+
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 

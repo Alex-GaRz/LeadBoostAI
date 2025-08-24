@@ -26,16 +26,15 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Header />
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<><Header /><HomePage /></>} />
           <Route 
             path="/login" 
-            element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} 
+            element={user ? <Navigate to="/dashboard" replace /> : (<><Header /><LoginPage /></>)} 
           />
           <Route 
             path="/register" 
-            element={user ? <Navigate to="/dashboard" replace /> : <RegisterPage />} 
+            element={user ? <Navigate to="/dashboard" replace /> : (<><Header /><RegisterPage /></>)} 
           />
           <Route
             path="/dashboard"
@@ -47,7 +46,7 @@ function App() {
           />
           <Route
             path="/post-register"
-            element={<PostRegisterPage />}
+            element={<><Header /><PostRegisterPage /></>}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
