@@ -39,6 +39,7 @@ const CreateCampaignForm: React.FC = () => {
     responsable: '',
     correo: '',
   });
+  const [step, setStep] = useState(1); // Controla el paso actual
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -75,10 +76,10 @@ const CreateCampaignForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    // Validación
+    // Validación para todos los pasos
     if (
-        form.ad_platform.length === 0 ||
-        !form.empresa.trim() ||
+      form.ad_platform.length === 0 ||
+      !form.empresa.trim() ||
       !form.industria.trim() ||
       !form.producto.trim() ||
       !form.propuesta.trim() ||
@@ -89,7 +90,7 @@ const CreateCampaignForm: React.FC = () => {
       !form.presupuesto.trim() ||
       !form.duracion ||
       (form.duracion === 'Otro' && !form.otraDuracion.trim()) ||
-      (form.estilo.length === 0) ||
+      form.estilo.length === 0 ||
       !form.accion ||
       !form.destinoTipo ||
       !form.destinoValor.trim() ||
@@ -170,10 +171,33 @@ const CreateCampaignForm: React.FC = () => {
       });
       setSubmitted(false);
       setShowSummary(false);
+      setStep(1); // Regresa al primer paso
     } catch (err) {
       setError('Error al guardar la campaña. Intenta de nuevo.');
       console.error(err);
     }
+  };
+
+  const nextStep = () => {
+    if (step === 1 && form.ad_platform.length === 0) {
+      setError('Selecciona al menos una plataforma.');
+      return;
+    }
+    if (step === 2 && (!form.empresa.trim() || !form.industria.trim() || !form.producto.trim() || !form.propuesta.trim())) {
+      setError('Completa todos los campos de "Sobre tu negocio".');
+      return;
+    }
+    if (step === 3 && (!form.objetivo || (form.objetivo === 'Otro' && !form.otroObjetivo.trim()) || !form.publico.trim() || !form.lugares.trim())) {
+      setError('Completa todos los campos de "Objetivo" y "Público".');
+      return;
+    }
+    setError('');
+    setStep(step + 1);
+  };
+
+  const prevStep = () => {
+    setError('');
+    setStep(step - 1);
   };
 
   if (showSummary) {
@@ -201,367 +225,384 @@ const CreateCampaignForm: React.FC = () => {
 
   return (
     <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 mt-2 mb-16">
-      <h2 className="text-2xl font-bold mb-4 text-[#2d4792]">Crear Nueva Campaña</h2>
-      {/* 1) Plataforma de anuncios */}
-      <div className="mb-6">
-        <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Plataforma de anuncios</h3>
-        <label className="block font-semibold mb-1">¿En qué plataforma quieres que se ejecute la campaña?</label>
-        <select
-          name="ad_platform"
-          value={form.ad_platform[0] || ''}
-          onChange={e => {
-            let value = e.target.value;
-            let platforms: string[] = [];
-            if (value === 'Ambas') {
-              platforms = ['Google Ads', 'Meta Ads'];
-            } else if (value) {
-              platforms = [value];
-            }
-            setForm(prev => ({ ...prev, ad_platform: platforms }));
-          }}
-          className={`w-full border rounded px-3 py-2 ${submitted ? (form.ad_platform.length > 0 ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-        >
-          <option value="">Selecciona plataforma</option>
-          <option value="Google Ads">Google Ads</option>
-          <option value="Meta Ads">Meta Ads</option>
-          <option value="Ambas">Ambas</option>
-        </select>
-        {submitted && form.ad_platform.length === 0 && (
-          <div className="text-red-600 text-sm mt-1">Selecciona una plataforma.</div>
+      <h2 className="text-2xl font-bold mb-4 text-[#2d4792]">Crear Nueva Campaña - Paso {step} de 5</h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {step === 1 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Plataforma de anuncios</h3>
+            <label className="block font-semibold mb-1">¿En qué plataforma quieres que se ejecute la campaña?</label>
+            <select
+              name="ad_platform"
+              value={form.ad_platform[0] || ''}
+              onChange={e => {
+                let value = e.target.value;
+                let platforms: string[] = [];
+                if (value === 'Ambas') {
+                  platforms = ['Google Ads', 'Meta Ads'];
+                } else if (value) {
+                  platforms = [value];
+                }
+                setForm(prev => ({ ...prev, ad_platform: platforms }));
+              }}
+              className={`w-full border rounded px-3 py-2 ${submitted && form.ad_platform.length === 0 ? 'border-red-500 bg-red-50' : ''}`}
+            >
+              <option value="">Selecciona plataforma</option>
+              <option value="Google Ads">Google Ads</option>
+              <option value="Meta Ads">Meta Ads</option>
+              <option value="Ambas">Ambas</option>
+            </select>
+            {submitted && form.ad_platform.length === 0 && (
+              <div className="text-red-600 text-sm mt-1">Selecciona una plataforma.</div>
+            )}
+          </div>
         )}
-      </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 1) Sobre tu negocio */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Sobre tu negocio</h3>
-              <label className="block font-semibold mb-1">¿Cuál es el nombre de tu empresa o marca?</label>
+
+        {step === 2 && (
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Sobre tu negocio</h3>
+            <label className="block font-semibold mb-1">¿Cuál es el nombre de tu empresa o marca?</label>
+            <input
+              type="text"
+              name="empresa"
+              value={form.empresa}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.empresa.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Ejemplo: Zapatería Los Pasos, Academia de Inglés Smart"
+            />
+            <label className="block font-semibold mb-1">¿A qué industria o sector pertenece tu negocio?</label>
+            <input
+              type="text"
+              name="industria"
+              value={form.industria}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.industria.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Ejemplo: Calzado, Educación, Tecnología, Salud, etc."
+            />
+            <label className="block font-semibold mb-1">¿Qué producto o servicio quieres promocionar?</label>
+            <input
+              type="text"
+              name="producto"
+              value={form.producto}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.producto.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Ejemplo: Zapatos de cuero para hombre / Clases de inglés online"
+            />
+            <label className="block font-semibold mb-1">¿Qué hace especial tu producto o servicio? (Propuesta de valor)</label>
+            <input
+              type="text"
+              name="propuesta"
+              value={form.propuesta}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${submitted && !form.propuesta.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Ejemplo: Hechos a mano con materiales ecológicos / Profesores nativos con clases en vivo"
+            />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Objetivo y Público</h3>
+            <label className="block font-semibold mb-1">¿Qué quieres lograr con esta campaña?</label>
+            <select
+              name="objetivo"
+              value={form.objetivo}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${submitted && !form.objetivo ? 'border-red-500 bg-red-50' : ''}`}
+            >
+              <option value="">Selecciona objetivo</option>
+              {campaignObjectives.map(obj => (
+                <option key={obj} value={obj}>{obj}</option>
+              ))}
+            </select>
+            {form.objetivo === 'Otro' && (
               <input
                 type="text"
-                name="empresa"
-                value={form.empresa}
+                name="otroObjetivo"
+                value={form.otroObjetivo}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.empresa ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Ejemplo: Zapatería Los Pasos, Academia de Inglés Smart"
+                className={`w-full border rounded px-3 py-2 mt-2 ${submitted && !form.otroObjetivo.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="Especifica el objetivo"
               />
-              <label className="block font-semibold mb-1">¿A qué industria o sector pertenece tu negocio?</label>
+            )}
+            <label className="block font-semibold mb-1 mt-4">¿A quién quieres llegar con tus anuncios?</label>
+            <input
+              type="text"
+              name="publico"
+              value={form.publico}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.publico.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Ejemplo: Hombres jóvenes interesados en deportes / Padres de familia con hijos en secundaria"
+            />
+            <label className="block font-semibold mb-1">¿En qué lugares quieres que aparezcan tus anuncios?</label>
+            <input
+              type="text"
+              name="lugares"
+              value={form.lugares}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${submitted && !form.lugares.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Ejemplo: CDMX, México, Latinoamérica, Estados Unidos"
+            />
+          </div>
+        )}
+
+        {step === 4 && (
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Presupuesto, Estilo y Destino</h3>
+            <label className="block font-semibold mb-1">¿Cuánto dinero quieres invertir en esta campaña?</label>
+            <div className="flex gap-2 mb-2">
               <input
-                type="text"
-                name="industria"
-                value={form.industria}
+                type="number"
+                name="presupuesto"
+                value={form.presupuesto}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.industria ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Ejemplo: Calzado, Educación, Tecnología, Salud, etc."
+                className={`w-full border rounded px-3 py-2 ${submitted && !form.presupuesto.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="Cantidad"
+                min={0}
               />
-              <label className="block font-semibold mb-1">¿Qué producto o servicio quieres promocionar?</label>
-              <input
-                type="text"
-                name="producto"
-                value={form.producto}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.producto ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Ejemplo: Zapatos de cuero para hombre / Clases de inglés online"
-              />
-              <label className="block font-semibold mb-1">¿Qué hace especial tu producto o servicio? (Propuesta de valor)</label>
-              <input
-                type="text"
-                name="propuesta"
-                value={form.propuesta}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted ? (form.propuesta ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Ejemplo: Hechos a mano con materiales ecológicos / Profesores nativos con clases en vivo"
-              />
-            </div>
-      {/* 2) Objetivo de la campaña */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Objetivo de la campaña</h3>
-              <label className="block font-semibold mb-1">¿Qué quieres lograr con esta campaña?</label>
               <select
-                name="objetivo"
-                value={form.objetivo}
+                name="moneda"
+                value={form.moneda}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted ? (form.objetivo ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
+                className="border rounded px-2 py-2"
               >
-                <option value="">Selecciona objetivo</option>
-                {campaignObjectives.map(obj => (
-                  <option key={obj} value={obj}>{obj}</option>
-                ))}
-              </select>
-              {form.objetivo === 'Otro' && (
-                <input
-                  type="text"
-                  name="otroObjetivo"
-                  value={form.otroObjetivo}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mt-2 ${submitted ? (form.otroObjetivo ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="Especifica el objetivo"
-                />
-              )}
-            </div>
-            {/* 3) Público al que quieres llegar */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Público al que quieres llegar</h3>
-              <label className="block font-semibold mb-1">¿A quién quieres llegar con tus anuncios?</label>
-              <input
-                type="text"
-                name="publico"
-                value={form.publico}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.publico ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Ejemplo: Hombres jóvenes interesados en deportes / Padres de familia con hijos en secundaria / Personas que quieren aprender inglés para el trabajo"
-              />
-              <label className="block font-semibold mb-1">¿En qué lugares quieres que aparezcan tus anuncios?</label>
-              <input
-                type="text"
-                name="lugares"
-                value={form.lugares}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted ? (form.lugares ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Ejemplo: CDMX, México, Latinoamérica, Estados Unidos"
-              />
-            </div>
-            {/* 4) Presupuesto y duración */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Presupuesto y duración</h3>
-              <label className="block font-semibold mb-1">¿Cuánto dinero quieres invertir en esta campaña?</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="number"
-                  name="presupuesto"
-                  value={form.presupuesto}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 ${submitted ? (form.presupuesto ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="Cantidad"
-                  min={0}
-                />
-                <select
-                  name="moneda"
-                  value={form.moneda}
-                  onChange={handleChange}
-                  className="border rounded px-2 py-2"
-                >
-                  <option value="MXN">MXN</option>
-                  <option value="USD">USD</option>
-                  <option value="COP">COP</option>
-                  <option value="EUR">EUR</option>
-                  <option value="ARS">ARS</option>
-                </select>
-              </div>
-              <label className="block font-semibold mb-1">¿Por cuánto tiempo quieres que dure la campaña?</label>
-              <select
-                name="duracion"
-                value={form.duracion}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted ? (form.duracion ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-              >
-                <option value="">Selecciona duración</option>
-                <option value="1 semana">1 semana</option>
-                <option value="2 semanas">2 semanas</option>
-                <option value="1 mes">1 mes</option>
-                <option value="Otro">Otro</option>
-              </select>
-              {form.duracion === 'Otro' && (
-                <input
-                  type="text"
-                  name="otraDuracion"
-                  value={form.otraDuracion}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mt-2 ${submitted ? (form.otraDuracion ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="Especifica la duración"
-                />
-              )}
-            </div>
-            {/* 5) Estilo del anuncio */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Estilo del anuncio</h3>
-              <label className="block font-semibold mb-1">¿Cómo quieres que suenen tus anuncios? (elige 1 o varias opciones)</label>
-              <div className="flex flex-wrap gap-3 mb-2">
-                {['Profesional','Amigable / Cercano','Divertido','Elegante / Premium','Urgente (llamado rápido a la acción)'].map(e => (
-                  <label key={e} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="estilo"
-                      value={e}
-                      checked={form.estilo.includes(e)}
-                      onChange={handleChange}
-                      className="accent-[#2d4792]"
-                    />
-                    {e}
-                  </label>
-                ))}
-              </div>
-              <label className="block font-semibold mb-1">¿Qué acción quieres que las personas realicen? (Call To Action)</label>
-              <select
-                name="accion"
-                value={form.accion}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted ? (form.accion ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-              >
-                <option value="">Selecciona acción</option>
-                <option value="Comprar ahora">Comprar ahora</option>
-                <option value="Registrarse">Registrarse</option>
-                <option value="Pedir más información">Pedir más información</option>
-                <option value="Descargar">Descargar</option>
-                <option value="Llamar">Llamar</option>
+                <option value="MXN">MXN</option>
+                <option value="USD">USD</option>
+                <option value="COP">COP</option>
+                <option value="EUR">EUR</option>
+                <option value="ARS">ARS</option>
               </select>
             </div>
-            {/* 6) Página de destino */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Página de destino</h3>
-              <label className="block font-semibold mb-1">¿A dónde quieres llevar a las personas que hagan clic en tu anuncio?</label>
-              <select
-                name="destinoTipo"
-                value={form.destinoTipo}
+            <label className="block font-semibold mb-1">¿Por cuánto tiempo quieres que dure la campaña?</label>
+            <select
+              name="duracion"
+              value={form.duracion}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${submitted && !form.duracion ? 'border-red-500 bg-red-50' : ''}`}
+            >
+              <option value="">Selecciona duración</option>
+              <option value="1 semana">1 semana</option>
+              <option value="2 semanas">2 semanas</option>
+              <option value="1 mes">1 mes</option>
+              <option value="Otro">Otro</option>
+            </select>
+            {form.duracion === 'Otro' && (
+              <input
+                type="text"
+                name="otraDuracion"
+                value={form.otraDuracion}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.destinoTipo ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="Sitio web">Sitio web</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Messenger">Messenger</option>
-                <option value="Producto">Página de producto específica</option>
-                <option value="Otro">Otro</option>
-              </select>
-              {form.destinoTipo === 'Sitio web' && (
-                <input
-                  type="url"
-                  name="destinoValor"
-                  value={form.destinoValor}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.destinoValor ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="URL del sitio web"
-                  required={form.destinoTipo === 'Sitio web'}
-                />
-              )}
-              {form.destinoTipo === 'WhatsApp' && (
-                <input
-                  type="text"
-                  name="destinoValor"
-                  value={form.destinoValor}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.destinoValor ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="Número o link corto de WhatsApp"
-                  required={form.destinoTipo === 'WhatsApp'}
-                />
-              )}
-              {form.destinoTipo === 'Messenger' && (
-                <input
-                  type="text"
-                  name="destinoValor"
-                  value={form.destinoValor}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.destinoValor ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="Usuario o link de Messenger"
-                  required={form.destinoTipo === 'Messenger'}
-                />
-              )}
-              {form.destinoTipo === 'Producto' && (
-                <input
-                  type="text"
-                  name="destinoValor"
-                  value={form.destinoValor}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.destinoValor ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="URL o nombre de la página de producto"
-                  required={form.destinoTipo === 'Producto'}
-                />
-              )}
-              {form.destinoTipo === 'Otro' && (
-                <input
-                  type="text"
-                  name="destinoValor"
-                  value={form.destinoValor}
-                  onChange={handleChange}
-                  className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.destinoValor ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                  placeholder="Especifica el destino"
-                  required={form.destinoTipo === 'Otro'}
-                />
-              )}
-            </div>
-            {/* 7) Recursos opcionales */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Recursos opcionales</h3>
-              <label className="block font-semibold mb-1">¿Tienes imágenes o videos que quieras usar en la campaña?</label>
-              <div className="flex gap-4 mb-2">
-                <label className="flex items-center gap-2">
+                className={`w-full border rounded px-3 py-2 mt-2 ${submitted && !form.otraDuracion.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="Especifica la duración"
+              />
+            )}
+            <label className="block font-semibold mb-1 mt-4">¿Cómo quieres que suenen tus anuncios? (elige 1 o varias)</label>
+            <div className="flex flex-wrap gap-3 mb-2">
+              {['Profesional', 'Amigable / Cercano', 'Divertido', 'Elegante / Premium', 'Urgente (llamado rápido a la acción)'].map(e => (
+                <label key={e} className="flex items-center gap-2">
                   <input
-                    type="radio"
-                    name="recursos"
-                    value="si"
-                    checked={form.recursos === 'si'}
+                    type="checkbox"
+                    name="estilo"
+                    value={e}
+                    checked={form.estilo.includes(e)}
                     onChange={handleChange}
                     className="accent-[#2d4792]"
                   />
-                  Sí (subir archivo)
+                  {e}
                 </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="recursos"
-                    value="no"
-                    checked={form.recursos === 'no'}
-                    onChange={handleChange}
-                    className="accent-[#2d4792]"
-                  />
-                  No, que la IA los sugiera
-                </label>
-              </div>
-              {form.recursos === 'si' && (
-                <>
-                  <input
-                    type="file"
-                    name="archivo"
-                    accept="image/*,video/*"
-                    onChange={e => {
-                      const file = e.target.files ? e.target.files[0] : null;
-                      setForm({ ...form, archivo: file });
-                      if (file) {
-                        setPreviewUrl(URL.createObjectURL(file));
-                      } else {
-                        setPreviewUrl(null);
-                      }
-                    }}
-                    className="mb-2"
-                  />
-                  {previewUrl && (
-                    <div className="mb-2">
-                      {form.archivo && form.archivo.type.startsWith('image') ? (
-                        <img src={previewUrl} alt="Vista previa" className="max-w-xs max-h-40 rounded shadow" />
-                      ) : form.archivo && form.archivo.type.startsWith('video') ? (
-                        <video src={previewUrl} controls className="max-w-xs max-h-40 rounded shadow" />
-                      ) : null}
-                    </div>
-                  )}
-                </>
-              )}
+              ))}
             </div>
-            {/* 8) Contacto */}
-            <div>
-              <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Contacto</h3>
-              <label className="block font-semibold mb-1">Nombre de la persona responsable de esta campaña</label>
+            {submitted && form.estilo.length === 0 && (
+              <div className="text-red-600 text-sm mt-1">Selecciona al menos un estilo.</div>
+            )}
+            <label className="block font-semibold mb-1 mt-4">¿Qué acción quieres que realicen?</label>
+            <select
+              name="accion"
+              value={form.accion}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${submitted && !form.accion ? 'border-red-500 bg-red-50' : ''}`}
+            >
+              <option value="">Selecciona acción</option>
+              <option value="Comprar ahora">Comprar ahora</option>
+              <option value="Registrarse">Registrarse</option>
+              <option value="Pedir más información">Pedir más información</option>
+              <option value="Descargar">Descargar</option>
+              <option value="Llamar">Llamar</option>
+            </select>
+            <label className="block font-semibold mb-1 mt-4">¿A dónde llevarás a los que hagan clic?</label>
+            <select
+              name="destinoTipo"
+              value={form.destinoTipo}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoTipo ? 'border-red-500 bg-red-50' : ''}`}
+            >
+              <option value="">Selecciona una opción</option>
+              <option value="Sitio web">Sitio web</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Messenger">Messenger</option>
+              <option value="Producto">Página de producto específica</option>
+              <option value="Otro">Otro</option>
+            </select>
+            {form.destinoTipo === 'Sitio web' && (
+              <input
+                type="url"
+                name="destinoValor"
+                value={form.destinoValor}
+                onChange={handleChange}
+                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="URL del sitio web"
+              />
+            )}
+            {form.destinoTipo === 'WhatsApp' && (
               <input
                 type="text"
-                name="responsable"
-                value={form.responsable}
+                name="destinoValor"
+                value={form.destinoValor}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted ? (form.responsable ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="Nombre completo"
+                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="Número o link corto de WhatsApp"
               />
-              <label className="block font-semibold mb-1">Correo de contacto</label>
+            )}
+            {form.destinoTipo === 'Messenger' && (
               <input
-                type="email"
-                name="correo"
-                value={form.correo}
+                type="text"
+                name="destinoValor"
+                value={form.destinoValor}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted ? (form.correo ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : ''}`}
-                placeholder="ejemplo@email.com"
+                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="Usuario o link de Messenger"
               />
+            )}
+            {form.destinoTipo === 'Producto' && (
+              <input
+                type="text"
+                name="destinoValor"
+                value={form.destinoValor}
+                onChange={handleChange}
+                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="URL o nombre de la página de producto"
+              />
+            )}
+            {form.destinoTipo === 'Otro' && (
+              <input
+                type="text"
+                name="destinoValor"
+                value={form.destinoValor}
+                onChange={handleChange}
+                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
+                placeholder="Especifica el destino"
+              />
+            )}
+          </div>
+        )}
+
+        {step === 5 && (
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Recursos y Contacto</h3>
+            <label className="block font-semibold mb-1">¿Tienes imágenes o videos para la campaña?</label>
+            <div className="flex gap-4 mb-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="recursos"
+                  value="si"
+                  checked={form.recursos === 'si'}
+                  onChange={handleChange}
+                  className="accent-[#2d4792]"
+                />
+                Sí (subir archivo)
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="recursos"
+                  value="no"
+                  checked={form.recursos === 'no'}
+                  onChange={handleChange}
+                  className="accent-[#2d4792]"
+                />
+                No, que la IA los sugiera
+              </label>
             </div>
-            <button type="submit" className="w-full bg-[#2d4792] text-white py-2 rounded font-bold hover:bg-[#1d326b] transition">Crear campaña</button>
-            {error && <div className="text-red-600 font-semibold mt-2 text-center">{error}</div>}
-          </form>
+            {form.recursos === 'si' && (
+              <>
+                <input
+                  type="file"
+                  name="archivo"
+                  accept="image/*,video/*"
+                  onChange={e => {
+                    const file = e.target.files ? e.target.files[0] : null;
+                    setForm({ ...form, archivo: file });
+                    if (file) {
+                      setPreviewUrl(URL.createObjectURL(file));
+                    } else {
+                      setPreviewUrl(null);
+                    }
+                  }}
+                  className="mb-2"
+                />
+                {previewUrl && (
+                  <div className="mb-2">
+                    {form.archivo && form.archivo.type.startsWith('image') ? (
+                      <img src={previewUrl} alt="Vista previa" className="max-w-xs max-h-40 rounded shadow" />
+                    ) : form.archivo && form.archivo.type.startsWith('video') ? (
+                      <video src={previewUrl} controls className="max-w-xs max-h-40 rounded shadow" />
+                    ) : null}
+                  </div>
+                )}
+              </>
+            )}
+            <label className="block font-semibold mb-1 mt-4">Nombre del responsable</label>
+            <input
+              type="text"
+              name="responsable"
+              value={form.responsable}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.responsable.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="Nombre completo"
+            />
+            <label className="block font-semibold mb-1">Correo de contacto</label>
+            <input
+              type="email"
+              name="correo"
+              value={form.correo}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${submitted && !form.correo.trim() ? 'border-red-500 bg-red-50' : ''}`}
+              placeholder="ejemplo@email.com"
+            />
+          </div>
+        )}
+
+        <div className="flex justify-between mt-6">
+          {step > 1 && (
+            <button
+              type="button"
+              className="bg-gray-300 px-4 py-2 rounded font-bold"
+              onClick={prevStep}
+            >
+              Regresar
+            </button>
+          )}
+          {step < 5 ? (
+            <button
+              type="button"
+              className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold"
+              onClick={nextStep}
+            >
+              Continuar
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold hover:bg-[#1d326b] transition"
+            >
+              Crear campaña
+            </button>
+          )}
         </div>
-      );
+        {error && <div className="text-red-600 font-semibold mt-2 text-center">{error}</div>}
+      </form>
+    </div>
+  );
+};
 
-
-}
 export default CreateCampaignForm;
