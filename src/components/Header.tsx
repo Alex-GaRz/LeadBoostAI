@@ -6,7 +6,11 @@ import { useAuth } from '../hooks/useAuth';
 // Contexto para saber si el sidebar está colapsado
 const SidebarContext = React.createContext<{ collapsed: boolean }>({ collapsed: false });
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  forceDashboard?: boolean;
+}
+
+const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,7 +25,7 @@ const Header: React.FC = () => {
   };
 
   // Ocultar logo, nombre y menú en dashboard
-  const isDashboard = location.pathname.startsWith('/dashboard');
+  const isDashboard = forceDashboard || location.pathname.startsWith('/dashboard');
   const { collapsed } = useContext(SidebarContext);
   return (
     <header
@@ -35,7 +39,7 @@ const Header: React.FC = () => {
               className={`text-xl font-bold text-[#2d4792] absolute left-0 top-1/2 -translate-y-1/2 transition-all duration-300 ${collapsed ? 'ml-6' : 'ml-10'}`}
               style={{ minWidth: 0 }}
             >
-              Hola, {profile?.companyName || 'Usuario'}
+              {profile?.companyName || 'Usuario'}
             </span>
           )}
           {!isDashboard && (
