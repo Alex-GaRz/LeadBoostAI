@@ -146,6 +146,50 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           )}
         </div>
 
+        {/* Variante 3 */}
+        <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2">
+          <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Variante 3</h3>
+          {activeTab === 'Meta Ads' ? (
+            <>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Título del anuncio</span>
+                <div className="text-gray-700 mt-1">¡Impulsa tu empresa con nuestra oferta exclusiva!</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Texto principal</span>
+                <div className="text-gray-700 mt-1">No dejes pasar la oportunidad de transformar tu negocio. Descubre soluciones innovadoras hoy mismo.</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">CTA</span>
+                <div className="text-gray-700 mt-1">Solicita información</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Ideas de imágenes/videos</span>
+                <div className="text-gray-700 mt-1 italic">Video de clientes satisfechos, imagen de equipo colaborando en oficina moderna.</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Título(s) sugeridos</span>
+                <div className="text-gray-700 mt-1">¡Haz crecer tu empresa hoy! | Soluciones a tu medida</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Descripción corta(s)</span>
+                <div className="text-gray-700 mt-1">Aumenta tus ventas con estrategias digitales personalizadas. ¡Contáctanos!</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Keywords recomendadas</span>
+                <div className="text-gray-700 mt-1">ventas, digital, crecimiento, empresa, contacto</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">CTA</span>
+                <div className="text-gray-700 mt-1">Contáctanos</div>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Segmentación sugerida */}
         <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Users className="w-5 h-5" style={{color:'#2d4792'}} /> Segmentación sugerida</h3>
