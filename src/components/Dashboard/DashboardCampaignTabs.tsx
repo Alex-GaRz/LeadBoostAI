@@ -3,9 +3,17 @@ import { Layers, Image, Users, BarChart3, Zap, FileText, Repeat2, UploadCloud, C
 
 interface DashboardCampaignTabsProps {
   platforms: string[]; // Ejemplo: ['Meta Ads'], ['Google Ads'], ['Meta Ads', 'Google Ads']
+  campaignData?: {
+    plataforma?: string;
+    objetivo?: string;
+    duracion?: string;
+    publico?: string;
+    lugares?: string[];
+    estilo?: string[];
+  };
 }
 
-const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms }) => {
+const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms, campaignData }) => {
   const [activeTab, setActiveTab] = useState(platforms[0] || '');
 
   return (
@@ -37,7 +45,9 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           <div className="flex flex-row flex-wrap gap-8 text-gray-600 items-center justify-center">
             <div className="flex flex-col items-center min-w-[120px] text-center">
               <span className="font-bold flex items-center gap-1 justify-center"><Layers className="w-4 h-4" style={{color:'#2d4792'}} /> Plataforma</span>
-              <div className="text-gray-700 mt-1">{activeTab}</div>
+              <div className="text-gray-700 mt-1">
+                {activeTab}
+              </div>
             </div>
             <div className="flex flex-col items-center min-w-[120px] text-center">
               <span className="font-bold flex items-center gap-1 justify-center"><CalendarDays className="w-4 h-4" style={{color:'#2d4792'}} /> Estado</span>
@@ -45,7 +55,9 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             </div>
             <div className="flex flex-col items-center min-w-[120px] text-center">
               <span className="font-bold flex items-center gap-1 justify-center"><Target className="w-4 h-4" style={{color:'#2d4792'}} /> Objetivo</span>
-              <div className="text-gray-700 mt-1">Conseguir más clientes</div>
+              <div className="text-gray-700 mt-1">
+                {campaignData?.objetivo || 'Conseguir más clientes'}
+              </div>
             </div>
             <div className="flex flex-col items-center min-w-[120px] text-center">
               <span className="font-bold flex items-center gap-1 justify-center"><DollarSign className="w-4 h-4" style={{color:'#2d4792'}} /> Presupuesto</span>
@@ -53,7 +65,9 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             </div>
             <div className="flex flex-col items-center min-w-[120px] text-center">
               <span className="font-bold flex items-center gap-1 justify-center"><CalendarDays className="w-4 h-4" style={{color:'#2d4792'}} /> Duración</span>
-              <div className="text-gray-700 mt-1">1 mes</div>
+              <div className="text-gray-700 mt-1">
+                {campaignData?.duracion || '1 mes'}
+              </div>
             </div>
           </div>
         </div>
@@ -274,15 +288,15 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-gray-600">
             <div>
               <span className="font-bold">Público objetivo</span>
-              <div className="text-gray-700 mt-1">25-45 años, ambos géneros, intereses en marketing digital y tecnología</div>
+              <div className="text-gray-700 mt-1">{campaignData?.publico || 'No especificado'}</div>
             </div>
             <div>
               <span className="font-bold">Ubicación geográfica</span>
-              <div className="text-gray-700 mt-1">México, Colombia, España</div>
+              <div className="text-gray-700 mt-1">{campaignData?.lugares && campaignData.lugares.length > 0 ? campaignData.lugares.join(', ') : 'No especificado'}</div>
             </div>
             <div>
               <span className="font-bold">Estilo de comunicación</span>
-              <div className="text-gray-700 mt-1">Profesional y dinámico</div>
+              <div className="text-gray-700 mt-1">{campaignData?.estilo && campaignData.estilo.length > 0 ? campaignData.estilo.join(', ') : 'No especificado'}</div>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import DashboardCampaignPage from './components/Dashboard/DashboardCampaignPage';
 import CreateCampaignForm from './components/Dashboard/CreateCampaignForm';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -43,6 +44,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/campaign/:campaignId"
+            element={
+              <ProtectedRoute>
+                <DashboardCampaignPage />
               </ProtectedRoute>
             }
           />
