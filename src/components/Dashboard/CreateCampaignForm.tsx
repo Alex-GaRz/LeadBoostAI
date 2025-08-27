@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -16,6 +17,7 @@ const campaignObjectives = [
 const CreateCampaignForm: React.FC = () => {
   const [showSummary, setShowSummary] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     ad_platform: [] as string[],
     empresa: '',
@@ -76,7 +78,6 @@ const CreateCampaignForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    // Validación para todos los pasos
     if (
       form.ad_platform.length === 0 ||
       !form.empresa.trim() ||
@@ -134,18 +135,14 @@ const CreateCampaignForm: React.FC = () => {
         call_to_action: form.accion,
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
-        assets: {
-          images_videos: fileUrl
-        },
-        contact: {
-          responsible_name: form.responsable,
-          email: form.correo
-        },
+        assets: { images_videos: fileUrl },
+        contact: { responsible_name: form.responsable, email: form.correo },
         createdAt: serverTimestamp(),
       };
       const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
       await setDoc(campaignsRef, campaignData);
-      alert('¡Campaña creada y guardada exitosamente!');
+  // Redirigir al dashboard con las pestañas seleccionadas
+  navigate('/dashboard', { state: { platforms: form.ad_platform } });
       setForm({
         ad_platform: [],
         empresa: '',
@@ -171,7 +168,7 @@ const CreateCampaignForm: React.FC = () => {
       });
       setSubmitted(false);
       setShowSummary(false);
-      setStep(1); // Regresa al primer paso
+      setStep(1);
     } catch (err) {
       setError('Error al guardar la campaña. Intenta de nuevo.');
       console.error(err);
@@ -225,7 +222,40 @@ const CreateCampaignForm: React.FC = () => {
 
   return (
     <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 mt-2 mb-16">
-      <h2 className="text-2xl font-bold mb-4 text-[#2d4792]">Crear Nueva Campaña - Paso {step} de 5</h2>
+      {/* Barra de pasos con círculos y títulos debajo, tamaño uniforme */}
+      <div className="flex justify-between mb-6">
+        <div className="text-center min-w-[80px]">
+          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 1 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
+            1
+          </div>
+          <span className="block mt-1">Plataforma</span>
+        </div>
+        <div className="text-center min-w-[80px]">
+          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 2 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
+            2
+          </div>
+          <span className="block mt-1">Negocio</span>
+        </div>
+        <div className="text-center min-w-[80px]">
+          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 3 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
+            3
+          </div>
+          <span className="block mt-1">Objetivo</span>
+        </div>
+        <div className="text-center min-w-[80px]">
+          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 4 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
+            4
+          </div>
+          <span className="block mt-1">Presupuesto</span>
+        </div>
+        <div className="text-center min-w-[80px]">
+          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 5 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
+            5
+          </div>
+          <span className="block mt-1">Contacto</span>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {step === 1 && (
           <div className="mb-6">
@@ -233,12 +263,12 @@ const CreateCampaignForm: React.FC = () => {
             <label className="block font-semibold mb-1">¿En qué plataforma quieres que se ejecute la campaña?</label>
             <select
               name="ad_platform"
-              value={form.ad_platform[0] || ''}
+              value={form.ad_platform.length > 0 ? form.ad_platform[0] : ''}
               onChange={e => {
                 let value = e.target.value;
                 let platforms: string[] = [];
                 if (value === 'Ambas') {
-                  platforms = ['Google Ads', 'Meta Ads'];
+                  platforms = ['Google Ads', 'Meta Ads']; // Añadir ambas plataformas
                 } else if (value) {
                   platforms = [value];
                 }
@@ -252,7 +282,13 @@ const CreateCampaignForm: React.FC = () => {
               <option value="Ambas">Ambas</option>
             </select>
             {submitted && form.ad_platform.length === 0 && (
-              <div className="text-red-600 text-sm mt-1">Selecciona una plataforma.</div>
+              <div className="text-red-600 text-sm mt-1">Selecciona al menos una plataforma.</div>
+            )}
+            {/* Mostrar las plataformas seleccionadas */}
+            {form.ad_platform.length > 0 && (
+              <div className="mt-2 text-gray-700">
+                Plataformas seleccionadas: {form.ad_platform.join(', ')}
+              </div>
             )}
           </div>
         )}
