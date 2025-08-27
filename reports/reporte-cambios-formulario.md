@@ -14,3 +14,10 @@
 ---
 
 Este reporte resume los cambios principales aplicados sobre el flujo de registro y los formularios en la rama `version1`.
+
+
+//Traer rama de github a mi pc
+
+git fetch origin
+git checkout version1
+git reset --hard origin/version1

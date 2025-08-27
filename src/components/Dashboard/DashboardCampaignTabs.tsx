@@ -30,38 +30,39 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
       </div>
 
       {/* Tarjetas separadas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 gap-6">
         {/* Detalles Generales */}
         <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2 col-span-1 md:col-span-2">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><FileBarChart className="w-5 h-5" style={{color:'#2d4792'}} /> Detalles Generales</h3>
-          <div className="grid grid-cols-2 gap-4 text-gray-600">
-            <div>
-              <span className="font-bold flex items-center gap-1"><Layers className="w-4 h-4" style={{color:'#2d4792'}} /> Plataforma</span>
+          <div className="flex flex-row flex-wrap gap-8 text-gray-600 items-center justify-center">
+            <div className="flex flex-col items-center min-w-[120px] text-center">
+              <span className="font-bold flex items-center gap-1 justify-center"><Layers className="w-4 h-4" style={{color:'#2d4792'}} /> Plataforma</span>
               <div className="text-gray-700 mt-1">{activeTab}</div>
             </div>
-            <div>
-              <span className="font-bold flex items-center gap-1"><CalendarDays className="w-4 h-4" style={{color:'#2d4792'}} /> Estado</span>
+            <div className="flex flex-col items-center min-w-[120px] text-center">
+              <span className="font-bold flex items-center gap-1 justify-center"><CalendarDays className="w-4 h-4" style={{color:'#2d4792'}} /> Estado</span>
               <div className="text-gray-700 mt-1">Pendiente</div>
             </div>
-            <div>
-              <span className="font-bold flex items-center gap-1"><Target className="w-4 h-4" style={{color:'#2d4792'}} /> Objetivo</span>
+            <div className="flex flex-col items-center min-w-[120px] text-center">
+              <span className="font-bold flex items-center gap-1 justify-center"><Target className="w-4 h-4" style={{color:'#2d4792'}} /> Objetivo</span>
               <div className="text-gray-700 mt-1">Conseguir más clientes</div>
             </div>
-            <div>
-              <span className="font-bold flex items-center gap-1"><DollarSign className="w-4 h-4" style={{color:'#2d4792'}} /> Presupuesto</span>
+            <div className="flex flex-col items-center min-w-[120px] text-center">
+              <span className="font-bold flex items-center gap-1 justify-center"><DollarSign className="w-4 h-4" style={{color:'#2d4792'}} /> Presupuesto</span>
               <div className="text-gray-700 mt-1">$5,000 MXN</div>
             </div>
-            <div>
-              <span className="font-bold flex items-center gap-1"><CalendarDays className="w-4 h-4" style={{color:'#2d4792'}} /> Duración</span>
+            <div className="flex flex-col items-center min-w-[120px] text-center">
+              <span className="font-bold flex items-center gap-1 justify-center"><CalendarDays className="w-4 h-4" style={{color:'#2d4792'}} /> Duración</span>
               <div className="text-gray-700 mt-1">1 mes</div>
             </div>
           </div>
         </div>
 
         {/* Creatividad */}
-        <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 col-span-1 md:col-span-2">
+          <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Anuncio generado por IA</h3>
-          {activeTab === 'Meta Ads' ? (
+            {activeTab === 'Meta Ads' ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título del anuncio</span>
@@ -79,8 +80,16 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
                 <span className="font-bold">Ideas de imágenes/videos</span>
                 <div className="text-gray-700 mt-1 italic">Imagen de empresarios felices usando el producto, video corto mostrando el proceso de compra.</div>
               </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Formatos sugeridos</span>
+                <div className="text-gray-700 mt-1">Reels, Feed</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Audiencias personalizadas/lookalikes</span>
+                <div className="text-gray-700 mt-1">Audiencias personalizadas de clientes previos, lookalikes 1% y 3%</div>
+              </div>
             </>
-          ) : (
+          ) : activeTab === 'Google Ads' ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título(s) sugeridos</span>
@@ -98,12 +107,30 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
                 <span className="font-bold">CTA</span>
                 <div className="text-gray-700 mt-1">Solicitar información</div>
               </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Estrategia de puja</span>
+                <div className="text-gray-700 mt-1">Maximizar conversiones</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Negative keywords</span>
+                <div className="text-gray-700 mt-1">gratis, usado, barato</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Extensiones de anuncio</span>
+                <div className="text-gray-700 mt-1">Sitelinks, llamada, texto destacado</div>
+              </div>
             </>
-          )}
+            ) : null}
+          </div>
+          {/* Vista Previa */}
+          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
+            <span className="text-gray-400 font-semibold text-lg">Vista Previa</span>
+          </div>
         </div>
 
         {/* Variante 2 */}
-        <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 col-span-1 md:col-span-2">
+          <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Variante 2</h3>
           {activeTab === 'Meta Ads' ? (
             <>
@@ -123,8 +150,16 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
                 <span className="font-bold">Ideas de imágenes/videos</span>
                 <div className="text-gray-700 mt-1 italic">Video de clientes satisfechos, imagen de equipo colaborando en oficina moderna.</div>
               </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Formatos sugeridos</span>
+                <div className="text-gray-700 mt-1">Reels, Feed</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Audiencias personalizadas/lookalikes</span>
+                <div className="text-gray-700 mt-1">Audiencias personalizadas de clientes previos, lookalikes 1% y 3%</div>
+              </div>
             </>
-          ) : (
+          ) : activeTab === 'Google Ads' ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título(s) sugeridos</span>
@@ -142,12 +177,30 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
                 <span className="font-bold">CTA</span>
                 <div className="text-gray-700 mt-1">Contáctanos</div>
               </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Estrategia de puja</span>
+                <div className="text-gray-700 mt-1">Maximizar conversiones</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Negative keywords</span>
+                <div className="text-gray-700 mt-1">gratis, usado, barato</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Extensiones de anuncio</span>
+                <div className="text-gray-700 mt-1">Sitelinks, llamada, texto destacado</div>
+              </div>
             </>
-          )}
+          ) : null}
+          </div>
+          {/* Vista Previa */}
+          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
+            <span className="text-gray-400 font-semibold text-lg">Vista Previa</span>
+          </div>
         </div>
 
         {/* Variante 3 */}
-        <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 col-span-1 md:col-span-2">
+          <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Variante 3</h3>
           {activeTab === 'Meta Ads' ? (
             <>
@@ -167,8 +220,16 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
                 <span className="font-bold">Ideas de imágenes/videos</span>
                 <div className="text-gray-700 mt-1 italic">Video de clientes satisfechos, imagen de equipo colaborando en oficina moderna.</div>
               </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Formatos sugeridos</span>
+                <div className="text-gray-700 mt-1">Reels, Feed</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Audiencias personalizadas/lookalikes</span>
+                <div className="text-gray-700 mt-1">Audiencias personalizadas de clientes previos, lookalikes 1% y 3%</div>
+              </div>
             </>
-          ) : (
+          ) : activeTab === 'Google Ads' ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título(s) sugeridos</span>
@@ -186,8 +247,25 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
                 <span className="font-bold">CTA</span>
                 <div className="text-gray-700 mt-1">Contáctanos</div>
               </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Estrategia de puja</span>
+                <div className="text-gray-700 mt-1">Maximizar conversiones</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Negative keywords</span>
+                <div className="text-gray-700 mt-1">gratis, usado, barato</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Extensiones de anuncio</span>
+                <div className="text-gray-700 mt-1">Sitelinks, llamada, texto destacado</div>
+              </div>
             </>
-          )}
+          ) : null}
+          </div>
+          {/* Vista Previa */}
+          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
+            <span className="text-gray-400 font-semibold text-lg">Vista Previa</span>
+          </div>
         </div>
 
         {/* Segmentación sugerida */}
@@ -253,6 +331,39 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
               <span className="font-bold text-gray-700">CTR</span>
               <div className="text-gray-500 mt-1">2.5%</div>
             </div>
+            {activeTab === 'Meta Ads' && (
+              <>
+                <div className="flex flex-col items-center">
+                  <BarChart3 className="w-8 h-8" style={{color:'#2d4792'}} />
+                  <span className="font-bold text-gray-700">Engagement rate</span>
+                  <div className="text-gray-500 mt-1">5-10%</div>
+                </div>
+                <div className="flex flex-col items-center">
+                  <TrendingUp className="w-8 h-8" style={{color:'#2d4792'}} />
+                  <span className="font-bold text-gray-700">Conversiones</span>
+                  <div className="text-gray-500 mt-1">50-100</div>
+                </div>
+                <div className="flex flex-col items-center">
+                  <DollarSign className="w-8 h-8" style={{color:'#2d4792'}} />
+                  <span className="font-bold text-gray-700">ROAS</span>
+                  <div className="text-gray-500 mt-1">3x-5x</div>
+                </div>
+              </>
+            )}
+            {activeTab === 'Google Ads' && (
+              <>
+                <div className="flex flex-col items-center">
+                  <TrendingUp className="w-8 h-8" style={{color:'#2d4792'}} />
+                  <span className="font-bold text-gray-700">Conversiones</span>
+                  <div className="text-gray-500 mt-1">50-100</div>
+                </div>
+                <div className="flex flex-col items-center">
+                  <DollarSign className="w-8 h-8" style={{color:'#2d4792'}} />
+                  <span className="font-bold text-gray-700">ROAS</span>
+                  <div className="text-gray-500 mt-1">3x-5x</div>
+                </div>
+              </>
+            )}
           </div>
           <p className="text-xs text-gray-400 mt-2">* Estos resultados son simulados y pueden variar en campañas reales.</p>
         </div>
