@@ -3,7 +3,9 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
 import { subirCampaniaIA } from './uploadCampaignIA';
-import { Layers, Image, Users, BarChart3, Zap, FileText, Repeat2, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send } from 'lucide-react';
+
+import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send } from 'lucide-react';
+import AdPreview from './AdPreview';
 
 interface DashboardCampaignTabsProps {
   platforms: string[]; // Ejemplo: ['Meta Ads'], ['Google Ads'], ['Meta Ads', 'Google Ads']
@@ -17,6 +19,10 @@ interface DashboardCampaignTabsProps {
     estilo?: string[];
     budget_amount?: string | number;
     budget_currency?: string;
+    marca?: string;
+    nombre_marca?: string;
+    brand?: string;
+    business_name?: string;
   };
 }
 
@@ -71,6 +77,11 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
     setUploading(false);
   };
 
+  // DEBUG: Mostrar campaignData y business_name en consola
+  // eslint-disable-next-line no-console
+  console.log('DashboardCampaignTabs campaignData:', campaignData);
+  // eslint-disable-next-line no-console
+  console.log('DashboardCampaignTabs business_name:', campaignData?.business_name);
   return (
     <div className="w-full">
       <h2 className="text-xl font-bold text-black mb-1">{iaTitle || 'Nombre de la campaña'}</h2>
@@ -193,7 +204,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           </div>
           {/* Vista Previa */}
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
-            <span className="text-gray-400 font-semibold text-lg">Vista Previa</span>
+            <AdPreview platform={activeTab} iaData={iaData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -259,7 +270,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           </div>
           {/* Vista Previa */}
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
-            <span className="text-gray-400 font-semibold text-lg">Vista Previa</span>
+            <AdPreview platform={activeTab} iaData={iaData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -325,7 +336,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           </div>
           {/* Vista Previa */}
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
-            <span className="text-gray-400 font-semibold text-lg">Vista Previa</span>
+            <AdPreview platform={activeTab} iaData={iaData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 

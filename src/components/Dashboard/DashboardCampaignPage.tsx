@@ -54,6 +54,10 @@ const DashboardCampaignPage: React.FC = () => {
             estilo: campaign.ad_style,
             budget_amount: campaign.budget_amount,
             budget_currency: campaign.budget_currency,
+            business_name: campaign.business_name,
+            nombre_marca: campaign.nombre_marca,
+            marca: campaign.marca,
+            brand: campaign.brand,
           }}
         />
       </div>
