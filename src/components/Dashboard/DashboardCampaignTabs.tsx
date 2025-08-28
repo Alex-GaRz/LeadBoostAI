@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
@@ -28,9 +31,176 @@ interface DashboardCampaignTabsProps {
 
 const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms, campaignId, campaignData }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(platforms[0] || '');
   const [iaTitle, setIaTitle] = useState<string | null>(null);
   const [iaData, setIaData] = useState<any>(null);
+  // Exportar a PDF con plantilla personalizada
+  const adPreviewRefs = [useRef(null), useRef(null), useRef(null)];
+
+  const handleExportPDF = async () => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  let y = 50;
+
+  // Encabezado principal
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(24);
+  doc.setTextColor(44, 71, 146);
+  doc.text('Reporte de Campaña Publicitaria', 40, y);
+  y += 30;
+
+  // Subtítulo con nombre de campaña
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(0,0,0);
+  doc.text(campaignData?.business_name || iaTitle || 'Nombre de la campaña', 40, y);
+  y += 18;
+  doc.setDrawColor(44, 71, 146);
+  doc.setLineWidth(1);
+  doc.line(40, y, 555, y);
+  y += 18;
+
+
+  // Detalles generales (bloque con fondo, más alto y con separación)
+  doc.setFillColor(247, 248, 250);
+  doc.roundedRect(35, y, 520, 110, 8, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(44, 71, 146);
+  doc.text('Detalles Generales', 50, y + 25);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(0,0,0);
+  doc.text(`Plataforma: ${activeTab}`, 50, y + 45);
+  doc.text(`Objetivo: ${campaignData?.objetivo || ''}`, 50, y + 63);
+  doc.text(`Duración: ${campaignData?.duracion || ''}`, 50, y + 81);
+  doc.text(`Presupuesto: ${campaignData?.budget_amount || ''} ${campaignData?.budget_currency || ''}`, 300, y + 45);
+  doc.text(`Estado: Pendiente`, 300, y + 63);
+  y += 125;
+
+  // --- Resultados esperados (arriba de variantes, mismo formato que detalles generales) ---
+  let resultadosEsperadosHeight = 110;
+  let resultadosEsperadosLines: string[][] = [];
+  if (iaData?.['Resultados esperados']) {
+    resultadosEsperadosLines = Object.entries(iaData['Resultados esperados']).map(([key, value]) => {
+      return [`${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`];
+    });
+    resultadosEsperadosHeight = 45 + resultadosEsperadosLines.length * 18;
+    if (resultadosEsperadosHeight < 110) resultadosEsperadosHeight = 110;
+  }
+  doc.setFillColor(247, 248, 250);
+  doc.roundedRect(35, y, 520, resultadosEsperadosHeight, 8, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(44, 71, 146);
+  doc.text('Resultados esperados', 50, y + 25);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(0,0,0);
+  if (iaData?.['Resultados esperados']) {
+    let yLine = y + 45;
+    for (const lineArr of resultadosEsperadosLines) {
+      doc.text(lineArr, 50, yLine);
+      yLine += 18;
+    }
+  } else {
+    doc.text('No hay resultados esperados disponibles.', 50, y + 45);
+  }
+  y += resultadosEsperadosHeight + 15;
+
+  // Segmentación sugerida (bloque con fondo, más alto y mejor separación)
+  doc.setFillColor(247, 248, 250);
+  doc.roundedRect(35, y, 520, 90, 8, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(44, 71, 146);
+  doc.text('Segmentación sugerida', 50, y + 25);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(0,0,0);
+  doc.text(`Público objetivo: ${campaignData?.publico || '-'}`, 50, y + 45);
+  doc.text(`Lugares: ${(Array.isArray(campaignData?.lugares) ? campaignData.lugares.join(', ') : campaignData?.lugares) || '-'}`, 50, y + 63);
+  doc.text(`Estilo: ${(campaignData?.estilo || []).join(', ') || '-'}`, 50, y + 81);
+  y += 105;
+  // Línea divisoria
+  doc.setDrawColor(220,220,220);
+  doc.setLineWidth(0.5);
+  doc.line(40, y, 555, y);
+  y += 15;
+
+    // --- Variantes de Anuncio ---
+    const maxWidth = 500;
+    for (let v = 1; v <= 3; v++) {
+      doc.addPage();
+      y = 50;
+      // Bloque de variante (más alto y con separación)
+      const previewNode = adPreviewRefs[v-1].current;
+      let pdfHeight = 0;
+      let imgData = null;
+      if (previewNode) {
+        // eslint-disable-next-line no-await-in-loop
+        const canvas = await html2canvas(previewNode, { backgroundColor: '#fff', scale: 2 });
+        imgData = canvas.toDataURL('image/png');
+        const imgProps = doc.getImageProperties(imgData);
+        const pdfWidth = 400;
+        pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      }
+      let fields: { label: string; value: string }[] = [];
+      if (activeTab === 'Meta Ads') {
+        fields = [
+          { label: 'Título', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Título del anuncio'] || '-' },
+          { label: 'Texto principal', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Texto principal'] || '-' },
+          { label: 'CTA', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.CTA || '-' },
+          { label: 'Ideas de imágenes/videos', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Ideas de imágenes/videos'] || '-' },
+          { label: 'Formatos sugeridos', value: (iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Formatos sugeridos'] || []).join(', ') },
+          { label: 'Audiencias personalizadas/lookalikes', value: (iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Audiencias personalizadas/lookalikes'] || []).join(', ') },
+        ];
+      } else if (activeTab === 'Google Ads') {
+        fields = [
+          { label: 'Título sugerido', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Título sugerido'] || '-' },
+          { label: 'Descripción corta', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Descripción corta'] || '-' },
+          { label: 'Keywords recomendadas', value: (iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Keywords recomendadas'] || []).join(', ') },
+          { label: 'CTA', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.CTA || '-' },
+          { label: 'Estrategia de puja', value: iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Estrategia de puja'] || '-' },
+          { label: 'Negative keywords', value: (iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Negative keywords'] || []).join(', ') },
+          { label: 'Extensiones de anuncio', value: (iaData?.['Anuncio generado por IA']?.[`Variante ${v}`]?.['Extensiones de anuncio'] || []).join(', ') },
+        ];
+      }
+      let yVarCalc = 45;
+      for (const field of fields) {
+        const lines = doc.splitTextToSize(`${field.label}: ${field.value}`, maxWidth-30);
+        yVarCalc += lines.length * 13 + 2;
+      }
+      const textHeight = yVarCalc - 45;
+      const imageHeight = pdfHeight > 0 ? pdfHeight + 20 : 0;
+      const blockHeight = 40 + textHeight + imageHeight;
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(35, y, 520, blockHeight, 8, 8, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(44, 71, 146);
+      let lines = doc.splitTextToSize(`Variante ${v} (${activeTab})`, maxWidth);
+      doc.text(lines, 50, y + 25);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(0,0,0);
+      let yVar = y + 45;
+      for (const field of fields) {
+        lines = doc.splitTextToSize(`${field.label}: ${field.value}`, maxWidth-30);
+        doc.text(lines, 60, yVar);
+        yVar += lines.length * 13 + 2;
+      }
+      // Vista previa
+      if (previewNode && imgData) {
+        const pdfWidth = 400;
+        const imgX = 35 + (520 - pdfWidth) / 2;
+        doc.addImage(imgData, 'PNG', imgX, yVar + 10, pdfWidth, pdfHeight);
+        yVar += pdfHeight + 20;
+      }
+      y += blockHeight + 15;
+    }
+  doc.save('campaña.pdf');
+  };
 
   // Helper: get correct IA data block depending on campaign type and active tab
   const isMixta = platforms.some(p => p === 'MetaAds' || p === 'Meta Ads') && platforms.some(p => p === 'GoogleAds' || p === 'Google Ads');
@@ -88,7 +258,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   // eslint-disable-next-line no-console
   console.log('DashboardCampaignTabs business_name:', campaignData?.business_name);
   return (
-    <div className="w-full">
+  <div className="w-full">
       <h2 className="text-xl font-bold text-black mb-1">{iaTitle || 'Nombre de la campaña'}</h2>
       <p className="text-gray-600 mb-4">Resumen y gestión de tu campaña publicitaria</p>
       <div className="flex border-b border-gray-200 mb-6">
@@ -108,8 +278,9 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
         ))}
       </div>
 
+  {/* Botón Exportar a PDF eliminado para evitar duplicados, se conecta el botón original */}
       {/* Tarjetas separadas */}
-  <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Detalles Generales */}
         <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2 col-span-1 md:col-span-2">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><FileBarChart className="w-5 h-5" style={{color:'#2d4792'}} /> Detalles Generales</h3>
@@ -212,7 +383,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             ) : null}
           </div>
           {/* Vista Previa */}
-          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
+          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={adPreviewRefs[0]}>
             <AdPreview platform={activeTab} iaData={currentIaData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
@@ -282,7 +453,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           ) : null}
           </div>
           {/* Vista Previa */}
-          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
+          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={adPreviewRefs[1]}>
             <AdPreview platform={activeTab} iaData={currentIaData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
@@ -352,7 +523,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           ) : null}
           </div>
           {/* Vista Previa */}
-          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
+          <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={adPreviewRefs[2]}>
             <AdPreview platform={activeTab} iaData={currentIaData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
@@ -380,10 +551,16 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2 col-span-1 md:col-span-2 w-full">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Zap className="w-5 h-5" style={{color:'#2d4792'}} /> Acciones disponibles</h3>
           <div className="flex gap-4 mb-2 w-full">
-            <button className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3">
+            <button
+              className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
+              onClick={() => navigate(`/dashboard/campaign/edit/${campaignId}`)}
+            >
               <Edit3 className="w-6 h-6" style={{color:'#fff'}} /> Editar anuncio
             </button>
-            <button className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3">
+            <button
+              className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
+              onClick={handleExportPDF}
+            >
               <UploadCloud className="w-6 h-6" style={{color:'#fff'}} /> Exportar a PDF
             </button>
             <button className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3">

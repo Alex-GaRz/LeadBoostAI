@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -15,8 +16,55 @@ const campaignObjectives = [
 ];
 
 const CreateCampaignForm: React.FC = () => {
-  const [showSummary, setShowSummary] = useState(false);
   const { user } = useAuth();
+  const { campaignId } = useParams<{ campaignId?: string }>();
+  // Track if editing
+  const [loading, setLoading] = useState(false);
+  const isEditMode = !!campaignId;
+
+  // Pre-fill form if editing
+  useEffect(() => {
+    if (!user || !campaignId) return;
+    const fetchCampaign = async () => {
+      setLoading(true);
+      try {
+        const campaignRef = doc(db, `clients/${user.uid}/campaigns/${campaignId}`);
+        const campaignSnap = await getDoc(campaignRef);
+        if (campaignSnap.exists()) {
+          const data = campaignSnap.data();
+          setForm({
+            ad_platform: data.ad_platform || [],
+            empresa: data.business_name || '',
+            industria: data.industry || '',
+            producto: data.product_service || '',
+            propuesta: data.value_proposition || '',
+            objetivo: campaignObjectives.includes(data.campaign_goal) ? data.campaign_goal : 'Otro',
+            otroObjetivo: !campaignObjectives.includes(data.campaign_goal) ? data.campaign_goal : '',
+            publico: data.target_audience || '',
+            lugares: Array.isArray(data.locations) ? data.locations.join(', ') : (data.locations || ''),
+            presupuesto: data.budget_amount || '',
+            moneda: data.budget_currency || 'MXN',
+            duracion: ['1 semana','2 semanas','1 mes'].includes(data.duration) ? data.duration : (data.duration ? 'Otro' : ''),
+            otraDuracion: !['1 semana','2 semanas','1 mes'].includes(data.duration) ? data.duration || '' : '',
+            estilo: data.ad_style || [],
+            accion: data.call_to_action || '',
+            destinoTipo: data.landing_type || '',
+            destinoValor: data.landing_page || '',
+            recursos: data.assets && data.assets.images_videos ? 'si' : 'no',
+            archivo: null, // No pre-fill file
+            responsable: data.contact?.responsible_name || '',
+            correo: data.contact?.email || '',
+          });
+        }
+      } catch (err) {
+        setError('Error al cargar la campaña para editar.');
+      }
+      setLoading(false);
+    };
+    fetchCampaign();
+    // eslint-disable-next-line
+  }, [user, campaignId]);
+  const [showSummary, setShowSummary] = useState(false);
   const navigate = useNavigate();
   const [form, setForm] = useState({
     ad_platform: [] as string[],
@@ -110,8 +158,9 @@ const CreateCampaignForm: React.FC = () => {
       setError('No se ha detectado usuario autenticado.');
       return;
     }
+    setLoading(true);
     try {
-      const campaign_id = generateId();
+      let campaign_id = campaignId || generateId();
       let fileUrl = '';
       if (form.archivo) {
         const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/${form.archivo.name}`);
@@ -135,44 +184,53 @@ const CreateCampaignForm: React.FC = () => {
         call_to_action: form.accion,
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
-        assets: { images_videos: fileUrl },
+        assets: { images_videos: fileUrl || (isEditMode ? undefined : '') },
         contact: { responsible_name: form.responsable, email: form.correo },
-        createdAt: serverTimestamp(),
+        ...(isEditMode ? {} : { createdAt: serverTimestamp() }),
       };
-  const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
-  await setDoc(campaignsRef, campaignData);
-  // Redirigir al dashboard de la campaña recién creada
-  navigate(`/dashboard/campaign/${campaign_id}`);
-      setForm({
-        ad_platform: [],
-        empresa: '',
-        industria: '',
-        producto: '',
-        propuesta: '',
-        objetivo: '',
-        otroObjetivo: '',
-        publico: '',
-        lugares: '',
-        presupuesto: '',
-        moneda: 'MXN',
-        duracion: '',
-        otraDuracion: '',
-        estilo: [],
-        accion: '',
-        destinoTipo: '',
-        destinoValor: '',
-        recursos: '',
-        archivo: null,
-        responsable: '',
-        correo: '',
-      });
-      setSubmitted(false);
-      setShowSummary(false);
-      setStep(1);
+      const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
+      if (isEditMode) {
+        // Remove undefined fields (like images_videos if not updated)
+        if (!fileUrl) delete campaignData.assets.images_videos;
+        await updateDoc(campaignsRef, campaignData);
+      } else {
+        await setDoc(campaignsRef, campaignData);
+      }
+      // Redirigir al dashboard de la campaña
+      navigate(`/dashboard/campaign/${campaign_id}`);
+      if (!isEditMode) {
+        setForm({
+          ad_platform: [],
+          empresa: '',
+          industria: '',
+          producto: '',
+          propuesta: '',
+          objetivo: '',
+          otroObjetivo: '',
+          publico: '',
+          lugares: '',
+          presupuesto: '',
+          moneda: 'MXN',
+          duracion: '',
+          otraDuracion: '',
+          estilo: [],
+          accion: '',
+          destinoTipo: '',
+          destinoValor: '',
+          recursos: '',
+          archivo: null,
+          responsable: '',
+          correo: '',
+        });
+        setSubmitted(false);
+        setShowSummary(false);
+        setStep(1);
+      }
     } catch (err) {
       setError('Error al guardar la campaña. Intenta de nuevo.');
       console.error(err);
     }
+    setLoading(false);
   };
 
   const nextStep = () => {
@@ -220,6 +278,9 @@ const CreateCampaignForm: React.FC = () => {
     );
   }
 
+  if (loading) {
+    return <div className="text-center py-12 text-gray-500">Cargando...</div>;
+  }
   return (
     <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 mt-2 mb-16">
       {/* Barra de pasos con círculos y títulos debajo, tamaño uniforme */}
