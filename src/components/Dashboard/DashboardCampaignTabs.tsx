@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
-import { subirCampaniaIA } from './uploadCampaignIA';
+import { subirCampaniaIAGooMet } from './uploadCampaignIAGooMet';
 
 import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send } from 'lucide-react';
 import AdPreview from './AdPreview';
@@ -31,6 +31,11 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   const [activeTab, setActiveTab] = useState(platforms[0] || '');
   const [iaTitle, setIaTitle] = useState<string | null>(null);
   const [iaData, setIaData] = useState<any>(null);
+
+  // Helper: get correct IA data block depending on campaign type and active tab
+  const isMixta = platforms.some(p => p === 'MetaAds' || p === 'Meta Ads') && platforms.some(p => p === 'GoogleAds' || p === 'Google Ads');
+  // For mixed campaigns, IA data is nested under iaData["Meta Ads"] or iaData["Google Ads"]
+  const currentIaData = isMixta && iaData ? iaData[activeTab] : iaData;
   // Leer el título IA al cargar el dashboard o cambiar campaignId
   useEffect(() => {
     const fetchIaData = async () => {
@@ -57,7 +62,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
 
-  const handleUploadIA = async () => {
+  const handleUploadMixta = async () => {
     if (!user) {
       setUploadMsg('Debes iniciar sesión.');
       return;
@@ -69,8 +74,8 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
     setUploading(true);
     setUploadMsg(null);
     try {
-  await subirCampaniaIA(user.uid, campaignId);
-      setUploadMsg('Campaña IA subida correctamente.');
+      await subirCampaniaIAGooMet(user.uid, campaignId);
+      setUploadMsg('Campaña IA Mixta subida correctamente.');
     } catch (e) {
       setUploadMsg('Error al subir la campaña IA.');
     }
@@ -146,65 +151,69 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 col-span-1 md:col-span-2">
           <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Anuncio generado por IA</h3>
-            {activeTab === 'Meta Ads' && iaData ? (
+            {activeTab === 'Meta Ads' && currentIaData ? (
               <>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Título del anuncio</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Título del anuncio"] || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Título del anuncio"] || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Texto principal</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Texto principal"] || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Texto principal"] || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">CTA</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.CTA || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.CTA || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Ideas de imágenes/videos</span>
-                  <div className="text-gray-700 mt-1 italic">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Ideas de imágenes/videos"] || '-'}</div>
+                  <div className="text-gray-700 mt-1 italic">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Ideas de imágenes/videos"] || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Formatos sugeridos</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Audiencias personalizadas/lookalikes</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
                 </div>
               </>
-            ) : activeTab === 'Google Ads' && iaData ? (
+            ) : activeTab === 'Google Ads' && currentIaData ? (
               <>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Título sugerido</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Título del anuncio"] || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Título sugerido"] || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">Descripción corta</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Texto principal"] || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Descripción corta"] || '-'}</div>
+                </div>
+                <div className="mb-4 text-gray-600">
+                  <span className="font-bold">Keywords recomendadas</span>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Keywords recomendadas"]?.join(', ') || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
                   <span className="font-bold">CTA</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.CTA || '-'}</div>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.CTA || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
-                  <span className="font-bold">Ideas de imágenes/videos</span>
-                  <div className="text-gray-700 mt-1 italic">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Ideas de imágenes/videos"] || '-'}</div>
+                  <span className="font-bold">Estrategia de puja</span>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Estrategia de puja"] || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
-                  <span className="font-bold">Formatos sugeridos</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
+                  <span className="font-bold">Negative keywords</span>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Negative keywords"]?.join(', ') || '-'}</div>
                 </div>
                 <div className="mb-4 text-gray-600">
-                  <span className="font-bold">Audiencias personalizadas/lookalikes</span>
-                  <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 1"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
+                  <span className="font-bold">Extensiones de anuncio</span>
+                  <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 1"]?.["Extensiones de anuncio"]?.join(', ') || '-'}</div>
                 </div>
               </>
             ) : null}
           </div>
           {/* Vista Previa */}
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
-            <AdPreview platform={activeTab} iaData={iaData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={activeTab} iaData={currentIaData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -212,65 +221,69 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 col-span-1 md:col-span-2">
           <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Variante 2</h3>
-          {activeTab === 'Meta Ads' && iaData ? (
+          {activeTab === 'Meta Ads' && currentIaData ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título del anuncio</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Título del anuncio"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Título del anuncio"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Texto principal</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Texto principal"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Texto principal"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">CTA</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.CTA || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.CTA || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Ideas de imágenes/videos</span>
-                <div className="text-gray-700 mt-1 italic">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Ideas de imágenes/videos"] || '-'}</div>
+                <div className="text-gray-700 mt-1 italic">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Ideas de imágenes/videos"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Formatos sugeridos</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Audiencias personalizadas/lookalikes</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
               </div>
             </>
-          ) : activeTab === 'Google Ads' && iaData ? (
+          ) : activeTab === 'Google Ads' && currentIaData ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título sugerido</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Título del anuncio"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Título sugerido"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Descripción corta</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Texto principal"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Descripción corta"] || '-'}</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Keywords recomendadas</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Keywords recomendadas"]?.join(', ') || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">CTA</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.CTA || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.CTA || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
-                <span className="font-bold">Ideas de imágenes/videos</span>
-                <div className="text-gray-700 mt-1 italic">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Ideas de imágenes/videos"] || '-'}</div>
+                <span className="font-bold">Estrategia de puja</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Estrategia de puja"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
-                <span className="font-bold">Formatos sugeridos</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
+                <span className="font-bold">Negative keywords</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Negative keywords"]?.join(', ') || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
-                <span className="font-bold">Audiencias personalizadas/lookalikes</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 2"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
+                <span className="font-bold">Extensiones de anuncio</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 2"]?.["Extensiones de anuncio"]?.join(', ') || '-'}</div>
               </div>
             </>
           ) : null}
           </div>
           {/* Vista Previa */}
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
-            <AdPreview platform={activeTab} iaData={iaData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={activeTab} iaData={currentIaData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -278,65 +291,69 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 col-span-1 md:col-span-2">
           <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5" style={{color:'#2d4792'}} /> Variante 3</h3>
-          {activeTab === 'Meta Ads' && iaData ? (
+          {activeTab === 'Meta Ads' && currentIaData ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título del anuncio</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Título del anuncio"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Título del anuncio"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Texto principal</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Texto principal"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Texto principal"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">CTA</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.CTA || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.CTA || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Ideas de imágenes/videos</span>
-                <div className="text-gray-700 mt-1 italic">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Ideas de imágenes/videos"] || '-'}</div>
+                <div className="text-gray-700 mt-1 italic">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Ideas de imágenes/videos"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Formatos sugeridos</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Audiencias personalizadas/lookalikes</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
               </div>
             </>
-          ) : activeTab === 'Google Ads' && iaData ? (
+          ) : activeTab === 'Google Ads' && currentIaData ? (
             <>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Título sugerido</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Título del anuncio"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Título sugerido"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">Descripción corta</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Texto principal"] || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Descripción corta"] || '-'}</div>
+              </div>
+              <div className="mb-4 text-gray-600">
+                <span className="font-bold">Keywords recomendadas</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Keywords recomendadas"]?.join(', ') || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
                 <span className="font-bold">CTA</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.CTA || '-'}</div>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.CTA || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
-                <span className="font-bold">Ideas de imágenes/videos</span>
-                <div className="text-gray-700 mt-1 italic">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Ideas de imágenes/videos"] || '-'}</div>
+                <span className="font-bold">Estrategia de puja</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Estrategia de puja"] || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
-                <span className="font-bold">Formatos sugeridos</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Formatos sugeridos"]?.join(', ') || '-'}</div>
+                <span className="font-bold">Negative keywords</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Negative keywords"]?.join(', ') || '-'}</div>
               </div>
               <div className="mb-4 text-gray-600">
-                <span className="font-bold">Audiencias personalizadas/lookalikes</span>
-                <div className="text-gray-700 mt-1">{iaData["Anuncio generado por IA"]?.["Variante 3"]?.["Audiencias personalizadas/lookalikes"]?.join(', ') || '-'}</div>
+                <span className="font-bold">Extensiones de anuncio</span>
+                <div className="text-gray-700 mt-1">{currentIaData["Anuncio generado por IA"]?.["Variante 3"]?.["Extensiones de anuncio"]?.join(', ') || '-'}</div>
               </div>
             </>
           ) : null}
           </div>
           {/* Vista Previa */}
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]">
-            <AdPreview platform={activeTab} iaData={iaData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={activeTab} iaData={currentIaData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -386,53 +403,53 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             <div className="flex flex-col items-center">
               <TrendingUp className="w-8 h-8" style={{color:'#2d4792'}} />
               <span className="font-bold text-gray-700">Alcance</span>
-              <div className="text-gray-500 mt-1">{iaData?.["Resultados esperados"]?.["Alcance"] || '-'}</div>
+              <div className="text-gray-500 mt-1">{currentIaData?.["Resultados esperados"]?.["Alcance"] || '-'}</div>
             </div>
             <div className="flex flex-col items-center">
               <Users className="w-8 h-8" style={{color:'#2d4792'}} />
               <span className="font-bold text-gray-700">Audiencia</span>
-              <div className="text-gray-500 mt-1">{iaData?.["Resultados esperados"]?.["Audiencia"] || '-'}</div>
+              <div className="text-gray-500 mt-1">{currentIaData?.["Resultados esperados"]?.["Audiencia"] || '-'}</div>
             </div>
             <div className="flex flex-col items-center">
               <DollarSign className="w-8 h-8" style={{color:'#2d4792'}} />
               <span className="font-bold text-gray-700">CPC</span>
-              <div className="text-gray-500 mt-1">{iaData?.["Resultados esperados"]?.["CPC"] || '-'}</div>
+              <div className="text-gray-500 mt-1">{currentIaData?.["Resultados esperados"]?.["CPC"] || '-'}</div>
             </div>
             <div className="flex flex-col items-center">
               <Target className="w-8 h-8" style={{color:'#2d4792'}} />
               <span className="font-bold text-gray-700">CTR</span>
-              <div className="text-gray-500 mt-1">{iaData?.["Resultados esperados"]?.["CTR"] || '-'}</div>
+              <div className="text-gray-500 mt-1">{currentIaData?.["Resultados esperados"]?.["CTR"] || '-'}</div>
             </div>
-            {activeTab === 'Meta Ads' && iaData?.["Resultados esperados"] ? (
+            {activeTab === 'Meta Ads' && currentIaData?.["Resultados esperados"] ? (
               <>
                 <div className="flex flex-col items-center">
                   <BarChart3 className="w-8 h-8" style={{color:'#2d4792'}} />
                   <span className="font-bold text-gray-700">Engagement rate</span>
-                  <div className="text-gray-500 mt-1">{iaData["Resultados esperados"]["Engagement rate"] || '-'}</div>
+                  <div className="text-gray-500 mt-1">{currentIaData["Resultados esperados"]["Engagement rate"] || '-'}</div>
                 </div>
                 <div className="flex flex-col items-center">
                   <TrendingUp className="w-8 h-8" style={{color:'#2d4792'}} />
                   <span className="font-bold text-gray-700">Conversiones</span>
-                  <div className="text-gray-500 mt-1">{iaData["Resultados esperados"]["Conversiones"] || '-'}</div>
+                  <div className="text-gray-500 mt-1">{currentIaData["Resultados esperados"]["Conversiones"] || '-'}</div>
                 </div>
                 <div className="flex flex-col items-center">
                   <DollarSign className="w-8 h-8" style={{color:'#2d4792'}} />
                   <span className="font-bold text-gray-700">ROAS</span>
-                  <div className="text-gray-500 mt-1">{iaData["Resultados esperados"]["ROAS"] || '-'}</div>
+                  <div className="text-gray-500 mt-1">{currentIaData["Resultados esperados"]["ROAS"] || '-'}</div>
                 </div>
               </>
             ) : null}
-            {activeTab === 'Google Ads' && iaData?.["Resultados esperados"] ? (
+            {activeTab === 'Google Ads' && currentIaData?.["Resultados esperados"] ? (
               <>
                 <div className="flex flex-col items-center">
                   <TrendingUp className="w-8 h-8" style={{color:'#2d4792'}} />
                   <span className="font-bold text-gray-700">Conversiones</span>
-                  <div className="text-gray-500 mt-1">{iaData["Resultados esperados"]["Conversiones"] || '-'}</div>
+                  <div className="text-gray-500 mt-1">{currentIaData["Resultados esperados"]["Conversiones"] || '-'}</div>
                 </div>
                 <div className="flex flex-col items-center">
                   <DollarSign className="w-8 h-8" style={{color:'#2d4792'}} />
                   <span className="font-bold text-gray-700">ROAS</span>
-                  <div className="text-gray-500 mt-1">{iaData["Resultados esperados"]["ROAS"] || '-'}</div>
+                  <div className="text-gray-500 mt-1">{currentIaData["Resultados esperados"]["ROAS"] || '-'}</div>
                 </div>
               </>
             ) : null}
@@ -440,17 +457,87 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           <p className="text-xs text-gray-400 mt-2">* Estos resultados son simulados y pueden variar en campañas reales.</p>
         </div>
       </div>
-      {/* Botón temporal para subir campaña IA de prueba */}
-      <div className="mt-10 flex flex-col items-center">
-        <button
-          className="px-6 py-3 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
-          onClick={handleUploadIA}
-          disabled={uploading}
-        >
-          {uploading ? 'Subiendo campaña IA...' : 'Subir campaña IA de prueba'}
-        </button>
-        {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
-      </div>
+      {/* Botón para subir campaña IA de prueba según la plataforma activa */}
+      {/* Botón único para subir campaña IA Mixta si la campaña es MetaAds + GoogleAds */}
+      {/* Botones para subir IA según el tipo de campaña */}
+      {(() => {
+        const isMeta = platforms.length === 1 && (platforms[0] === 'MetaAds' || platforms[0] === 'Meta Ads');
+        const isGoogle = platforms.length === 1 && (platforms[0] === 'GoogleAds' || platforms[0] === 'Google Ads');
+        const isMixta = platforms.some(p => p === 'MetaAds' || p === 'Meta Ads') && platforms.some(p => p === 'GoogleAds' || p === 'Google Ads');
+        if (isMeta) {
+          return (
+            <div className="mt-10 flex flex-col items-center">
+              <button
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
+                onClick={async () => {
+                  setUploading(true);
+                  setUploadMsg(null);
+                  try {
+                    const { subirCampaniaIA } = await import('./uploadCampaignIA');
+                    if (!user) {
+                      setUploadMsg('Debes iniciar sesión.');
+                    } else {
+                      await subirCampaniaIA(user.uid, campaignId);
+                      setUploadMsg('Campaña IA de Meta Ads subida correctamente.');
+                    }
+                  } catch {
+                    setUploadMsg('Error al subir la campaña IA.');
+                  }
+                  setUploading(false);
+                }}
+                disabled={uploading}
+              >
+                {uploading ? 'Subiendo campaña IA Meta Ads...' : 'Subir campaña IA Meta Ads'}
+              </button>
+              {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
+            </div>
+          );
+        }
+        if (isGoogle) {
+          return (
+            <div className="mt-10 flex flex-col items-center">
+              <button
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
+                onClick={async () => {
+                  setUploading(true);
+                  setUploadMsg(null);
+                  try {
+                    const { subirCampaniaIAGoogle } = await import('./uploadCampaignIAGoogle');
+                    if (!user) {
+                      setUploadMsg('Debes iniciar sesión.');
+                    } else {
+                      await subirCampaniaIAGoogle(user.uid, campaignId);
+                      setUploadMsg('Campaña IA de Google Ads subida correctamente.');
+                    }
+                  } catch {
+                    setUploadMsg('Error al subir la campaña IA.');
+                  }
+                  setUploading(false);
+                }}
+                disabled={uploading}
+              >
+                {uploading ? 'Subiendo campaña IA Google Ads...' : 'Subir campaña IA Google Ads'}
+              </button>
+              {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
+            </div>
+          );
+        }
+        if (isMixta) {
+          return (
+            <div className="mt-10 flex flex-col items-center">
+              <button
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
+                onClick={handleUploadMixta}
+                disabled={uploading}
+              >
+                {uploading ? 'Subiendo campaña IA Mixta...' : 'Subir campaña IA Mixta'}
+              </button>
+              {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
+            </div>
+          );
+        }
+        return null;
+      })()}
     </div>
   );
 }
