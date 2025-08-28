@@ -44,10 +44,16 @@ const DashboardCampaignPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <DashboardCampaignTabs
           platforms={campaign.ad_platform || []}
+          campaignId={campaignId || ''}
           campaignData={{
             plataforma: '',
             objetivo: campaign.campaign_goal,
             duracion: campaign.duration,
+            publico: campaign.target_audience,
+            lugares: campaign.locations,
+            estilo: campaign.ad_style,
+            budget_amount: campaign.budget_amount,
+            budget_currency: campaign.budget_currency,
           }}
         />
       </div>

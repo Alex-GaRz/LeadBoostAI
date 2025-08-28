@@ -6,8 +6,12 @@ import { useNavigate } from 'react-router-dom';
 
 interface Campaign {
   id: string;
+  name?: string;
   business_name: string;
   status?: 'Activa' | 'Pausada' | 'En revisión';
+  platform?: string;
+  budget?: number;
+  budget_currency?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -30,7 +34,31 @@ const RecentCampaigns: React.FC = () => {
       try {
         const campaignsCol = collection(db, `clients/${user.uid}/campaigns`);
         const snapshot = await getDocs(campaignsCol);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Campaign[];
+        const data = snapshot.docs.map(doc => {
+          const d = doc.data();
+          // Determinar plataforma
+          let platform: string = '—';
+          if (Array.isArray(d.ad_platform)) {
+            if (d.ad_platform.includes('MetaAds') && d.ad_platform.includes('GoogleAds')) {
+              platform = 'Mixta';
+            } else if (d.ad_platform.includes('MetaAds')) {
+              platform = 'Meta Ads';
+            } else if (d.ad_platform.includes('GoogleAds')) {
+              platform = 'Google Ads';
+            } else if (d.ad_platform.length > 0) {
+              platform = d.ad_platform.join(', ');
+            }
+          }
+          return {
+            id: doc.id,
+            name: d.name,
+            business_name: d.business_name,
+            status: d.status,
+            platform,
+            budget: typeof d.budget_amount === 'number' ? d.budget_amount : (parseFloat(d.budget_amount) || undefined),
+            budget_currency: d.budget_currency,
+          };
+        });
         setCampaigns(data);
       } catch (err) {
         setCampaigns([]);
@@ -56,19 +84,29 @@ const RecentCampaigns: React.FC = () => {
         </div>
       ) : (
         <ul className="divide-y divide-gray-200">
-          {campaigns.map((c) => (
-            <li key={c.id} className="flex items-center justify-between py-4">
-              <div className="flex flex-col">
-                <span className="font-semibold text-black">{c.business_name}</span>
-                <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${statusColors[c.status || 'Activa']}`}>{c.status || 'Activa'}</span>
-              </div>
-              <div className="flex gap-2">
-                <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => handleViewDetails(c.id)}>Ver detalles</button>
-                <button className="text-[#2d4792] hover:underline text-sm font-medium">Editar</button>
-                <button className="text-[#2d4792] hover:underline text-sm font-medium">Pausar</button>
-              </div>
-            </li>
-          ))}
+          {campaigns.map((c) => {
+            // Determinar la plataforma a mostrar
+            let platformLabel = c.platform || '—';
+            return (
+              <li key={c.id} className="flex items-center justify-between py-4">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-black">{c.name || ''}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[c.status || 'Activa']}`}>{c.status || 'Activa'}</span>
+                    <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">{platformLabel}</span>
+                    <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                      Presupuesto: {typeof c.budget === 'number' ? `$${c.budget.toLocaleString()}${c.budget_currency ? ' ' + c.budget_currency : ''}` : '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => handleViewDetails(c.id)}>Ver detalles</button>
+                  <button className="text-[#2d4792] hover:underline text-sm font-medium">Editar</button>
+                  <button className="text-[#2d4792] hover:underline text-sm font-medium">Pausar</button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

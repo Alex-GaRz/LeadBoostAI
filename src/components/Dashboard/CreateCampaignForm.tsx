@@ -139,10 +139,10 @@ const CreateCampaignForm: React.FC = () => {
         contact: { responsible_name: form.responsable, email: form.correo },
         createdAt: serverTimestamp(),
       };
-      const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
-      await setDoc(campaignsRef, campaignData);
-  // Redirigir al dashboard con las pestañas seleccionadas
-  navigate('/dashboard', { state: { platforms: form.ad_platform } });
+  const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
+  await setDoc(campaignsRef, campaignData);
+  // Redirigir al dashboard de la campaña recién creada
+  navigate(`/dashboard/campaign/${campaign_id}`);
       setForm({
         ad_platform: [],
         empresa: '',
