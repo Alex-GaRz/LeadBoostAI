@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, setDoc, getDocs as getDocsSub } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
 import { subirCampaniaIAGooMet } from './uploadCampaignIAGooMet';
@@ -563,7 +563,38 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             >
               <UploadCloud className="w-6 h-6" style={{color:'#fff'}} /> Exportar a PDF
             </button>
-            <button className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3">
+            <button
+              className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
+              onClick={async () => {
+                if (!user || !campaignId) return;
+                try {
+                  // 1. Leer datos de la campaña original
+                  const origRef = doc(db, `clients/${user.uid}/campaigns/${campaignId}`);
+                  const origSnap = await getDoc(origRef);
+                  if (!origSnap.exists()) throw new Error('No se encontró la campaña original');
+                  const origData = origSnap.data();
+                  // 2. Crear nueva campaña
+                  const campaignsCol = collection(db, `clients/${user.uid}/campaigns`);
+                  const newDocRef = await addDoc(campaignsCol, {
+                    ...origData,
+                    nombre: (origData.nombre || origData.business_name || 'Campaña duplicada') + ' (copia)',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  });
+                  // 3. Copiar subcolección ia_data
+                  const iaDataCol = collection(db, `clients/${user.uid}/campaigns/${campaignId}/ia_data`);
+                  const iaDataSnap = await getDocsSub(iaDataCol);
+                  for (const iaDoc of iaDataSnap.docs) {
+                    const iaDocRef = doc(db, `clients/${user.uid}/campaigns/${newDocRef.id}/ia_data/${iaDoc.id}`);
+                    await setDoc(iaDocRef, iaDoc.data());
+                  }
+                  // 4. Navegar a la nueva campaña
+                  navigate(`/dashboard/campaign/${newDocRef.id}`);
+                } catch (e) {
+                  alert('Error al duplicar campaña: ' + (e instanceof Error ? e.message : String(e)));
+                }
+              }}
+            >
               <Copy className="w-6 h-6" style={{color:'#fff'}} /> Duplicar campaña
             </button>
             <button className="flex-1 px-5 py-3 bg-blue-300 text-white font-semibold rounded-lg shadow cursor-not-allowed flex items-center justify-center gap-3" disabled>
