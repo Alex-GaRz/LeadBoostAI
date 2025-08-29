@@ -3,11 +3,11 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { editCampaign } from '../../utils/editCampaign';
 
 interface Campaign {
   id: string;
-  name?: string;
-  business_name: string;
+  "Nombre de campaña"?: string;
   status?: 'Activa' | 'Pausada' | 'En revisión';
   platform?: string;
   budget?: number;
@@ -34,7 +34,8 @@ const RecentCampaigns: React.FC = () => {
       try {
         const campaignsCol = collection(db, `clients/${user.uid}/campaigns`);
         const snapshot = await getDocs(campaignsCol);
-        const data = snapshot.docs.map(doc => {
+        // Para cada campaña, buscar el campo 'Nombre de campaña' en la subcolección 'ia_data'
+        const data = await Promise.all(snapshot.docs.map(async doc => {
           const d = doc.data();
           // Determinar plataforma
           let platform: string = '—';
@@ -49,16 +50,27 @@ const RecentCampaigns: React.FC = () => {
               platform = d.ad_platform.join(', ');
             }
           }
+          // Buscar en la subcolección ia_data
+          let nombreCampania = d["Nombre de campaña"];
+          if (!nombreCampania) {
+            try {
+              const iaDataCol = collection(db, `clients/${user.uid}/campaigns/${doc.id}/ia_data`);
+              const iaSnapshot = await getDocs(iaDataCol);
+              if (!iaSnapshot.empty) {
+                const iaDocData = iaSnapshot.docs[0].data();
+                nombreCampania = iaDocData["Nombre de campaña"];
+              }
+            } catch {}
+          }
           return {
             id: doc.id,
-            name: d.name,
-            business_name: d.business_name,
+            "Nombre de campaña": nombreCampania,
             status: d.status,
             platform,
             budget: typeof d.budget_amount === 'number' ? d.budget_amount : (parseFloat(d.budget_amount) || undefined),
             budget_currency: d.budget_currency,
           };
-        });
+        }));
         setCampaigns(data);
       } catch (err) {
         setCampaigns([]);
@@ -74,7 +86,8 @@ const RecentCampaigns: React.FC = () => {
 
   return (
     <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-8">
-      <h2 className="text-xl font-bold text-black mb-1">Campañas recientes</h2>
+      <h2 className="text-xl font-bold text-black mb-1">Mis campañas</h2>
+  {/* Eliminado: Mostrar el título de la campaña fuera de la lista */}
       <p className="text-gray-600 mb-4">Gestiona y optimiza tus campañas activas</p>
       {loading ? (
         <div className="text-gray-500 text-center py-8">Cargando campañas...</div>
@@ -90,7 +103,8 @@ const RecentCampaigns: React.FC = () => {
             return (
               <li key={c.id} className="flex items-center justify-between py-4">
                 <div className="flex flex-col">
-                  <span className="font-semibold text-black">{c.name || ''}</span>
+                  {/* Título de la campaña, visible y claro (usando 'Nombre de campaña') */}
+                  <span className="text-lg font-semibold text-[#2d4792] mb-1">{c["Nombre de campaña"] || 'Sin título'}</span>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[c.status || 'Activa']}`}>{c.status || 'Activa'}</span>
                     <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">{platformLabel}</span>
@@ -101,7 +115,7 @@ const RecentCampaigns: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => handleViewDetails(c.id)}>Ver detalles</button>
-                  <button className="text-[#2d4792] hover:underline text-sm font-medium">Editar</button>
+                  <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => editCampaign(c.id, navigate)}>Editar</button>
                   <button className="text-[#2d4792] hover:underline text-sm font-medium">Pausar</button>
                 </div>
               </li>

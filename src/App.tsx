@@ -76,25 +76,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/crear-campana"
             element={
-              <>
+              <ProtectedRoute>
                 <Header forceDashboard />
-                <div className="flex flex-col items-center w-full">
-                  <button
-                    type="button"
-                    onClick={() => window.location.href = '/dashboard'}
-                    className="mt-4 mb-8 flex items-center bg-[#2d4792] text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-[#1d326b] transition self-start ml-32 gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    Regresar
-                  </button>
-                  <div className="flex justify-center w-full">
-                    <CreateCampaignForm />
-                  </div>
+                <div className="flex justify-center w-full">
+                  <CreateCampaignForm />
                 </div>
-              </>
+              </ProtectedRoute>
             }
           />
           <Route

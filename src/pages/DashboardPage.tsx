@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import DashboardCampaignTabs from '../components/Dashboard/DashboardCampaignTabs';
 import { useAuth } from '../hooks/useAuth';
@@ -7,6 +7,7 @@ import CreateCampaignButton from '../components/Dashboard/CreateCampaignButton';
 import RecentCampaigns from '../components/Dashboard/RecentCampaigns';
 import CompetitorAnalysis from '../components/Dashboard/CompetitorAnalysis';
 import ReportsInsights from '../components/Dashboard/ReportsInsights';
+import ContentGallery from '../components/Dashboard/ContentGallery';
 import { Calendar } from 'lucide-react';
 
 const DashboardPage: React.FC = () => {
@@ -19,8 +20,27 @@ const DashboardPage: React.FC = () => {
   });
 
   const location = useLocation();
+  const recentRef = useRef<HTMLDivElement>(null);
+  const reportsRef = useRef<HTMLDivElement>(null);
+  const createRef = useRef<HTMLDivElement>(null);
+  const galleryRef = useRef<HTMLDivElement>(null);
   // platforms puede venir de location.state si se acaba de crear una campaña
   const platforms = location.state?.platforms || [];
+
+  useEffect(() => {
+    if (location.hash === '#crear-campana' && createRef.current) {
+      createRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (location.hash === '#campanias-recientes' && recentRef.current) {
+      recentRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (location.hash === '#reportes-insights' && reportsRef.current) {
+      reportsRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (location.hash === '#galeria-contenido' && galleryRef.current) {
+      galleryRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [location]);
 
   return (
     <DashboardLayout>
@@ -31,13 +51,23 @@ const DashboardPage: React.FC = () => {
         ) : (
           <>
             {/* Botón Crear nueva Campaña */}
-            <CreateCampaignButton />
+            <div id="crear-campana" ref={createRef}>
+              <CreateCampaignButton />
+            </div>
             {/* Campañas recientes */}
-            <RecentCampaigns />
+            <div id="campanias-recientes" ref={recentRef}>
+              <RecentCampaigns />
+            </div>
             {/* Análisis de competidores */}
             <CompetitorAnalysis />
             {/* Reportes e Insights */}
-            <ReportsInsights />
+            <div id="reportes-insights" ref={reportsRef}>
+              <ReportsInsights />
+            </div>
+            {/* Galería de Contenidos */}
+            <div id="galeria-contenido" ref={galleryRef}>
+              <ContentGallery />
+            </div>
           </>
         )}
       </div>

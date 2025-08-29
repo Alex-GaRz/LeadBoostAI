@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, User, Zap, Bell } from 'lucide-react';
 import { signOut } from '../firebase/authService';
@@ -14,6 +14,27 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Estado y ref para dropdown de notificaciones
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    function handleClickOutside(event: MouseEvent) {
+      const popup = document.getElementById('notification-popup');
+      if (
+        bellRef.current &&
+        !bellRef.current.contains(event.target as Node) &&
+        popup &&
+        !popup.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
 
   const handleSignOut = async () => {
     try {
@@ -67,13 +88,28 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
           <div className="flex items-center gap-2 ml-auto">
             {user ? (
               <div className="flex items-center space-x-3">
-                <button
-                  className="flex items-center justify-center px-3 py-2 rounded-lg transition-colors order-1"
-                  style={{ background: 'transparent', color: '#6b7280' }}
-                  aria-label="Notificaciones"
-                >
-                  <Bell className="w-5 h-5" />
-                </button>
+                {/* Notificaciones */}
+                <div className="relative">
+                  <button
+                    className="flex items-center justify-center px-3 py-2 rounded-lg transition-colors order-1"
+                    style={{ background: 'transparent', color: '#6b7280' }}
+                    aria-label="Notificaciones"
+                    onClick={() => setShowNotifications((v) => !v)}
+                    ref={bellRef}
+                  >
+                    <Bell className="w-5 h-5" />
+                  </button>
+                  {showNotifications && (
+                    <div
+                      id="notification-popup"
+                      className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 text-center text-gray-700 text-sm"
+                      style={{ minHeight: '60px' }}
+                    >
+                      No tienes notificaciones
+                    </div>
+                  )}
+                </div>
+
                 <Link
                   to="/dashboard"
                   className="flex items-center transition-colors px-3 py-2 rounded-lg order-2 ml-2"
