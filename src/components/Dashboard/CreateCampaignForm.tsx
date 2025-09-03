@@ -51,9 +51,7 @@ const CreateCampaignForm: React.FC = () => {
             destinoTipo: data.landing_type || '',
             destinoValor: data.landing_page || '',
             recursos: data.assets && data.assets.images_videos ? 'si' : 'no',
-            archivo: null, // No pre-fill file
-            responsable: data.contact?.responsible_name || '',
-            correo: data.contact?.email || '',
+            archivo: null // No pre-fill file
           });
         }
       } catch (err) {
@@ -67,27 +65,25 @@ const CreateCampaignForm: React.FC = () => {
   const [showSummary, setShowSummary] = useState(false);
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    ad_platform: [] as string[],
-    empresa: '',
-    industria: '',
-    producto: '',
-    propuesta: '',
-    objetivo: '',
-    otroObjetivo: '',
-    publico: '',
-    lugares: '',
-    presupuesto: '',
-    moneda: 'MXN',
-    duracion: '',
-    otraDuracion: '',
-    estilo: [] as string[],
-    accion: '',
-    destinoTipo: '',
-    destinoValor: '',
-    recursos: '',
-    archivo: null as File | null,
-    responsable: '',
-    correo: '',
+  ad_platform: [] as string[],
+  empresa: '',
+  industria: '',
+  producto: '',
+  propuesta: '',
+  objetivo: '',
+  otroObjetivo: '',
+  publico: '',
+  lugares: '',
+  presupuesto: '',
+  moneda: 'MXN',
+  duracion: '',
+  otraDuracion: '',
+  estilo: [] as string[],
+  accion: '',
+  destinoTipo: '',
+  destinoValor: '',
+  recursos: '',
+  archivo: null as File | null
   });
   const [step, setStep] = useState(1); // Controla el paso actual
   const [submitted, setSubmitted] = useState(false);
@@ -142,9 +138,7 @@ const CreateCampaignForm: React.FC = () => {
       form.estilo.length === 0 ||
       !form.accion ||
       !form.destinoTipo ||
-      !form.destinoValor.trim() ||
-      !form.responsable.trim() ||
-      !form.correo.trim()
+      !form.destinoValor.trim()
     ) {
       setError('Todos los campos son obligatorios.');
       return;
@@ -185,7 +179,6 @@ const CreateCampaignForm: React.FC = () => {
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
         assets: { images_videos: fileUrl || (isEditMode ? undefined : '') },
-        contact: { responsible_name: form.responsable, email: form.correo },
         ...(isEditMode ? {} : { createdAt: serverTimestamp() }),
       };
       const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
@@ -219,8 +212,6 @@ const CreateCampaignForm: React.FC = () => {
           destinoValor: '',
           recursos: '',
           archivo: null,
-          responsable: '',
-          correo: '',
         });
         setSubmitted(false);
         setShowSummary(false);
@@ -234,20 +225,8 @@ const CreateCampaignForm: React.FC = () => {
   };
 
   const nextStep = () => {
-    if (step === 1 && form.ad_platform.length === 0) {
-      setError('Selecciona al menos una plataforma.');
-      return;
-    }
-    if (step === 2 && (!form.empresa.trim() || !form.industria.trim() || !form.producto.trim() || !form.propuesta.trim())) {
-      setError('Completa todos los campos de "Sobre tu negocio".');
-      return;
-    }
-    if (step === 3 && (!form.objetivo || (form.objetivo === 'Otro' && !form.otroObjetivo.trim()) || !form.publico.trim() || !form.lugares.trim())) {
-      setError('Completa todos los campos de "Objetivo" y "Público".');
-      return;
-    }
-    setError('');
-    setStep(step + 1);
+  setError('');
+  setStep(step + 1);
   };
 
   const prevStep = () => {
@@ -266,7 +245,7 @@ const CreateCampaignForm: React.FC = () => {
             El presupuesto asignado para la campaña es de <b>{form.presupuesto} {form.moneda}</b>, con una duración de <b>{form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</b>.<br /><br />
             Los anuncios invitarán a los usuarios a <b>{form.accion}</b>, dirigiéndolos al destino especificado: <b>{form.destinoValor}</b> (<b>{form.destinoTipo}</b>).<br /><br />
             La campaña se ejecutará en la(s) plataforma(s): <b>{form.ad_platform.join(', ')}</b>.<br /><br />
-            La persona responsable de la campaña es <b>{form.responsable}</b> (correo: <b>{form.correo}</b>), quien supervisará la ejecución y los resultados de la misma.
+            {/* Eliminado: responsable y correo */}
           </p>
         </div>
         <div className="flex gap-4">
@@ -313,7 +292,7 @@ const CreateCampaignForm: React.FC = () => {
           <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 5 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
             5
           </div>
-          <span className="block mt-1">Contacto</span>
+          <span className="block mt-1">Recursos</span>
         </div>
       </div>
 
@@ -594,33 +573,52 @@ const CreateCampaignForm: React.FC = () => {
 
         {step === 5 && (
           <div>
-            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Recursos y Contacto</h3>
-            <label className="block font-semibold mb-1">¿Tienes imágenes o videos para la campaña?</label>
-            <div className="flex gap-4 mb-2">
-              <label className="flex items-center gap-2">
+            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Recursos</h3>
+            <label className="block font-semibold mb-1">¿Cómo quieres crear tu anuncio?</label>
+            <div className="flex flex-col gap-3 mb-4">
+              <label className="flex items-start gap-2">
                 <input
                   type="radio"
                   name="recursos"
-                  value="si"
-                  checked={form.recursos === 'si'}
+                  value="productos"
+                  checked={form.recursos === 'productos'}
                   onChange={handleChange}
-                  className="accent-[#2d4792]"
+                  className="accent-[#2d4792] mt-1"
                 />
-                Sí (subir archivo)
+                <span>
+                  Tengo fotos o videos de mis productos<br />
+                  <span className="text-xs text-gray-500">(La IA los usará para diseñar un anuncio atractivo.)</span>
+                </span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-start gap-2">
                 <input
                   type="radio"
                   name="recursos"
-                  value="no"
-                  checked={form.recursos === 'no'}
+                  value="anuncio"
+                  checked={form.recursos === 'anuncio'}
                   onChange={handleChange}
-                  className="accent-[#2d4792]"
+                  className="accent-[#2d4792] mt-1"
                 />
-                No, que la IA los sugiera
+                <span>
+                  Ya tengo un anuncio hecho<br />
+                  <span className="text-xs text-gray-500">(Sube tu anuncio y la IA lo adaptará/mejorará para esta campaña.)</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input
+                  type="radio"
+                  name="recursos"
+                  value="nada"
+                  checked={form.recursos === 'nada'}
+                  onChange={handleChange}
+                  className="accent-[#2d4792] mt-1"
+                />
+                <span>
+                  No tengo nada, que la IA lo cree desde cero.
+                </span>
               </label>
             </div>
-            {form.recursos === 'si' && (
+            {(form.recursos === 'productos' || form.recursos === 'anuncio') && (
               <>
                 <input
                   type="file"
@@ -648,24 +646,6 @@ const CreateCampaignForm: React.FC = () => {
                 )}
               </>
             )}
-            <label className="block font-semibold mb-1 mt-4">Nombre del responsable</label>
-            <input
-              type="text"
-              name="responsable"
-              value={form.responsable}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.responsable.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Nombre completo"
-            />
-            <label className="block font-semibold mb-1">Correo de contacto</label>
-            <input
-              type="email"
-              name="correo"
-              value={form.correo}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${submitted && !form.correo.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="ejemplo@email.com"
-            />
           </div>
         )}
 
@@ -679,7 +659,7 @@ const CreateCampaignForm: React.FC = () => {
               Regresar
             </button>
           )}
-          {step < 5 ? (
+          {step < 5 && (
             <button
               type="button"
               className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold"
@@ -687,7 +667,8 @@ const CreateCampaignForm: React.FC = () => {
             >
               Continuar
             </button>
-          ) : (
+          )}
+          {step === 5 && (
             <button
               type="submit"
               className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold hover:bg-[#1d326b] transition"
