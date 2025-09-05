@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { generateId } from '../../utils/generateId';
@@ -50,8 +49,8 @@ const CreateCampaignForm: React.FC = () => {
             accion: data.call_to_action || '',
             destinoTipo: data.landing_type || '',
             destinoValor: data.landing_page || '',
-            recursos: data.assets && data.assets.images_videos ? 'si' : 'no',
-            archivo: null // No pre-fill file
+            recursos: data.recursos || '',
+            archivos: [],
           });
         }
       } catch (err) {
@@ -65,30 +64,31 @@ const CreateCampaignForm: React.FC = () => {
   const [showSummary, setShowSummary] = useState(false);
   const navigate = useNavigate();
   const [form, setForm] = useState({
-  ad_platform: [] as string[],
-  empresa: '',
-  industria: '',
-  producto: '',
-  propuesta: '',
-  objetivo: '',
-  otroObjetivo: '',
-  publico: '',
-  lugares: '',
-  presupuesto: '',
-  moneda: 'MXN',
-  duracion: '',
-  otraDuracion: '',
-  estilo: [] as string[],
-  accion: '',
-  destinoTipo: '',
-  destinoValor: '',
-  recursos: '',
-  archivo: null as File | null
+    ad_platform: [] as string[],
+    empresa: '',
+    industria: '',
+    producto: '',
+    propuesta: '',
+    objetivo: '',
+    otroObjetivo: '',
+    publico: '',
+    lugares: '',
+    presupuesto: '',
+    moneda: 'MXN',
+    duracion: '',
+    otraDuracion: '',
+    estilo: [] as string[],
+    accion: '',
+    destinoTipo: '',
+    destinoValor: '',
+    recursos: '',
+    archivos: [] as File[]
   });
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [step, setStep] = useState(1); // Controla el paso actual
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Eliminado: const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -155,12 +155,20 @@ const CreateCampaignForm: React.FC = () => {
     setLoading(true);
     try {
       let campaign_id = campaignId || generateId();
-      let fileUrl = '';
-      if (form.archivo) {
-        const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/${form.archivo.name}`);
-        await uploadBytes(storageRef, form.archivo);
-        fileUrl = await getDownloadURL(storageRef);
+      let fileUrls: string[] = [];
+      // Subir archivos a Storage si existen
+      if (form.archivos && form.archivos.length > 0) {
+        for (const file of form.archivos) {
+          const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/${file.name}`);
+          await uploadBytes(storageRef, file);
+          const url = await getDownloadURL(storageRef);
+          fileUrls.push(url);
+        }
       }
+      let recursosValue = '';
+      if (form.recursos === 'productos') recursosValue = 'mejorar por IA';
+      else if (form.recursos === 'anuncio') recursosValue = 'Anuncio hecho';
+      else if (form.recursos === 'nada') recursosValue = 'Crear por IA';
       const campaignData = {
         ad_platform: form.ad_platform,
         campaign_id,
@@ -178,13 +186,14 @@ const CreateCampaignForm: React.FC = () => {
         call_to_action: form.accion,
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
-        assets: { images_videos: fileUrl || (isEditMode ? undefined : '') },
+        recursos: recursosValue,
+        assets: { images_videos: fileUrls.length > 0 ? fileUrls : (isEditMode ? undefined : []) },
         ...(isEditMode ? {} : { createdAt: serverTimestamp() }),
       };
       const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
       if (isEditMode) {
         // Remove undefined fields (like images_videos if not updated)
-        if (!fileUrl) delete campaignData.assets.images_videos;
+        if (!fileUrls.length) delete campaignData.assets.images_videos;
         await updateDoc(campaignsRef, campaignData);
       } else {
         await setDoc(campaignsRef, campaignData);
@@ -211,8 +220,9 @@ const CreateCampaignForm: React.FC = () => {
           destinoTipo: '',
           destinoValor: '',
           recursos: '',
-          archivo: null,
+          archivos: [],
         });
+        setPreviewUrls([]);
         setSubmitted(false);
         setShowSummary(false);
         setStep(1);
@@ -229,10 +239,7 @@ const CreateCampaignForm: React.FC = () => {
   setStep(step + 1);
   };
 
-  const prevStep = () => {
-    setError('');
-    setStep(step - 1);
-  };
+  // Eliminado prevStep, ya no se usa
 
   if (showSummary) {
     return (
@@ -622,26 +629,25 @@ const CreateCampaignForm: React.FC = () => {
               <>
                 <input
                   type="file"
-                  name="archivo"
+                  name="archivos"
                   accept="image/*,video/*"
+                  multiple
                   onChange={e => {
-                    const file = e.target.files ? e.target.files[0] : null;
-                    setForm({ ...form, archivo: file });
-                    if (file) {
-                      setPreviewUrl(URL.createObjectURL(file));
-                    } else {
-                      setPreviewUrl(null);
-                    }
+                    const files = e.target.files ? Array.from(e.target.files) : [];
+                    setForm({ ...form, archivos: files });
+                    setPreviewUrls(files.map(file => URL.createObjectURL(file)));
                   }}
                   className="mb-2"
                 />
-                {previewUrl && (
-                  <div className="mb-2">
-                    {form.archivo && form.archivo.type.startsWith('image') ? (
-                      <img src={previewUrl} alt="Vista previa" className="max-w-xs max-h-40 rounded shadow" />
-                    ) : form.archivo && form.archivo.type.startsWith('video') ? (
-                      <video src={previewUrl} controls className="max-w-xs max-h-40 rounded shadow" />
-                    ) : null}
+                {previewUrls.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {form.archivos.map((file, idx) => (
+                      file.type.startsWith('image') ? (
+                        <img key={idx} src={previewUrls[idx]} alt={`Vista previa ${idx + 1}`} className="max-w-xs max-h-40 rounded shadow" />
+                      ) : file.type.startsWith('video') ? (
+                        <video key={idx} src={previewUrls[idx]} controls className="max-w-xs max-h-40 rounded shadow" />
+                      ) : null
+                    ))}
                   </div>
                 )}
               </>
@@ -654,7 +660,16 @@ const CreateCampaignForm: React.FC = () => {
             <button
               type="button"
               className="bg-gray-300 px-4 py-2 rounded font-bold"
-              onClick={prevStep}
+              onClick={() => setStep(step - 1)}
+            >
+              Regresar
+            </button>
+          )}
+          {step === 1 && (
+            <button
+              type="button"
+              className="bg-gray-300 px-4 py-2 rounded font-bold"
+              onClick={() => navigate(-1)}
             >
               Regresar
             </button>
