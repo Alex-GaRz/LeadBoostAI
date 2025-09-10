@@ -14,10 +14,10 @@ const CreateCampaignButton: React.FC = () => {
           <p className="text-black text-base">Lanza campañas optimizadas con IA en Google Ads, Meta Ads o ambas plataformas simultáneamente.</p>
         </div>
         <button
-          className="flex items-center px-5 py-3 bg-[#2d4792] hover:bg-[#1b3b89] text-white font-semibold rounded-lg shadow transition-colors mt-2"
+          className="flex items-center px-8 py-4 text-lg bg-[#2d4792] hover:bg-[#1b3b89] text-white font-semibold rounded-xl shadow transition-colors mt-4"
           onClick={() => navigate('/crear-campana')}
         >
-          <Plus className="w-5 h-5 mr-2" />
+          <Plus className="w-6 h-6 mr-3" />
           Crear nueva Campaña
         </button>
       </div>

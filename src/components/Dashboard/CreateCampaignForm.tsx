@@ -243,79 +243,65 @@ const CreateCampaignForm: React.FC = () => {
 
   if (showSummary) {
     return (
-      <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 mt-2 mb-16">
-        <h2 className="text-2xl font-bold mb-4 text-[#2d4792]">Resumen de la campaña</h2>
-        <div className="mb-4 text-gray-800">
+      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-500">Resumen</span>
+            <span className="text-sm text-gray-500">100% completado</span>
+          </div>
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 bg-[#2d4792] rounded-full w-full transition-all"></div>
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold mb-6 text-center text-[#2d4792]">Resumen de la campaña</h2>
+        <div className="mb-6 text-gray-800 text-base leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-100">
           <p>
-            Esta campaña ha sido diseñada para la empresa <b>{form.empresa}</b>, que se especializa en la industria de <b>{form.industria}</b> y ofrece <b>{form.producto}</b> con la propuesta de valor <b>{form.propuesta}</b>. El objetivo principal de la campaña es <b>{form.objetivo === 'Otro' ? form.otroObjetivo : form.objetivo}</b>.<br /><br />
-            Los anuncios estarán dirigidos a <b>{form.publico}</b> en <b>{form.lugares}</b>, y tendrán un estilo <b>{form.estilo.join(', ')}</b>, buscando captar la atención de forma efectiva y adecuada para la audiencia.<br /><br />
-            El presupuesto asignado para la campaña es de <b>{form.presupuesto} {form.moneda}</b>, con una duración de <b>{form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</b>.<br /><br />
-            Los anuncios invitarán a los usuarios a <b>{form.accion}</b>, dirigiéndolos al destino especificado: <b>{form.destinoValor}</b> (<b>{form.destinoTipo}</b>).<br /><br />
-            La campaña se ejecutará en la(s) plataforma(s): <b>{form.ad_platform.join(', ')}</b>.<br /><br />
-            {/* Eliminado: responsable y correo */}
+            Esta campaña ha sido diseñada para la empresa <b>{form.empresa}</b>, que se especializa en la industria de <b>{form.industria}</b> y ofrece <b>{form.producto}</b> con la propuesta de valor <b>{form.propuesta}</b>.<br /><br />
+            El objetivo principal de la campaña es <b>{form.objetivo === 'Otro' ? form.otroObjetivo : form.objetivo}</b>.<br /><br />
+            Los anuncios estarán dirigidos a <b>{form.publico}</b> en <b>{form.lugares}</b>, y tendrán un estilo <b>{form.estilo.join(', ')}</b>.<br /><br />
+            El presupuesto asignado es de <b>{form.presupuesto} {form.moneda}</b>, con una duración de <b>{form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</b>.<br /><br />
+            Los anuncios invitarán a los usuarios a <b>{form.accion}</b>, dirigiéndolos al destino: <b>{form.destinoValor}</b> (<b>{form.destinoTipo}</b>).<br /><br />
+            Plataforma(s): <b>{form.ad_platform.join(', ')}</b>.
           </p>
         </div>
-        <div className="flex gap-4">
-          <button type="button" className="bg-gray-300 px-4 py-2 rounded font-bold" onClick={() => setShowSummary(false)}>Editar</button>
-          <button type="button" className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold" onClick={handleConfirm}>Confirmar y enviar</button>
+        <div className="flex gap-4 justify-center mt-6">
+          <button type="button" className="bg-gray-300 px-6 py-2 rounded font-bold" onClick={() => setShowSummary(false)}>Editar</button>
+          <button type="button" className="bg-[#2d4792] text-white px-6 py-2 rounded font-bold" onClick={handleConfirm}>Confirmar y enviar</button>
         </div>
-        {error && <div className="text-red-600 font-semibold mt-2 text-center">{error}</div>}
+        {error && <div className="text-red-600 font-semibold mt-4 text-center">{error}</div>}
       </div>
     );
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-500">Cargando...</div>;
+    return <div className="text-center py-16 text-gray-500 text-lg">Cargando...</div>;
   }
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 mt-2 mb-16">
-      {/* Barra de pasos con círculos y títulos debajo, tamaño uniforme */}
-      <div className="flex justify-between mb-6">
-        <div className="text-center min-w-[80px]">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 1 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
-            1
-          </div>
-          <span className="block mt-1">Plataforma</span>
+    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100">
+      <h2 className="text-2xl font-bold mb-8 text-center text-[#2d4792]">Configurador de Campaña Publicitaria</h2>
+      {/* Barra de progreso tipo wizard */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-gray-500">Paso {step} de 5</span>
+          <span className="text-sm text-gray-500">{Math.round((step/5)*100)}% completado</span>
         </div>
-        <div className="text-center min-w-[80px]">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 2 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
-            2
-          </div>
-          <span className="block mt-1">Negocio</span>
-        </div>
-        <div className="text-center min-w-[80px]">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 3 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
-            3
-          </div>
-          <span className="block mt-1">Objetivo</span>
-        </div>
-        <div className="text-center min-w-[80px]">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 4 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
-            4
-          </div>
-          <span className="block mt-1">Presupuesto</span>
-        </div>
-        <div className="text-center min-w-[80px]">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-full mx-auto ${step === 5 ? 'bg-[#2d4792] text-white' : 'bg-gray-200 text-gray-600'}`}>
-            5
-          </div>
-          <span className="block mt-1">Recursos</span>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#2d4792] rounded-full transition-all" style={{ width: `${(step/5)*100}%` }}></div>
         </div>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {step === 1 && (
           <div className="mb-6">
             <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Plataforma de anuncios</h3>
             <label className="block font-semibold mb-1">¿En qué plataforma quieres que se ejecute la campaña?</label>
             <select
               name="ad_platform"
-              value={form.ad_platform.length > 0 ? form.ad_platform[0] : ''}
+              value={form.ad_platform.length > 0 ? (form.ad_platform.length === 2 ? 'Ambas' : form.ad_platform[0]) : ''}
               onChange={e => {
                 let value = e.target.value;
                 let platforms: string[] = [];
                 if (value === 'Ambas') {
-                  platforms = ['Google Ads', 'Meta Ads']; // Añadir ambas plataformas
+                  platforms = ['Google Ads', 'Meta Ads'];
                 } else if (value) {
                   platforms = [value];
                 }
