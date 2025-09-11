@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { doc, setDoc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { generateCampaignAI } from '../../services/OpenAIService';
 
 const campaignObjectives = [
   'Conseguir más clientes (ventas)',
@@ -17,8 +18,8 @@ const campaignObjectives = [
 const CreateCampaignForm: React.FC = () => {
   const { user } = useAuth();
   const { campaignId } = useParams<{ campaignId?: string }>();
-  // Track if editing
   const [loading, setLoading] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const isEditMode = !!campaignId;
 
   // Pre-fill form if editing
@@ -153,10 +154,9 @@ const CreateCampaignForm: React.FC = () => {
       return;
     }
     setLoading(true);
+    let campaign_id = campaignId || generateId();
     try {
-      let campaign_id = campaignId || generateId();
       let fileUrls: string[] = [];
-      // Subir archivos a Storage si existen
       if (form.archivos && form.archivos.length > 0) {
         for (const file of form.archivos) {
           const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/${file.name}`);
@@ -192,14 +192,27 @@ const CreateCampaignForm: React.FC = () => {
       };
       const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
       if (isEditMode) {
-        // Remove undefined fields (like images_videos if not updated)
         if (!fileUrls.length) delete campaignData.assets.images_videos;
         await updateDoc(campaignsRef, campaignData);
       } else {
         await setDoc(campaignsRef, campaignData);
       }
-      // Redirigir al dashboard de la campaña
-      navigate(`/dashboard/campaign/${campaign_id}`);
+
+      // --- Generación con IA ---
+      setIsGeneratingAI(true);
+      try {
+        const aiData = await generateCampaignAI(campaignData);
+        await updateDoc(campaignsRef, aiData);
+      } catch (aiError) {
+        console.error("Error en la generación por IA:", aiError);
+        setError("Hubo un problema al generar la campaña con IA. Revisa los datos en el dashboard.");
+        // No detenemos el flujo, el usuario será redirigido igualmente.
+      } finally {
+        setIsGeneratingAI(false);
+        navigate(`/dashboard/campaign/${campaign_id}`);
+      }
+      // --- Fin de la generación con IA ---
+
       if (!isEditMode) {
         setForm({
           ad_platform: [],
@@ -273,9 +286,19 @@ const CreateCampaignForm: React.FC = () => {
     );
   }
 
-  if (loading) {
+  if (loading && !isGeneratingAI) {
     return <div className="text-center py-16 text-gray-500 text-lg">Cargando...</div>;
   }
+
+  if (isGeneratingAI) {
+    return (
+      <div className="text-center py-16 text-gray-600 text-lg">
+        <p className="font-semibold text-xl mb-2">Estamos creando tu campaña con inteligencia artificial...</p>
+        <p>Esto puede tardar unos segundos.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100">
       <h2 className="text-2xl font-bold mb-8 text-center text-[#2d4792]">Configurador de Campaña Publicitaria</h2>
