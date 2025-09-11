@@ -203,16 +203,19 @@ const CreateCampaignForm: React.FC = () => {
       try {
         const aiData = await generateCampaignAI(campaignData);
         await updateDoc(campaignsRef, aiData);
-      } catch (aiError) {
-        console.error("Error en la generación por IA:", aiError);
-        setError("Hubo un problema al generar la campaña con IA. Revisa los datos en el dashboard.");
-        // No detenemos el flujo, el usuario será redirigido igualmente.
-      } finally {
-        setIsGeneratingAI(false);
+        // Si todo va bien, redirigir
         navigate(`/dashboard/campaign/${campaign_id}`);
+      } catch (aiError: any) {
+        console.error("Error en la generación por IA:", aiError);
+        // Mostrar un error más específico y no redirigir
+        setError(`Error de IA: ${aiError.message}. Por favor, inténtalo de nuevo o contacta a soporte.`);
+        setIsGeneratingAI(false);
+        setLoading(false); // Detener el loading general también
+        return; // Detener la ejecución aquí
       }
       // --- Fin de la generación con IA ---
 
+      // Limpiar formulario solo si no es modo edición y todo fue exitoso
       if (!isEditMode) {
         setForm({
           ad_platform: [],
@@ -243,8 +246,11 @@ const CreateCampaignForm: React.FC = () => {
     } catch (err) {
       setError('Error al guardar la campaña. Intenta de nuevo.');
       console.error(err);
+    } finally {
+      // Esto solo se ejecutará si la IA no falla
+      setIsGeneratingAI(false);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const nextStep = () => {
@@ -295,6 +301,7 @@ const CreateCampaignForm: React.FC = () => {
       <div className="text-center py-16 text-gray-600 text-lg">
         <p className="font-semibold text-xl mb-2">Estamos creando tu campaña con inteligencia artificial...</p>
         <p>Esto puede tardar unos segundos.</p>
+        {error && <div className="text-red-600 font-semibold mt-4 text-center">{error}</div>}
       </div>
     );
   }
