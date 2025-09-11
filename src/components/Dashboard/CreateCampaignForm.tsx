@@ -201,17 +201,30 @@ const CreateCampaignForm: React.FC = () => {
       // --- Generación con IA ---
       setIsGeneratingAI(true);
       try {
+        console.log('Antes de llamar a la IA');
         const aiData = await generateCampaignAI(campaignData);
-        await updateDoc(campaignsRef, aiData);
-        // Si todo va bien, redirigir
+        console.log('Respuesta de la IA:', aiData);
+        if (!aiData || Object.keys(aiData).length === 0) {
+          throw new Error('La IA no devolvió datos válidos.');
+        }
+        console.log('Antes de guardar en Firestore');
+        try {
+          await updateDoc(campaignsRef, aiData);
+          console.log('Guardado exitoso en Firestore');
+        } catch (firebaseError) {
+          console.error('Error al actualizar en Firestore:', firebaseError);
+          throw new Error('No se pudo guardar la información generada por IA en la base de datos.');
+        }
+        setIsGeneratingAI(false);
+        setLoading(false);
+        console.log('Antes de redirigir al dashboard');
         navigate(`/dashboard/campaign/${campaign_id}`);
       } catch (aiError: any) {
-        console.error("Error en la generación por IA:", aiError);
-        // Mostrar un error más específico y no redirigir
-        setError(`Error de IA: ${aiError.message}. Por favor, inténtalo de nuevo o contacta a soporte.`);
+        console.error("Error en la generación por IA o guardado:", aiError);
+        setError(`Error de IA: ${aiError.message || aiError}. Por favor, inténtalo de nuevo o contacta a soporte.`);
         setIsGeneratingAI(false);
-        setLoading(false); // Detener el loading general también
-        return; // Detener la ejecución aquí
+        setLoading(false);
+        return;
       }
       // --- Fin de la generación con IA ---
 
