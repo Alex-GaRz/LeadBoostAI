@@ -51,14 +51,14 @@ const RecentCampaigns: React.FC = () => {
             }
           }
           // Buscar en la subcolección ia_data
-          let nombreCampania = d["Nombre de campaña"];
+          let nombreCampania = d["Nombre de campaña"] || d["campaign_name"];
           if (!nombreCampania) {
             try {
               const iaDataCol = collection(db, `clients/${user.uid}/campaigns/${doc.id}/ia_data`);
               const iaSnapshot = await getDocs(iaDataCol);
               if (!iaSnapshot.empty) {
                 const iaDocData = iaSnapshot.docs[0].data();
-                nombreCampania = iaDocData["Nombre de campaña"];
+                nombreCampania = iaDocData["Nombre de campaña"] || iaDocData["campaign_name"];
               }
             } catch {}
           }

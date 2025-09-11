@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
-import { subirCampaniaIAGooMet } from './uploadCampaignIAGooMet';
 import { exportPDF } from '../../utils/exportPDF'; // Asegúrate de que esta importación sea correcta
 import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send } from 'lucide-react';
 import AdPreview from './AdPreview';
@@ -70,12 +69,122 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
 
   // Helper: get correct IA data block depending on campaign type and active tab
   const isMixta = platforms.some(p => p === 'MetaAds' || p === 'Meta Ads') && platforms.some(p => p === 'GoogleAds' || p === 'Google Ads');
-  const currentIaData = isMixta && iaData ? iaData[activeTab] : iaData;
+  let currentIaData = iaData;
+  if (isMixta && iaData && iaData[activeTab]) {
+    currentIaData = iaData[activeTab];
+  }
 
   // Determina la otra plataforma para las vistas ocultas
   const otherPlatform = activeTab === 'Meta Ads' ? 'Google Ads' : 'Meta Ads';
   const otherIaData = isMixta && iaData ? iaData[otherPlatform] : null;
   const otherRefs = activeTab === 'Meta Ads' ? googleAdPreviewRefs : metaAdPreviewRefs;
+
+  // Función para mapear los datos de la IA de Firestore a los nombres esperados por el dashboard
+  function mapAIDataFromFirestore(docData: any) {
+    // Mapeo para campañas mixtas y simples
+    const result: any = {};
+    // Google Ads
+    if (Array.isArray(docData.google_ai_ad_variants)) {
+      const googleVariants: any = {};
+      docData.google_ai_ad_variants.forEach((variant: any, idx: number) => {
+        googleVariants[`Variante ${idx + 1}`] = {
+          "Título sugerido": variant.suggested_title,
+          "Descripción corta": variant.short_description,
+          "Keywords recomendadas": variant.recommended_keywords,
+          "CTA": variant.cta,
+          "Estrategia de puja": variant.bidding_strategy,
+          "Negative keywords": variant.negative_keywords,
+          "Extensiones de anuncio": variant.ad_extensions,
+        };
+      });
+      result["Google Ads"] = {
+        "Anuncio generado por IA": googleVariants,
+        "Resultados esperados": {
+          "Audiencia": docData.google_ai_expected_results?.audience_size,
+          "Conversiones": docData.google_ai_expected_results?.conversions,
+          "CPC": docData.google_ai_expected_results?.cpc,
+          "CTR": docData.google_ai_expected_results?.ctr,
+          "Alcance": docData.google_ai_expected_results?.reach,
+          "ROAS": docData.google_ai_expected_results?.roas,
+          "Engagement rate": docData.google_ai_expected_results?.engagement_rate,
+        }
+      };
+    }
+    // Meta Ads
+    if (Array.isArray(docData.meta_ai_ad_variants)) {
+      const metaVariants: any = {};
+      docData.meta_ai_ad_variants.forEach((variant: any, idx: number) => {
+        metaVariants[`Variante ${idx + 1}`] = {
+          "Título del anuncio": variant.title,
+          "Texto principal": variant.main_text,
+          "CTA": variant.cta,
+          "Ideas de imágenes/videos": variant.image_video_ideas,
+          "Formatos sugeridos": variant.recommended_formats,
+          "Audiencias personalizadas/lookalikes": variant.audiences,
+        };
+      });
+      result["Meta Ads"] = {
+        "Anuncio generado por IA": metaVariants,
+        "Resultados esperados": {
+          "Audiencia": docData.meta_ai_expected_results?.audience_size,
+          "Conversiones": docData.meta_ai_expected_results?.conversions,
+          "CPC": docData.meta_ai_expected_results?.cpc,
+          "CTR": docData.meta_ai_expected_results?.ctr,
+          "Alcance": docData.meta_ai_expected_results?.reach,
+          "ROAS": docData.meta_ai_expected_results?.roas,
+          "Engagement rate": docData.meta_ai_expected_results?.engagement_rate,
+        }
+      };
+    }
+    // Para campañas simples (solo un array genérico)
+    if (Array.isArray(docData.ai_ad_variants)) {
+      const variants: any = {};
+      docData.ai_ad_variants.forEach((variant: any, idx: number) => {
+        if (
+          variant.suggested_title !== undefined ||
+          variant.short_description !== undefined ||
+          variant.recommended_keywords !== undefined
+        ) {
+          // Google Ads
+          variants[`Variante ${idx + 1}`] = {
+            "Título sugerido": variant.suggested_title,
+            "Descripción corta": variant.short_description,
+            "Keywords recomendadas": variant.recommended_keywords,
+            "CTA": variant.cta,
+            "Estrategia de puja": variant.bidding_strategy,
+            "Negative keywords": variant.negative_keywords,
+            "Extensiones de anuncio": variant.ad_extensions,
+          };
+        } else if (
+          variant.title !== undefined ||
+          variant.main_text !== undefined ||
+          variant.image_video_ideas !== undefined
+        ) {
+          // Meta Ads
+          variants[`Variante ${idx + 1}`] = {
+            "Título del anuncio": variant.title,
+            "Texto principal": variant.main_text,
+            "CTA": variant.cta,
+            "Ideas de imágenes/videos": variant.image_video_ideas,
+            "Formatos sugeridos": variant.recommended_formats,
+            "Audiencias personalizadas/lookalikes": variant.audiences,
+          };
+        }
+      });
+      result["Anuncio generado por IA"] = variants;
+      result["Resultados esperados"] = {
+        "Audiencia": docData.ai_expected_results?.audience_size,
+        "Conversiones": docData.ai_expected_results?.conversions,
+        "CPC": docData.ai_expected_results?.cpc,
+        "CTR": docData.ai_expected_results?.ctr,
+        "Alcance": docData.ai_expected_results?.reach,
+        "ROAS": docData.ai_expected_results?.roas,
+        "Engagement rate": docData.ai_expected_results?.engagement_rate,
+      };
+    }
+    result["Nombre de campaña"] = docData.campaign_name;
+    return result;
+  }
 
   // Leer el título IA al cargar el dashboard o cambiar campaignId
   useEffect(() => {
@@ -86,19 +195,24 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
         const snapshot = await getDocs(iaColRef);
         if (!snapshot.empty) {
           const docData = snapshot.docs[0].data();
-          setIaTitle(docData["Nombre de campaña"] || null);
-          setIaData(docData);
+          console.log('[DEBUG] Datos Firestore IA:', docData);
+          // Detecta plataforma activa para mapeo (si hay varias, toma la primera)
+          const mappedData = mapAIDataFromFirestore(docData);
+          console.log('[DEBUG] Datos IA mapeados para dashboard:', mappedData);
+          setIaTitle(mappedData["Nombre de campaña"] || null);
+          setIaData(mappedData);
         } else {
           setIaTitle(null);
           setIaData(null);
         }
-      } catch {
+      } catch (e) {
         setIaTitle(null);
         setIaData(null);
+        console.error('[DEBUG] Error obteniendo datos IA:', e);
       }
     };
     fetchIaData();
-  }, [campaignId, user]);
+  }, [campaignId, user, platforms]);
 
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
@@ -115,8 +229,8 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
     setUploading(true);
     setUploadMsg(null);
     try {
-      await subirCampaniaIAGooMet(user.uid, campaignId);
-      setUploadMsg('Campaña IA Mixta subida correctamente.');
+  // subirCampaniaIAGooMet eliminado
+  setUploadMsg('Campaña IA Mixta subida correctamente.');
     } catch (e) {
       setUploadMsg('Error al subir la campaña IA.');
     }
@@ -509,85 +623,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
         </div>
       )}
 
-      {/* Botones para subir campaña */}
-      {(() => {
-        const isMeta = platforms.length === 1 && (platforms[0] === 'MetaAds' || platforms[0] === 'Meta Ads');
-        const isGoogle = platforms.length === 1 && (platforms[0] === 'GoogleAds' || platforms[0] === 'Google Ads');
-        const isMixta = platforms.some(p => p === 'MetaAds' || p === 'Meta Ads') && platforms.some(p => p === 'GoogleAds' || p === 'Google Ads');
-        if (isMeta) {
-          return (
-            <div className="mt-10 flex flex-col items-center">
-              <button
-                className="px-6 py-3 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
-                onClick={async () => {
-                  setUploading(true);
-                  setUploadMsg(null);
-                  try {
-                    const { subirCampaniaIA } = await import('./uploadCampaignIA');
-                    if (!user) {
-                      setUploadMsg('Debes iniciar sesión.');
-                    } else {
-                      await subirCampaniaIA(user.uid, campaignId);
-                      setUploadMsg('Campaña IA de Meta Ads subida correctamente.');
-                    }
-                  } catch {
-                    setUploadMsg('Error al subir la campaña IA.');
-                  }
-                  setUploading(false);
-                }}
-                disabled={uploading}
-              >
-                {uploading ? 'Subiendo campaña IA Meta Ads...' : 'Subir campaña IA Meta Ads'}
-              </button>
-              {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
-            </div>
-          );
-        }
-        if (isGoogle) {
-          return (
-            <div className="mt-10 flex flex-col items-center">
-              <button
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
-                onClick={async () => {
-                  setUploading(true);
-                  setUploadMsg(null);
-                  try {
-                    const { subirCampaniaIAGoogle } = await import('./uploadCampaignIAGoogle');
-                    if (!user) {
-                      setUploadMsg('Debes iniciar sesión.');
-                    } else {
-                      await subirCampaniaIAGoogle(user.uid, campaignId);
-                      setUploadMsg('Campaña IA de Google Ads subida correctamente.');
-                    }
-                  } catch {
-                    setUploadMsg('Error al subir la campaña IA.');
-                  }
-                  setUploading(false);
-                }}
-                disabled={uploading}
-              >
-                {uploading ? 'Subiendo campaña IA Google Ads...' : 'Subir campaña IA Google Ads'}
-              </button>
-              {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
-            </div>
-          );
-        }
-        if (isMixta) {
-          return (
-            <div className="mt-10 flex flex-col items-center">
-              <button
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow mb-2 disabled:opacity-60"
-                onClick={handleUploadMixta}
-                disabled={uploading}
-              >
-                {uploading ? 'Subiendo campaña IA Mixta...' : 'Subir campaña IA Mixta'}
-              </button>
-              {uploadMsg && <span className="text-sm text-gray-600 mt-1">{uploadMsg}</span>}
-            </div>
-          );
-        }
-        return null;
-      })()}
+  {/* Botones para subir campaña eliminados */}
     </div>
   );
 };
