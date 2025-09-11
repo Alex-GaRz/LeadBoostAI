@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
-import { doc, setDoc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { generateCampaignAI } from '../../services/OpenAIService';
@@ -207,12 +207,13 @@ const CreateCampaignForm: React.FC = () => {
         if (!aiData || Object.keys(aiData).length === 0) {
           throw new Error('La IA no devolvió datos válidos.');
         }
-        console.log('Antes de guardar en Firestore');
+        console.log('Antes de guardar en Firestore en la subcolección');
         try {
-          await updateDoc(campaignsRef, aiData);
-          console.log('Guardado exitoso en Firestore');
+          const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
+          await addDoc(iaDataRef, aiData);
+          console.log('Guardado exitoso en la subcolección de Firestore');
         } catch (firebaseError) {
-          console.error('Error al actualizar en Firestore:', firebaseError);
+          console.error('Error al guardar en la subcolección de Firestore:', firebaseError);
           throw new Error('No se pudo guardar la información generada por IA en la base de datos.');
         }
         setIsGeneratingAI(false);
