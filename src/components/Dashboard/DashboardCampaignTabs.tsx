@@ -250,6 +250,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+
         {/* Detalles Generales */}
         <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-2 col-span-1 md:col-span-2">
           <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2"><FileBarChart className="w-5 h-5" style={{color:'#2d4792'}} /> Detalles Generales</h3>
@@ -494,15 +495,21 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-gray-600">
             <div>
               <span className="font-bold">Público objetivo</span>
-              <div className="text-gray-700 mt-1">{campaignData?.publico || 'No especificado'}</div>
+              <div className="text-gray-700 mt-1">{campaignData?.target_audience || campaignData?.publico || 'No especificado'}</div>
             </div>
             <div>
               <span className="font-bold">Ubicación geográfica</span>
-              <div className="text-gray-700 mt-1">{campaignData?.lugares && campaignData.lugares.length > 0 ? campaignData.lugares.join(', ') : 'No especificado'}</div>
+              <div className="text-gray-700 mt-1">{(campaignData?.locations && Array.isArray(campaignData.locations) && campaignData.locations.length > 0)
+                ? campaignData.locations.join(', ')
+                : (campaignData?.lugares && campaignData.lugares.length > 0 ? campaignData.lugares.join(', ') : 'No especificado')}
+              </div>
             </div>
             <div>
               <span className="font-bold">Estilo de comunicación</span>
-              <div className="text-gray-700 mt-1">{campaignData?.estilo && campaignData.estilo.length > 0 ? campaignData.estilo.join(', ') : 'No especificado'}</div>
+              <div className="text-gray-700 mt-1">{(campaignData?.ad_style && Array.isArray(campaignData.ad_style) && campaignData.ad_style.length > 0)
+                ? campaignData.ad_style.join(', ')
+                : (campaignData?.estilo && campaignData.estilo.length > 0 ? campaignData.estilo.join(', ') : 'No especificado')}
+              </div>
             </div>
           </div>
         </div>
@@ -599,13 +606,13 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
       {isMixta && showOtherPreviews && (
         <div style={{ position: 'absolute', left: '-10000px', width: '500px', height: 'auto' }}>
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={otherRefs[0]}>
-            <AdPreview platform={otherPlatform} iaData={otherIaData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={otherPlatform} iaData={otherIaData} campaignData={campaignData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={otherRefs[1]}>
-            <AdPreview platform={otherPlatform} iaData={otherIaData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={otherPlatform} iaData={otherIaData} campaignData={campaignData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={otherRefs[2]}>
-            <AdPreview platform={otherPlatform} iaData={otherIaData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={otherPlatform} iaData={otherIaData} campaignData={campaignData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
       )}

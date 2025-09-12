@@ -91,33 +91,43 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, v
 						)}
 
 				{/* Vista previa para Google Ads */}
-				{platform === 'Google Ads' && iaData && (
-					<>
-						{variantsToShow.map((v) => {
-							const variante = getVar(v as 1 | 2 | 3);
-							return (
-								<div key={v} className="flex flex-col h-full w-full border rounded-lg bg-white p-4 shadow mb-2 justify-between items-stretch">
-									<div className="font-bold text-lg text-[#2d4792] mb-1">{variante["Título del anuncio"] || 'Sin título'}</div>
-									<div className="text-gray-700 mb-2">{variante["Texto principal"] || 'Sin texto principal'}</div>
-									<div className="text-sm text-gray-500 mb-2 italic">{variante["Ideas de imágenes/videos"] || ''}</div>
-									<div className="flex flex-wrap gap-2 mb-2">
-										{variante["Formatos sugeridos"]?.map((f: string) => (
-											<span key={f} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">{f}</span>
-										))}
-									</div>
-									<div className="flex flex-wrap gap-2 mb-2">
-										{variante["Audiencias personalizadas/lookalikes"]?.map((a: string) => (
-											<span key={a} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">{a}</span>
-										))}
-									</div>
-									<div className="mt-2">
-										<span className="font-semibold text-[#2d4792]">CTA:</span> {variante["CTA"] || '-'}
-									</div>
-								</div>
-							);
-						})}
-					</>
-				)}
+				   {platform === 'Google Ads' && iaData && (
+					   <>
+						   {variantsToShow.map((v) => {
+							   const variante = getVar(v as 1 | 2 | 3);
+							   // Mostrar solo la imagen generada si existe
+							   let imagenUrl = null;
+							   if (campaignData?.generated_image_url) {
+								   imagenUrl = campaignData.generated_image_url;
+							   }
+							   return (
+								   <div key={v} className="flex flex-col h-full w-full border rounded-lg bg-white p-4 shadow mb-2 justify-between items-stretch">
+									   {imagenUrl && (
+										   <div className="w-full aspect-[1.91/1] bg-gray-200 flex items-center justify-center overflow-hidden mb-2">
+											   <img src={imagenUrl} alt="Imagen anuncio" className="object-cover w-full h-full" />
+										   </div>
+									   )}
+									   <div className="font-bold text-lg text-[#2d4792] mb-1">{variante["Título del anuncio"] || 'Sin título'}</div>
+									   <div className="text-gray-700 mb-2">{variante["Texto principal"] || 'Sin texto principal'}</div>
+									   <div className="text-sm text-gray-500 mb-2 italic">{variante["Ideas de imágenes/videos"] || ''}</div>
+									   <div className="flex flex-wrap gap-2 mb-2">
+										   {variante["Formatos sugeridos"]?.map((f: string) => (
+											   <span key={f} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">{f}</span>
+										   ))}
+									   </div>
+									   <div className="flex flex-wrap gap-2 mb-2">
+										   {variante["Audiencias personalizadas/lookalikes"]?.map((a: string) => (
+											   <span key={a} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">{a}</span>
+										   ))}
+									   </div>
+									   <div className="mt-2">
+										   <span className="font-semibold text-[#2d4792]">CTA:</span> {variante["CTA"] || '-'}
+									   </div>
+								   </div>
+							   );
+						   })}
+					   </>
+				   )}
 			</div>
 		);
 };

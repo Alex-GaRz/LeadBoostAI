@@ -30,7 +30,11 @@ export const generateImage = async (prompt: string, initImage?: File): Promise<s
         formData.append('init_image_mode', "IMAGE_STRENGTH");
         formData.append('image_strength', "0.35");
         endpoint = `${API_HOST}/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`;
+        // No agregar width ni height aquí
     } else {
+        // Solo para text-to-image
+        formData.append('width', '1024');
+        formData.append('height', '1024');
         endpoint = `${API_HOST}/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`;
     }
 

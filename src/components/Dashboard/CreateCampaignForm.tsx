@@ -161,11 +161,71 @@ const CreateCampaignForm: React.FC = () => {
       setError('Todos los campos son obligatorios.');
       return;
     }
+    // Validar dimensiones de imagen antes de mostrar el resumen
+    if ((form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
+      const allowedSizes = [
+        [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
+        [640, 1536], [768, 1344], [832, 1216], [896, 1152]
+      ];
+      const file = form.archivos[0];
+      if (file.type.startsWith('image')) {
+        const img = document.createElement('img');
+        const fileReader = new FileReader();
+        fileReader.onload = () => {
+          img.onload = () => {
+            const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
+            if (!valid) {
+              setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
+            } else {
+              setError('');
+              setShowSummary(true);
+            }
+          };
+          img.src = fileReader.result as string;
+        };
+        fileReader.readAsDataURL(file);
+        return;
+      }
+    }
     setError('');
     setShowSummary(true);
   };
 
   const handleConfirm = async () => {
+    // Validar dimensiones de imagen antes de cualquier procesamiento
+    if ((form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
+      const allowedSizes = [
+        [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
+        [640, 1536], [768, 1344], [832, 1216], [896, 1152]
+      ];
+      const file = form.archivos[0];
+      if (file.type.startsWith('image')) {
+        const img = document.createElement('img');
+        const fileReader = new FileReader();
+        const fileLoadPromise = new Promise<void>((resolve, reject) => {
+          fileReader.onload = () => {
+            img.onload = () => {
+              const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
+              if (!valid) {
+                setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
+                reject();
+              } else {
+                resolve();
+              }
+            };
+            img.onerror = reject;
+            img.src = fileReader.result as string;
+          };
+          fileReader.onerror = reject;
+          fileReader.readAsDataURL(file);
+        });
+        try {
+          await fileLoadPromise;
+        } catch {
+          return; // Detener el proceso si la imagen no es válida
+        }
+      }
+    }
     if (!user) {
       setError('No se ha detectado usuario autenticado.');
       return;
@@ -216,33 +276,57 @@ const CreateCampaignForm: React.FC = () => {
       };
 
       // Guardar o actualizar el documento principal de la campaña
-      if (isEditMode) {
-        if (!fileUrls.length) delete campaignData.assets.images_videos;
-        await updateDoc(campaignsRef, campaignData);
-      } else {
-        await setDoc(campaignsRef, campaignData);
-      }
 
-      // --- Lógica de generación de imágenes con IA ---
+      // --- Lógica de generación de imágenes y texto con IA ---
+      let generatedImageUrl = null;
       if (form.recursos === 'productos' || form.recursos === 'nada') {
+        // Validar dimensiones permitidas si hay imagen de entrada (antes de cualquier procesamiento)
+        const imageFile = form.recursos === 'productos' ? form.archivos[0] : undefined;
+        if (imageFile) {
+          const allowedSizes = [
+            [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
+            [640, 1536], [768, 1344], [832, 1216], [896, 1152]
+          ];
+          const img = document.createElement('img');
+          const fileReader = new FileReader();
+          const fileLoadPromise = new Promise<void>((resolve, reject) => {
+            fileReader.onload = () => {
+              img.onload = () => {
+                const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
+                if (!valid) {
+                  setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
+                  setIsGeneratingImage(false);
+                  setLoading(false);
+                  reject();
+                } else {
+                  resolve();
+                }
+              };
+              img.onerror = reject;
+              img.src = fileReader.result as string;
+            };
+            fileReader.onerror = reject;
+            fileReader.readAsDataURL(imageFile);
+          });
+          try {
+            await fileLoadPromise;
+          } catch {
+            return; // Detener el proceso si la imagen no es válida
+          }
+        }
+
         setIsGeneratingImage(true);
         try {
           const prompt = form.recursos === 'productos'
             ? `Hyper-realistic fashion photoshoot of a ${form.producto} from the provided reference image, shown on a professional model. The ${form.producto} must appear identical to the reference in color, fabric, texture, seams, and design, without alterations. The model is realistic, photographed in a professional studio setup with soft lighting, 8K quality, cinematic shadows, and fashion editorial style. The main focus is the ${form.producto}, with photorealistic details suitable for e-commerce and fashion catalog presentation.`
             : `Create a hyper-realistic image for an ad campaign about ${form.producto}. The style should be ${form.estilo.join(', ')}. The target audience is ${form.publico}. The ad should convey a sense of ${form.propuesta}.`;
 
-          const imageFile = form.recursos === 'productos' ? form.archivos[0] : undefined;
-
           const base64Image = await generateImage(prompt, imageFile);
           const imageBlob = base64ToBlob(base64Image);
 
           const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
           await uploadBytes(generatedImageRef, imageBlob);
-          const generatedImageUrl = await getDownloadURL(generatedImageRef);
-
-          await updateDoc(campaignsRef, { generated_image_url: generatedImageUrl });
-          campaignData.generated_image_url = generatedImageUrl; // Actualizar para el siguiente paso
-
+          generatedImageUrl = await getDownloadURL(generatedImageRef);
         } catch (imageError: any) {
           setError(`Error al generar la imagen con IA: ${imageError.message}`);
           setIsGeneratingImage(false);
@@ -253,20 +337,18 @@ const CreateCampaignForm: React.FC = () => {
       } else if (form.recursos === 'anuncio') {
         // Escenario 2: El usuario ya tiene un anuncio
         if (fileUrls.length > 0) {
-          await updateDoc(campaignsRef, { user_image_url: fileUrls[0] });
           campaignData.user_image_url = fileUrls[0]; // Actualizar para el siguiente paso
         }
       }
 
       // --- Generación de texto con IA ---
       setIsGeneratingAI(true);
+      let aiData = null;
       try {
-        const aiData = await generateCampaignAI(campaignData);
+        aiData = await generateCampaignAI({ ...campaignData, generated_image_url: generatedImageUrl });
         if (!aiData || Object.keys(aiData).length === 0) {
           throw new Error('La IA no devolvió datos de texto válidos.');
         }
-        const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
-        await addDoc(iaDataRef, aiData);
       } catch (aiError: any) {
         setError(`Error en la generación de texto por IA: ${aiError.message}`);
         setIsGeneratingAI(false);
@@ -274,6 +356,22 @@ const CreateCampaignForm: React.FC = () => {
         return; // Detener el proceso si el texto falla
       }
       setIsGeneratingAI(false);
+
+      // Solo guardar la campaña si ambas IAs funcionaron
+      if (generatedImageUrl) {
+        campaignData.generated_image_url = generatedImageUrl;
+      }
+      // Guardar campaña y datos IA
+      if (isEditMode) {
+        if (!fileUrls.length) delete campaignData.assets.images_videos;
+        await updateDoc(campaignsRef, campaignData);
+      } else {
+        await setDoc(campaignsRef, campaignData);
+      }
+      if (aiData) {
+        const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
+        await addDoc(iaDataRef, aiData);
+      }
 
       // Si todo fue exitoso, navegar al dashboard
       setLoading(false);
@@ -288,8 +386,42 @@ const CreateCampaignForm: React.FC = () => {
     }
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     setError('');
+    // Validar dimensiones de imagen SOLO al intentar avanzar desde el paso 5 y si corresponde
+    if (step === 5 && (form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
+      const allowedSizes = [
+        [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
+        [640, 1536], [768, 1344], [832, 1216], [896, 1152]
+      ];
+      const file = form.archivos[0];
+      if (file.type.startsWith('image')) {
+        const img = document.createElement('img');
+        const fileReader = new FileReader();
+        const fileLoadPromise = new Promise<void>((resolve, reject) => {
+          fileReader.onload = () => {
+            img.onload = () => {
+              const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
+              if (!valid) {
+                setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
+                reject();
+              } else {
+                resolve();
+              }
+            };
+            img.onerror = reject;
+            img.src = fileReader.result as string;
+          };
+          fileReader.onerror = reject;
+          fileReader.readAsDataURL(file);
+        });
+        try {
+          await fileLoadPromise;
+        } catch {
+          return; // Detener el avance si la imagen no es válida
+        }
+      }
+    }
     setStep(step + 1);
   };
 
