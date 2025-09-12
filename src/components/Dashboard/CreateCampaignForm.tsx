@@ -321,7 +321,7 @@ const CreateCampaignForm: React.FC = () => {
             ? `Hyper-realistic fashion photoshoot of a ${form.producto} from the provided reference image, shown on a professional model. The ${form.producto} must appear identical to the reference in color, fabric, texture, seams, and design, without alterations. The model is realistic, photographed in a professional studio setup with soft lighting, 8K quality, cinematic shadows, and fashion editorial style. The main focus is the ${form.producto}, with photorealistic details suitable for e-commerce and fashion catalog presentation.`
             : `Create a hyper-realistic image for an ad campaign about ${form.producto}. The style should be ${form.estilo.join(', ')}. The target audience is ${form.publico}. The ad should convey a sense of ${form.propuesta}.`;
 
-          const base64Image = await generateImage(prompt, imageFile);
+          const base64Image = await generateImage(prompt);
           const imageBlob = base64ToBlob(base64Image);
 
           const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
@@ -800,8 +800,8 @@ const CreateCampaignForm: React.FC = () => {
                   className="accent-[#2d4792] mt-1"
                 />
                 <span>
-                  Tengo fotos o videos de mis productos<br />
-                  <span className="text-xs text-gray-500">(La IA los usará para diseñar un anuncio atractivo.)</span>
+                  Tengo una foto de mis producto<br />
+                  <span className="text-xs text-gray-500">(La IA la usará para diseñar un anuncio atractivo.)</span>
                 </span>
               </label>
               <label className="flex items-start gap-2">
@@ -815,7 +815,7 @@ const CreateCampaignForm: React.FC = () => {
                 />
                 <span>
                   Ya tengo un anuncio hecho<br />
-                  <span className="text-xs text-gray-500">(Sube tu anuncio y la IA lo adaptará/mejorará para esta campaña.)</span>
+                  <span className="text-xs text-gray-500">(Sube tu anuncio y se usará en la campaña.)</span>
                 </span>
               </label>
               <label className="flex items-start gap-2">
@@ -828,7 +828,8 @@ const CreateCampaignForm: React.FC = () => {
                   className="accent-[#2d4792] mt-1"
                 />
                 <span>
-                  No tengo nada, que la IA lo cree desde cero.
+                  No tengo nada, que la IA lo cree desde cero.<br />
+                  <span className="text-xs text-gray-500">(La IA generara un anuncio adaptado a tu campaña desde 0)</span>
                 </span>
               </label>
             </div>

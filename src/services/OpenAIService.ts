@@ -330,8 +330,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
 **Nota:** Sé creativo, profesional y enfocado en resultados. Cada variante debe estar adaptada al público, presupuesto, objetivo y estilo proporcionado, generando campañas completas y coherentes para Meta Ads y Google Ads.
 `;
 
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-const API_URL = 'https://api.openai.com/v1/chat/completions';
+
 
 /**
  * Reemplaza los placeholders en el prompt con los datos de la campaña.
@@ -368,10 +367,6 @@ function buildPrompt(promptTemplate: string, data: CampaignData): string {
  * @returns El objeto JSON con los datos de la campaña generados por la IA.
  */
 export async function generateCampaignAI(data: CampaignData): Promise<any> {
-  if (!API_KEY) {
-    throw new Error('La API Key de OpenAI no está configurada.');
-  }
-
   let promptTemplate: string;
 
   const hasGoogle = data.ad_platform.includes('Google Ads');
@@ -390,43 +385,20 @@ export async function generateCampaignAI(data: CampaignData): Promise<any> {
   const prompt = buildPrompt(promptTemplate, data);
 
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch('/api/openai/generate-campaign', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        response_format: { type: "json_object" },
-      }),
+      body: JSON.stringify({ ...data, prompt }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error desde la API de OpenAI:', errorData);
-      throw new Error(`Error de la API de OpenAI: ${response.statusText}`);
-    }
-
     const result = await response.json();
-    const content = result.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('La respuesta de la API de OpenAI no contiene contenido.');
+    if (!result.success) {
+      throw new Error(result.error || 'Error al generar la campaña con IA');
     }
-
-    // Intenta parsear el contenido JSON
-    try {
-      return JSON.parse(content);
-    } catch (e) {
-      console.error('Error al parsear el JSON de la respuesta de la IA:', e);
-      throw new Error('La respuesta de la IA no es un JSON válido.');
-    }
-
+    // El backend devuelve el JSON como string, así que lo parseamos
+    return JSON.parse(result.result);
   } catch (error) {
-    console.error('Error al generar la campaña con IA:', error);
     throw new Error('Hubo un problema al generar la campaña. Inténtelo de nuevo más tarde.');
   }
 }

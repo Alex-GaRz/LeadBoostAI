@@ -116,7 +116,6 @@ const RecentCampaigns: React.FC = () => {
                 <div className="flex gap-2">
                   <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => handleViewDetails(c.id)}>Ver detalles</button>
                   <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => editCampaign(c.id, navigate)}>Editar</button>
-                  <button className="text-[#2d4792] hover:underline text-sm font-medium">Pausar</button>
                 </div>
               </li>
             );

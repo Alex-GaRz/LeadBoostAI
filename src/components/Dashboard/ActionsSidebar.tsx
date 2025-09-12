@@ -52,7 +52,8 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
         </button>
       </div>
       <nav className="flex-1 py-6 px-2 space-y-2">
-        {menuItems.map((item) => {
+        {/* Oculta la opción 'Estadísticas' del menú, pero no elimina el código del array */}
+        {menuItems.filter(item => item.label !== 'Estadísticas').map((item) => {
           // Para 'Inicio', activo si la ruta empieza con /dashboard
           const isInicio = item.label === 'Inicio';
           const isActive = isInicio

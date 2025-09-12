@@ -4,8 +4,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
 import { exportPDF } from '../../utils/exportPDF';
-import { duplicateCampaign } from '../../utils/duplicateCampaign';
-import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send, Download } from 'lucide-react';
+import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Send, Download } from 'lucide-react';
 import AdPreview from './AdPreview';
 
 interface DashboardCampaignTabsProps {
@@ -21,24 +20,9 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   const [iaTitle, setIaTitle] = useState<string | null>(null);
   const [iaData, setIaData] = useState<any>(null);
   const [showOtherPreviews, setShowOtherPreviews] = useState(false); // Estado para vistas previas ocultas
-  const [isDuplicating, setIsDuplicating] = useState(false);
-  const [showDuplicatedMessage, setShowDuplicatedMessage] = useState(false);
 
-  const handleDuplicate = async () => {
-    if (!user) return;
-    setIsDuplicating(true);
-    try {
-      const newCampaignId = await duplicateCampaign(user.uid, campaignId);
-      setShowDuplicatedMessage(true);
-      setTimeout(() => {
-        setShowDuplicatedMessage(false);
-        window.open(`/dashboard/campaign/${newCampaignId}`, '_blank');
-      }, 2000);
-    } catch (error) {
-      console.error('Error duplicating campaign:', error);
-    }
-    setIsDuplicating(false);
-  };
+
+
 
   // Refs separados para Meta Ads y Google Ads
   const metaAdPreviewRefs = [useRef(null), useRef(null), useRef(null)];
@@ -220,28 +204,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
     fetchIaData();
   }, [campaignId, user, platforms]);
 
-  const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
 
-  const handleUploadMixta = async () => {
-    if (!user) {
-      setUploadMsg('Debes iniciar sesión.');
-      return;
-    }
-    if (!campaignId) {
-      setUploadMsg('No se encontró el ID de la campaña.');
-      return;
-    }
-    setUploading(true);
-    setUploadMsg(null);
-    try {
-  // subirCampaniaIAGooMet eliminado
-  setUploadMsg('Campaña IA Mixta subida correctamente.');
-    } catch (e) {
-      setUploadMsg('Error al subir la campaña IA.');
-    }
-    setUploading(false);
-  };
 
   // DEBUG: Mostrar campaignData y business_name en consola
   console.log('DashboardCampaignTabs campaignData:', campaignData);
@@ -249,11 +212,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
 
   return (
     <div className="w-full">
-      {showDuplicatedMessage && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
-          ¡Tu campaña ha sido duplicada!
-        </div>
-      )}
+
       <h2 className="text-xl font-bold text-black mb-1">{iaTitle || 'Nombre de la campaña'}</h2>
       <p className="text-gray-600 mb-4">Resumen y gestión de tu campaña publicitaria</p>
       <div className="flex border-b border-gray-200 mb-6">
@@ -554,23 +513,43 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             >
               <UploadCloud className="w-6 h-6" style={{color:'#fff'}} /> Exportar a PDF
             </button>
-            <a
-              href={campaignData?.generated_image_url}
-              download="anuncio.png"
-              className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
-            >
-              <Download className="w-6 h-6" style={{color:'#fff'}} /> Descargar Anuncio
-            </a>
             <button
               className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
-              onClick={handleDuplicate}
-              disabled={isDuplicating}
+              onClick={async () => {
+                if (!campaignData?.generated_image_url) return;
+                try {
+                  const response = await fetch(campaignData.generated_image_url, { mode: 'cors' });
+                  if (!response.ok) throw new Error('Network response was not ok');
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.style.display = 'none';
+                  a.href = url;
+                  a.download = 'anuncio.png';
+                  document.body.appendChild(a);
+                  a.click();
+                  setTimeout(() => {
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                  }, 100);
+                } catch (e: any) {
+                  if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
+                    alert('No se pudo descargar la imagen por restricciones de CORS. Pide al administrador que configure los permisos públicos o CORS en Firebase Storage.');
+                  } else {
+                    alert('No se pudo descargar la imagen.');
+                  }
+                }
+              }}
             >
-              <Copy className="w-6 h-6" style={{color:'#fff'}} /> {isDuplicating ? 'Duplicando...' : 'Duplicar campaña'}
+              <Download className="w-6 h-6" style={{color:'#fff'}} /> Descargar Anuncio
             </button>
-            <button className="flex-1 px-5 py-3 bg-blue-300 text-white font-semibold rounded-lg shadow cursor-not-allowed flex items-center justify-center gap-3" disabled>
-              <Send className="w-6 h-6" style={{color:'#fff'}} /> Publicar campaña
-            </button>
+
+            {/* Oculto el botón de 'Publicar campaña' para el usuario, pero el código permanece */}
+            {false && (
+              <button className="flex-1 px-5 py-3 bg-blue-300 text-white font-semibold rounded-lg shadow cursor-not-allowed flex items-center justify-center gap-3" disabled>
+                <Send className="w-6 h-6" style={{color:'#fff'}} /> Publicar campaña
+              </button>
+            )}
           </div>
           <p className="text-xs text-gray-400">* Publicar campaña estará disponible cuando se integren las APIs de Meta Ads o Google Ads.</p>
         </div>

@@ -30,7 +30,7 @@ const duplicateStorageFiles = async (sourcePath: string, destinationPath: string
     return Promise.all(uploadPromises);
   } catch (error) {
     // Si la carpeta no existe, listAll puede fallar. Lo ignoramos.
-    if (error.code !== 'storage/object-not-found') {
+    if ((error as { code?: string }).code !== 'storage/object-not-found') {
       console.error(`Error duplicating files from ${sourcePath} to ${destinationPath}:`, error);
       throw error;
     }
@@ -58,7 +58,13 @@ export const duplicateCampaign = async (
   }
 
   const originalCampaignData = originalCampaignSnap.data();
-  let newCampaignData = {
+  let newCampaignData: typeof originalCampaignData & {
+    campaign_id: string;
+    business_name: string;
+    createdAt: Date;
+    generated_image_url: string;
+    assets: { images_videos: string[] };
+  } = {
     ...originalCampaignData,
     campaign_id: newCampaignId,
     business_name: `${originalCampaignData.business_name} (Copia)`,
