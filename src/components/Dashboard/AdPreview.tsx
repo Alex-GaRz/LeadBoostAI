@@ -4,11 +4,12 @@ import React from 'react';
 interface AdPreviewProps {
 	platform: string;
 	iaData: any;
+	campaignData: any;
 	variant?: number;
 	businessName?: string;
 }
 
-const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, variant, businessName }) => {
+const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, variant, businessName }) => {
 	// Helper para obtener los datos de la variante
 	const getVar = (n: 1 | 2 | 3) => iaData?.["Anuncio generado por IA"]?.[`Variante ${n}`] || {};
 
@@ -22,18 +23,22 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, variant, busine
 							<>
 								{variantsToShow.map((v) => {
 									const variante = getVar(v as 1 | 2 | 3);
-																		// Obtener business_name directamente de iaData si no viene como prop
-																											// El nombre de la empresa se guarda como business_name en la base de datos (ver CreateCampaignForm)
-																											let brand = "Nombre de marca";
-																											if (businessName !== undefined && businessName !== null && businessName !== "") {
-																												brand = String(businessName);
-																											}
+									let brand = "Nombre de marca";
+									if (businessName) {
+										brand = String(businessName);
+									}
 									const patrocinado = "Patrocinado";
 									const textoPrincipal = variante["Texto principal"] || iaData["Texto principal"] || "Sin texto principal";
 									const titulo = variante["Título del anuncio"] || iaData["Título del anuncio"] || "Sin título";
 									const cta = variante["CTA"] || iaData["CTA"] || "Pedir más información";
-									// Si hay una url de imagen, úsala, si no, placeholder
-									const imagenUrl = variante["Imagen"] || iaData["Imagen"] || null;
+
+									let imagenUrl = null;
+									if (campaignData?.recursos === 'Ya tengo un anuncio hecho') {
+										imagenUrl = campaignData.user_image_url;
+									} else if (campaignData?.recursos === 'Tengo fotos o videos de mis productos' || campaignData?.recursos === 'No tengo nada, que la IA lo cree desde cero') {
+										imagenUrl = campaignData.generated_image_url;
+									}
+
 									return (
 																<div key={v} className="flex flex-col h-full w-full border rounded-xl bg-white shadow mb-4 max-w-xl mx-auto" style={{fontFamily:'inherit'}}>
 																	{/* Header */}

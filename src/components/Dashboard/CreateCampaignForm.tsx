@@ -4,8 +4,9 @@ import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
 import { doc, setDoc, serverTimestamp, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
 import { generateCampaignAI } from '../../services/OpenAIService';
+import { generateImage } from '../../services/StabilityAIService';
 
 const campaignObjectives = [
   'Conseguir más clientes (ventas)',
@@ -20,7 +21,23 @@ const CreateCampaignForm: React.FC = () => {
   const { campaignId } = useParams<{ campaignId?: string }>();
   const [loading, setLoading] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const isEditMode = !!campaignId;
+
+  const base64ToBlob = (base64: string, contentType: string = 'image/png'): Blob => {
+    const byteCharacters = atob(base64.split(',')[1]);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: contentType });
+  };
 
   // Pre-fill form if editing
   useEffect(() => {
@@ -155,7 +172,10 @@ const CreateCampaignForm: React.FC = () => {
     }
     setLoading(true);
     let campaign_id = campaignId || generateId();
+    const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
+
     try {
+      // Primero, subir archivos si los hay
       let fileUrls: string[] = [];
       if (form.archivos && form.archivos.length > 0) {
         for (const file of form.archivos) {
@@ -165,11 +185,15 @@ const CreateCampaignForm: React.FC = () => {
           fileUrls.push(url);
         }
       }
+
+      // Mapear el valor de 'recursos' del form a un valor más descriptivo para la BD
       let recursosValue = '';
-      if (form.recursos === 'productos') recursosValue = 'mejorar por IA';
-      else if (form.recursos === 'anuncio') recursosValue = 'Anuncio hecho';
-      else if (form.recursos === 'nada') recursosValue = 'Crear por IA';
-      const campaignData = {
+      if (form.recursos === 'productos') recursosValue = 'Tengo fotos o videos de mis productos';
+      else if (form.recursos === 'anuncio') recursosValue = 'Ya tengo un anuncio hecho';
+      else if (form.recursos === 'nada') recursosValue = 'No tengo nada, que la IA lo cree desde cero';
+
+      // Construir el objeto de datos inicial de la campaña
+      const campaignData: any = {
         ad_platform: form.ad_platform,
         campaign_id,
         business_name: form.empresa,
@@ -186,11 +210,12 @@ const CreateCampaignForm: React.FC = () => {
         call_to_action: form.accion,
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
-        recursos: recursosValue,
+        recursos: recursosValue, // Guardamos el valor completo de la opción
         assets: { images_videos: fileUrls.length > 0 ? fileUrls : (isEditMode ? undefined : []) },
         ...(isEditMode ? {} : { createdAt: serverTimestamp() }),
       };
-      const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
+
+      // Guardar o actualizar el documento principal de la campaña
       if (isEditMode) {
         if (!fileUrls.length) delete campaignData.assets.images_videos;
         await updateDoc(campaignsRef, campaignData);
@@ -198,83 +223,79 @@ const CreateCampaignForm: React.FC = () => {
         await setDoc(campaignsRef, campaignData);
       }
 
-      // --- Generación con IA ---
+      // --- Lógica de generación de imágenes con IA ---
+      if (form.recursos === 'productos' || form.recursos === 'nada') {
+        setIsGeneratingImage(true);
+        try {
+          const prompt = form.recursos === 'productos'
+            ? `Hyper-realistic fashion photoshoot of a ${form.producto} from the provided reference image, shown on a professional model. The ${form.producto} must appear identical to the reference in color, fabric, texture, seams, and design, without alterations. The model is realistic, photographed in a professional studio setup with soft lighting, 8K quality, cinematic shadows, and fashion editorial style. The main focus is the ${form.producto}, with photorealistic details suitable for e-commerce and fashion catalog presentation.`
+            : `Create a hyper-realistic image for an ad campaign about ${form.producto}. The style should be ${form.estilo.join(', ')}. The target audience is ${form.publico}. The ad should convey a sense of ${form.propuesta}.`;
+
+          const imageFile = form.recursos === 'productos' ? form.archivos[0] : undefined;
+
+          const base64Image = await generateImage(prompt, imageFile);
+          const imageBlob = base64ToBlob(base64Image);
+
+          const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
+          await uploadBytes(generatedImageRef, imageBlob);
+          const generatedImageUrl = await getDownloadURL(generatedImageRef);
+
+          await updateDoc(campaignsRef, { generated_image_url: generatedImageUrl });
+          campaignData.generated_image_url = generatedImageUrl; // Actualizar para el siguiente paso
+
+        } catch (imageError: any) {
+          setError(`Error al generar la imagen con IA: ${imageError.message}`);
+          setIsGeneratingImage(false);
+          setLoading(false);
+          return; // Detener el proceso si la imagen falla
+        }
+        setIsGeneratingImage(false);
+      } else if (form.recursos === 'anuncio') {
+        // Escenario 2: El usuario ya tiene un anuncio
+        if (fileUrls.length > 0) {
+          await updateDoc(campaignsRef, { user_image_url: fileUrls[0] });
+          campaignData.user_image_url = fileUrls[0]; // Actualizar para el siguiente paso
+        }
+      }
+
+      // --- Generación de texto con IA ---
       setIsGeneratingAI(true);
       try {
-        console.log('Antes de llamar a la IA');
         const aiData = await generateCampaignAI(campaignData);
-        console.log('Respuesta de la IA:', aiData);
         if (!aiData || Object.keys(aiData).length === 0) {
-          throw new Error('La IA no devolvió datos válidos.');
+          throw new Error('La IA no devolvió datos de texto válidos.');
         }
-        console.log('Antes de guardar en Firestore en la subcolección');
-        try {
-          const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
-          await addDoc(iaDataRef, aiData);
-          console.log('Guardado exitoso en la subcolección de Firestore');
-        } catch (firebaseError) {
-          console.error('Error al guardar en la subcolección de Firestore:', firebaseError);
-          throw new Error('No se pudo guardar la información generada por IA en la base de datos.');
-        }
-        setIsGeneratingAI(false);
-        setLoading(false);
-        console.log('Antes de redirigir al dashboard');
-        navigate(`/dashboard/campaign/${campaign_id}`);
+        const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
+        await addDoc(iaDataRef, aiData);
       } catch (aiError: any) {
-        console.error("Error en la generación por IA o guardado:", aiError);
-        setError(`Error de IA: ${aiError.message || aiError}. Por favor, inténtalo de nuevo o contacta a soporte.`);
+        setError(`Error en la generación de texto por IA: ${aiError.message}`);
         setIsGeneratingAI(false);
         setLoading(false);
-        return;
+        return; // Detener el proceso si el texto falla
       }
-      // --- Fin de la generación con IA ---
-
-      // Limpiar formulario solo si no es modo edición y todo fue exitoso
-      if (!isEditMode) {
-        setForm({
-          ad_platform: [],
-          empresa: '',
-          industria: '',
-          producto: '',
-          propuesta: '',
-          objetivo: '',
-          otroObjetivo: '',
-          publico: '',
-          lugares: '',
-          presupuesto: '',
-          moneda: 'MXN',
-          duracion: '',
-          otraDuracion: '',
-          estilo: [],
-          accion: '',
-          destinoTipo: '',
-          destinoValor: '',
-          recursos: '',
-          archivos: [],
-        });
-        setPreviewUrls([]);
-        setSubmitted(false);
-        setShowSummary(false);
-        setStep(1);
-      }
-    } catch (err) {
-      setError('Error al guardar la campaña. Intenta de nuevo.');
-      console.error(err);
-    } finally {
-      // Esto solo se ejecutará si la IA no falla
       setIsGeneratingAI(false);
+
+      // Si todo fue exitoso, navegar al dashboard
       setLoading(false);
+      navigate(`/dashboard/campaign/${campaign_id}`);
+
+    } catch (err: any) {
+      setError(`Error al guardar la campaña: ${err.message}. Intenta de nuevo.`);
+      console.error(err);
+      setLoading(false);
+      setIsGeneratingImage(false);
+      setIsGeneratingAI(false);
     }
   };
 
   const nextStep = () => {
-  setError('');
-  setStep(step + 1);
+    setError('');
+    setStep(step + 1);
   };
 
   // Eliminado prevStep, ya no se usa
 
-  if (isGeneratingAI) {
+  if (isGeneratingImage || isGeneratingAI) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-600 text-lg">
         <div className="mb-6">
@@ -283,7 +304,9 @@ const CreateCampaignForm: React.FC = () => {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
           </svg>
         </div>
-        <p className="font-semibold text-xl mb-2">Estamos creando tu campaña con inteligencia artificial...</p>
+        <p className="font-semibold text-xl mb-2">
+          {isGeneratingImage ? "Generando imagen con IA..." : "Creando textos para tu campaña..."}
+        </p>
         <p>Esto puede tardar unos segundos.</p>
         {error && <div className="text-red-600 font-semibold mt-4 text-center">{error}</div>}
       </div>

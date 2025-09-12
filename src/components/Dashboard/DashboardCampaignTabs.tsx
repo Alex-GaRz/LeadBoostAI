@@ -8,22 +8,9 @@ import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, T
 import AdPreview from './AdPreview';
 
 interface DashboardCampaignTabsProps {
-  platforms: string[]; // Ejemplo: ['Meta Ads'], ['Google Ads'], ['Meta Ads', 'Google Ads']
+  platforms: string[];
   campaignId: string;
-  campaignData?: {
-    plataforma?: string;
-    objetivo?: string;
-    duracion?: string;
-    publico?: string;
-    lugares?: string[];
-    estilo?: string[];
-    budget_amount?: string | number;
-    budget_currency?: string;
-    marca?: string;
-    nombre_marca?: string;
-    brand?: string;
-    business_name?: string;
-  };
+  campaignData?: any;
 }
 
 const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms, campaignId, campaignData }) => {
@@ -359,7 +346,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             ) : null}
           </div>
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={activeTab === 'Meta Ads' ? metaAdPreviewRefs[0] : googleAdPreviewRefs[0]}>
-            <AdPreview platform={activeTab} iaData={currentIaData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={activeTab} iaData={currentIaData} campaignData={campaignData} variant={1} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -428,7 +415,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             ) : null}
           </div>
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={activeTab === 'Meta Ads' ? metaAdPreviewRefs[1] : googleAdPreviewRefs[1]}>
-            <AdPreview platform={activeTab} iaData={currentIaData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={activeTab} iaData={currentIaData} campaignData={campaignData} variant={2} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
@@ -497,7 +484,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             ) : null}
           </div>
           <div className="border-2 border-dashed border-blue-300 rounded-lg bg-white p-6 flex items-center justify-center min-h-[220px]" ref={activeTab === 'Meta Ads' ? metaAdPreviewRefs[2] : googleAdPreviewRefs[2]}>
-            <AdPreview platform={activeTab} iaData={currentIaData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
+            <AdPreview platform={activeTab} iaData={currentIaData} campaignData={campaignData} variant={3} businessName={campaignData?.business_name ? String(campaignData.business_name) : undefined} />
           </div>
         </div>
 
