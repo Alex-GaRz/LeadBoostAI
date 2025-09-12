@@ -239,7 +239,7 @@ const CreateCampaignForm: React.FC = () => {
       let fileUrls: string[] = [];
       if (form.archivos && form.archivos.length > 0) {
         for (const file of form.archivos) {
-          const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/${file.name}`);
+          const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/user_uploads/${file.name}`);
           await uploadBytes(storageRef, file);
           const url = await getDownloadURL(storageRef);
           fileUrls.push(url);

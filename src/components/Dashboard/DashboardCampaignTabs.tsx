@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
-import { exportPDF } from '../../utils/exportPDF'; // Asegúrate de que esta importación sea correcta
-import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send } from 'lucide-react';
+import { exportPDF } from '../../utils/exportPDF';
+import { duplicateCampaign } from '../../utils/duplicateCampaign';
+import { Layers, Users, BarChart3, Zap, UploadCloud, CalendarDays, DollarSign, Target, TrendingUp, FileBarChart, Edit3, Copy, Send, Download } from 'lucide-react';
 import AdPreview from './AdPreview';
 
 interface DashboardCampaignTabsProps {
@@ -20,6 +21,24 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   const [iaTitle, setIaTitle] = useState<string | null>(null);
   const [iaData, setIaData] = useState<any>(null);
   const [showOtherPreviews, setShowOtherPreviews] = useState(false); // Estado para vistas previas ocultas
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [showDuplicatedMessage, setShowDuplicatedMessage] = useState(false);
+
+  const handleDuplicate = async () => {
+    if (!user) return;
+    setIsDuplicating(true);
+    try {
+      const newCampaignId = await duplicateCampaign(user.uid, campaignId);
+      setShowDuplicatedMessage(true);
+      setTimeout(() => {
+        setShowDuplicatedMessage(false);
+        window.open(`/dashboard/campaign/${newCampaignId}`, '_blank');
+      }, 2000);
+    } catch (error) {
+      console.error('Error duplicating campaign:', error);
+    }
+    setIsDuplicating(false);
+  };
 
   // Refs separados para Meta Ads y Google Ads
   const metaAdPreviewRefs = [useRef(null), useRef(null), useRef(null)];
@@ -230,6 +249,11 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
 
   return (
     <div className="w-full">
+      {showDuplicatedMessage && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
+          ¡Tu campaña ha sido duplicada!
+        </div>
+      )}
       <h2 className="text-xl font-bold text-black mb-1">{iaTitle || 'Nombre de la campaña'}</h2>
       <p className="text-gray-600 mb-4">Resumen y gestión de tu campaña publicitaria</p>
       <div className="flex border-b border-gray-200 mb-6">
@@ -530,8 +554,19 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
             >
               <UploadCloud className="w-6 h-6" style={{color:'#fff'}} /> Exportar a PDF
             </button>
-            <button className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3">
-              <Copy className="w-6 h-6" style={{color:'#fff'}} /> Duplicar campaña
+            <a
+              href={campaignData?.generated_image_url}
+              download="anuncio.png"
+              className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
+            >
+              <Download className="w-6 h-6" style={{color:'#fff'}} /> Descargar Anuncio
+            </a>
+            <button
+              className="flex-1 px-5 py-3 bg-[#2d4792] hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
+              onClick={handleDuplicate}
+              disabled={isDuplicating}
+            >
+              <Copy className="w-6 h-6" style={{color:'#fff'}} /> {isDuplicating ? 'Duplicando...' : 'Duplicar campaña'}
             </button>
             <button className="flex-1 px-5 py-3 bg-blue-300 text-white font-semibold rounded-lg shadow cursor-not-allowed flex items-center justify-center gap-3" disabled>
               <Send className="w-6 h-6" style={{color:'#fff'}} /> Publicar campaña

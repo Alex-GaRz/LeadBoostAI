@@ -1,167 +1,35 @@
-# LeadBoost - Aplicación de Email Marketing con IA
+# Instrucciones para el correcto funcionamiento de la aplicación
 
-Una aplicación web completa para automatización de campañas de email marketing con inteligencia artificial, desarrollada con React, TypeScript y Firebase.
+A continuación se detallan los cambios realizados y las instrucciones necesarias para que la aplicación funcione correctamente.
 
-## 🚀 Características
+## Cambios realizados
 
-- **Autenticación completa** con Firebase Auth (Email/Password y Google)
-- **Base de datos** con Cloud Firestore
-- **Dashboard interactivo** con métricas de leads
-- **Diseño responsive** fiel al prototipo de Figma
-- **Gestión de perfiles** de usuario
-- **Interfaz moderna** con Tailwind CSS y Lucide React
+1.  **Cambio de la ruta de subida de imágenes**: Se ha modificado la ruta donde se almacenan las imágenes subidas por los usuarios. La nueva ruta es `clients/{user.uid}/campaigns/{campaign_id}/user_uploads/{image_name}`. Se han actualizado todas las referencias a la ruta anterior para que la aplicación siga funcionando correctamente.
 
-## 📋 Requisitos previos
+2.  **Implementación del botón "Duplicar Campaña"**: Se ha añadido la funcionalidad al botón "Duplicar Campaña" en el dashboard. Ahora, al hacer clic en este botón, se creará una copia exacta de la campaña, incluyendo los datos del formulario, los datos de salida y las imágenes. La nueva campaña se abrirá en una nueva pestaña y se mostrará un mensaje de éxito.
 
-- Node.js 16.0 o superior
-- npm o yarn
-- Cuenta de Firebase
+3.  **Desactivación del botón "Publicar Campaña"**: El botón "Publicar Campaña" ha sido desactivado y no es visible para los usuarios.
 
-## 🛠️ Instalación
+4.  **Añadido el botón "Descargar Anuncio"**: Se ha añadido un nuevo botón "Descargar Anuncio" en el dashboard, que permite a los usuarios descargar la imagen generada por la IA.
 
-1. **Clonar el repositorio e instalar dependencias:**
-```bash
-npm install
-```
+## Instrucciones manuales
 
-2. **Configurar Firebase:**
-   - Ve a la [Consola de Firebase](https://console.firebase.google.com/)
-   - Crea un nuevo proyecto o usa uno existente
-   - En "Configuración del proyecto", ve a "Configuración general"
-   - Copia la configuración de Firebase
+Para que los cambios funcionen correctamente, es necesario tener en cuenta lo siguiente:
 
-3. **Actualizar la configuración:**
-   - Abre `src/firebase/firebaseConfig.ts`
-   - Reemplaza los placeholders con tu configuración real:
+1.  **Configuración de Firebase**: Asegúrate de que tu proyecto de Firebase está correctamente configurado y que las reglas de seguridad de Firebase Storage permiten la escritura en la nueva ruta de subida de imágenes (`clients/{user.uid}/campaigns/{campaign_id}/user_uploads/{image_name}`).
 
-```typescript
-const firebaseConfig = {
-  apiKey: "tu-api-key",
-  authDomain: "tu-proyecto.firebaseapp.com",
-  projectId: "tu-proyecto-id",
-  storageBucket: "tu-proyecto.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "tu-app-id"
-};
-```
+2.  **Variables de entorno**: Verifica que todas las variables de entorno necesarias para la conexión con Firebase y otros servicios están correctamente configuradas en tu archivo `.env` o en el sistema de configuración de tu entorno.
 
-4. **Configurar Firebase Services:**
-   - **Authentication**: Habilita Email/Password y Google en la consola
-   - **Firestore**: Crea la base de datos en modo test
+3.  **Dependencias**: Asegúrate de tener todas las dependencias del proyecto instaladas. Puedes hacerlo ejecutando el siguiente comando en la raíz del proyecto:
 
-5. **Reglas de seguridad de Firestore:**
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /clients/{userId} {
-      allow read, write, create, update: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
+    ```bash
+    npm install
+    ```
 
-## 🚀 Ejecución
+4.  **Ejecutar la aplicación**: Una vez que hayas verificado los puntos anteriores, puedes ejecutar la aplicación con el siguiente comando:
 
-```bash
-npm run dev
-```
+    ```bash
+    npm run dev
+    ```
 
-La aplicación estará disponible en `http://localhost:5173`
-
-## 📁 Estructura del proyecto
-
-```
-src/
-├── components/           # Componentes reutilizables
-│   ├── Dashboard/       # Componentes del dashboard
-│   ├── Header.tsx       # Navegación principal
-│   ├── Hero.tsx         # Sección hero
-│   ├── Features.tsx     # Sección de características
-│   ├── Pricing.tsx      # Sección de precios
-│   ├── AuthForm.tsx     # Formularios de autenticación
-│   └── ProtectedRoute.tsx # Rutas protegidas
-├── firebase/            # Configuración y servicios Firebase
-│   ├── firebaseConfig.ts # Configuración
-│   ├── authService.ts   # Servicios de autenticación
-│   └── firestoreService.ts # Servicios de Firestore
-├── hooks/               # Custom hooks
-│   └── useAuth.ts       # Hook de autenticación
-├── pages/               # Páginas principales
-│   ├── HomePage.tsx     # Página de inicio
-│   ├── LoginPage.tsx    # Página de login
-│   ├── RegisterPage.tsx # Página de registro
-│   └── DashboardPage.tsx # Dashboard principal
-├── styles/              # Estilos CSS
-│   └── App.css          # Estilos globales
-├── App.tsx              # Componente principal
-└── main.tsx             # Punto de entrada
-```
-
-## 🔧 Funcionalidades
-
-### Autenticación
-- ✅ Registro con email y contraseña
-- ✅ Inicio de sesión con email y contraseña  
-- ✅ Inicio de sesión con Google
-- ✅ Manejo de errores personalizado
-- ✅ Estado de autenticación persistente
-- ✅ Cierre de sesión
-
-### Base de datos
-- ✅ Creación automática de perfil de usuario
-- ✅ Lectura y actualización de perfiles
-- ✅ Reglas de seguridad implementadas
-
-### Interfaz
-- ✅ Landing page completa con hero, características y precios
-- ✅ Dashboard con métricas y tabla de leads
-- ✅ Formularios de autenticación responsive
-- ✅ Navegación fluida con React Router
-- ✅ Diseño fiel al prototipo de Figma
-
-## 🎨 Diseño
-
-La aplicación sigue fielmente el prototipo de Figma proporcionado, incluyendo:
-- Esquema de colores con tonos azules, verdes y naranjas
-- Tipografía moderna con la fuente Inter
-- Cards con sombras sutiles y esquinas redondeadas
-- Animaciones y efectos hover
-- Layout completamente responsive
-
-## 🔐 Seguridad
-
-- Reglas de seguridad de Firestore configuradas
-- Autenticación requerida para acceso al dashboard
-- Validación de formularios
-- Manejo seguro de errores
-
-## 🚀 Deploy
-
-Para deploy en producción:
-
-1. **Build del proyecto:**
-```bash
-npm run build
-```
-
-2. **Deploy a Firebase Hosting:**
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init hosting
-firebase deploy
-```
-
-## 🤝 Soporte
-
-Si tienes problemas con la configuración:
-
-1. Verifica que la configuración de Firebase sea correcta
-2. Asegúrate de que Authentication y Firestore estén habilitados
-3. Revisa las reglas de seguridad de Firestore
-4. Verifica que las dependencias estén instaladas correctamente
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT.
+Si sigues estas instrucciones, la aplicación debería funcionar correctamente con los nuevos cambios implementados.

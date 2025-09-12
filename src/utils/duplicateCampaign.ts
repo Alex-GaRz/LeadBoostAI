@@ -1,38 +1,109 @@
-import { collection, doc, getDoc, addDoc, setDoc, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/firebaseConfig';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  writeBatch,
+} from 'firebase/firestore';
+import { db, storage } from '../firebase/firebaseConfig';
+import { ref, listAll, getDownloadURL, getBytes, uploadBytes } from 'firebase/storage';
+import { generateId } from './generateId';
 
-/**
- * Duplica una campaña y su subcolección ia_data en Firestore.
- * @param userUid UID del usuario
- * @param campaignId ID de la campaña original
- * @param navigate función de navegación (por ejemplo, useNavigate de react-router)
- */
-export async function duplicateCampaign(userUid: string, campaignId: string, navigate: (url: string) => void) {
-  if (!userUid || !campaignId) return;
+// Función para duplicar archivos en Storage de una ruta a otra
+const duplicateStorageFiles = async (sourcePath: string, destinationPath: string): Promise<string[]> => {
   try {
-    // 1. Leer datos de la campaña original
-    const origRef = doc(db, `clients/${userUid}/campaigns/${campaignId}`);
-    const origSnap = await getDoc(origRef);
-    if (!origSnap.exists()) throw new Error('No se encontró la campaña original');
-    const origData = origSnap.data();
-    // 2. Crear nueva campaña
-    const campaignsCol = collection(db, `clients/${userUid}/campaigns`);
-    const newDocRef = await addDoc(campaignsCol, {
-      ...origData,
-      nombre: (origData.nombre || origData.business_name || 'Campaña duplicada') + ' (copia)',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    // 3. Copiar subcolección ia_data
-    const iaDataCol = collection(db, `clients/${userUid}/campaigns/${campaignId}/ia_data`);
-    const iaDataSnap = await getDocs(iaDataCol);
-    for (const iaDoc of iaDataSnap.docs) {
-      const iaDocRef = doc(db, `clients/${userUid}/campaigns/${newDocRef.id}/ia_data/${iaDoc.id}`);
-      await setDoc(iaDocRef, iaDoc.data());
+    const sourceRef = ref(storage, sourcePath);
+    const sourceFiles = await listAll(sourceRef);
+
+    if (sourceFiles.items.length === 0) {
+      return []; // No hay archivos que duplicar en esta ruta
     }
-    // 4. Navegar a la nueva campaña
-    navigate(`/dashboard/campaign/${newDocRef.id}`);
-  } catch (e) {
-    alert('Error al duplicar campaña: ' + (e instanceof Error ? e.message : String(e)));
+
+    const uploadPromises = sourceFiles.items.map(async (itemRef) => {
+      const fileBytes = await getBytes(itemRef);
+      const destinationFileRef = ref(storage, `${destinationPath}/${itemRef.name}`);
+      await uploadBytes(destinationFileRef, fileBytes);
+      return getDownloadURL(destinationFileRef);
+    });
+
+    return Promise.all(uploadPromises);
+  } catch (error) {
+    // Si la carpeta no existe, listAll puede fallar. Lo ignoramos.
+    if (error.code !== 'storage/object-not-found') {
+      console.error(`Error duplicating files from ${sourcePath} to ${destinationPath}:`, error);
+      throw error;
+    }
+    return [];
   }
-}
+};
+
+export const duplicateCampaign = async (
+  userId: string,
+  originalCampaignId: string
+): Promise<string> => {
+  if (!userId || !originalCampaignId) {
+    throw new Error('User ID and original campaign ID are required.');
+  }
+
+  const newCampaignId = generateId();
+  const batch = writeBatch(db);
+
+  // 1. Duplicar el documento principal de la campaña
+  const originalCampaignRef = doc(db, `clients/${userId}/campaigns/${originalCampaignId}`);
+  const originalCampaignSnap = await getDoc(originalCampaignRef);
+
+  if (!originalCampaignSnap.exists()) {
+    throw new Error('Original campaign not found.');
+  }
+
+  const originalCampaignData = originalCampaignSnap.data();
+  let newCampaignData = {
+    ...originalCampaignData,
+    campaign_id: newCampaignId,
+    business_name: `${originalCampaignData.business_name} (Copia)`,
+    createdAt: new Date(),
+    generated_image_url: '',
+    assets: { images_videos: [] },
+  };
+
+  // 3. Duplicar archivos en Firebase Storage y obtener nuevas URLs
+  const originalStoragePath = `clients/${userId}/campaigns/${originalCampaignId}`;
+  const newStoragePath = `clients/${userId}/campaigns/${newCampaignId}`;
+
+  // Duplicar 'user_uploads' y obtener nuevas URLs
+  const newUserUploadsUrls = await duplicateStorageFiles(
+    `${originalStoragePath}/user_uploads`,
+    `${newStoragePath}/user_uploads`
+  );
+  if (newUserUploadsUrls.length > 0) {
+    newCampaignData.assets.images_videos = newUserUploadsUrls;
+  }
+
+  // Duplicar 'ia_data' y obtener la nueva URL de la imagen generada
+  const newIaDataUrls = await duplicateStorageFiles(
+    `${originalStoragePath}/ia_data`,
+    `${newStoragePath}/ia_data`
+  );
+  if (newIaDataUrls.length > 0) {
+    newCampaignData.generated_image_url = newIaDataUrls[0]; // Asumimos que solo hay una imagen generada
+  }
+
+  const newCampaignRef = doc(db, `clients/${userId}/campaigns/${newCampaignId}`);
+  batch.set(newCampaignRef, newCampaignData);
+
+  // 2. Duplicar la subcolección 'ia_data'
+  const originalIaDataCollection = collection(db, `clients/${userId}/campaigns/${originalCampaignId}/ia_data`);
+  const newIaDataCollection = collection(db, `clients/${userId}/campaigns/${newCampaignId}/ia_data`);
+  const iaDataSnapshot = await getDocs(originalIaDataCollection);
+
+  iaDataSnapshot.forEach((docSnapshot) => {
+    const newIaDocRef = doc(newIaDataCollection, docSnapshot.id);
+    batch.set(newIaDocRef, docSnapshot.data());
+  });
+
+  // Ejecutar el batch de Firestore
+  await batch.commit();
+
+  return newCampaignId;
+};
