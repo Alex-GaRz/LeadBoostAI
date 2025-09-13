@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Download, Upload } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
@@ -388,7 +389,7 @@ const CreateCampaignForm: React.FC = () => {
 
   const nextStep = async () => {
     setError('');
-    // Validar dimensiones de imagen SOLO al intentar avanzar desde el paso 5 y si corresponde
+    // Validar dimensiones de imagen antes de avanzar desde el paso 5 y si corresponde
     if (step === 5 && (form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
       const allowedSizes = [
         [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
@@ -398,28 +399,20 @@ const CreateCampaignForm: React.FC = () => {
       if (file.type.startsWith('image')) {
         const img = document.createElement('img');
         const fileReader = new FileReader();
-        const fileLoadPromise = new Promise<void>((resolve, reject) => {
-          fileReader.onload = () => {
-            img.onload = () => {
-              const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
-              if (!valid) {
-                setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
-                reject();
-              } else {
-                resolve();
-              }
-            };
-            img.onerror = reject;
-            img.src = fileReader.result as string;
+        fileReader.onload = () => {
+          img.onload = () => {
+            const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
+            if (!valid) {
+              setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
+            } else {
+              setError('');
+              setStep(step + 1);
+            }
           };
-          fileReader.onerror = reject;
-          fileReader.readAsDataURL(file);
-        });
-        try {
-          await fileLoadPromise;
-        } catch {
-          return; // Detener el avance si la imagen no es válida
-        }
+          img.src = fileReader.result as string;
+        };
+        fileReader.readAsDataURL(file);
+        return;
       }
     }
     setStep(step + 1);
@@ -447,18 +440,16 @@ const CreateCampaignForm: React.FC = () => {
 
   if (showSummary) {
     return (
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500">Resumen</span>
-            <span className="text-sm text-gray-500">100% completado</span>
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-2 bg-[#2d4792] rounded-full w-full transition-all"></div>
+  <div className="max-w-6xl w-full min-h-[650px] mx-auto bg-white rounded-xl p-6 mt-8 mb-20 shadow-md">
+        <div className="text-center mb-6">
+          <p className="text-sm text-gray-500">Resumen</p>
+          <p className="text-sm text-gray-500">100% completado</p>
+          <div className="w-full h-1 bg-gray-200 rounded-full mt-2">
+            <div className="h-1 bg-blue-500 rounded-full w-full"></div>
           </div>
         </div>
-        <h2 className="text-2xl font-bold mb-6 text-center text-[#2d4792]">Resumen de la campaña</h2>
-        <div className="mb-6 text-gray-800 text-base leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-100">
+        <h2 className="text-xl font-bold mb-4 text-center text-black">Resumen de la campaña</h2>
+        <div className="text-gray-600 text-sm leading-relaxed bg-gray-50 rounded-lg p-4">
           <p>
             Esta campaña ha sido diseñada para la empresa <b>{form.empresa}</b>, que se especializa en la industria de <b>{form.industria}</b> y ofrece <b>{form.producto}</b> con la propuesta de valor <b>{form.propuesta}</b>.<br /><br />
             El objetivo principal de la campaña es <b>{form.objetivo === 'Otro' ? form.otroObjetivo : form.objetivo}</b>.<br /><br />
@@ -469,10 +460,10 @@ const CreateCampaignForm: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-4 justify-center mt-6">
-          <button type="button" className="bg-gray-300 px-6 py-2 rounded font-bold" onClick={() => setShowSummary(false)}>Editar</button>
-          <button type="button" className="bg-[#2d4792] text-white px-6 py-2 rounded font-bold" onClick={handleConfirm}>Confirmar y enviar</button>
+          <button type="button" className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md font-medium" onClick={() => setShowSummary(false)}>Editar</button>
+          <button type="button" className="bg-blue-100 text-blue-700 px-6 py-2 rounded-md font-medium" onClick={handleConfirm}>Confirmar y enviar</button>
         </div>
-        {error && <div className="text-red-600 font-semibold mt-4 text-center">{error}</div>}
+        {error && <div className="text-red-600 text-sm mt-4 text-center">{error}</div>}
       </div>
     );
   }
@@ -498,23 +489,18 @@ const CreateCampaignForm: React.FC = () => {
   }
 
   return (
-  <div className="w-[700px] h-[700px] min-h-[800px] max-h-[800px] mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100 flex flex-col justify-between">
-      <h2 className="text-2xl font-bold mb-8 text-center text-[#2d4792]">Configurador de Campaña Publicitaria</h2>
-      {/* Barra de progreso tipo wizard */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-500">Paso {step} de 5</span>
-          <span className="text-sm text-gray-500">{Math.round((step/5)*100)}% completado</span>
-        </div>
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div className="h-2 bg-[#2d4792] rounded-full transition-all" style={{ width: `${(step/5)*100}%` }}></div>
+  <div className="max-w-6xl w-full h-[600px] mx-auto bg-white rounded-xl p-6 mt-8 mb-20 shadow-md flex flex-col">
+  <h2 className="text-xl font-semibold mb-4 text-center text-black">Configura Tu Campaña</h2>
+      {/* Barra de progreso */}
+      <div className="mb-6">
+        <div className="w-full h-1 bg-gray-200 rounded-full">
+          <div className="h-1 bg-blue-500 rounded-full" style={{ width: `${(step/5)*100}%` }}></div>
         </div>
       </div>
-  <form onSubmit={handleSubmit} className="space-y-8 flex-1 overflow-y-auto">
+  <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-y-auto space-y-4 pr-2">
         {step === 1 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Plataforma de anuncios</h3>
-            <label className="block font-semibold mb-1">¿En qué plataforma quieres que se ejecute la campaña?</label>
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">¿En qué plataforma quieres que se ejecute la campaña?</label>
             <select
               name="ad_platform"
               value={form.ad_platform.length > 0 ? (form.ad_platform.length === 2 ? 'Ambas' : form.ad_platform[0]) : ''}
@@ -528,333 +514,303 @@ const CreateCampaignForm: React.FC = () => {
                 }
                 setForm(prev => ({ ...prev, ad_platform: platforms }));
               }}
-              className={`w-full border rounded px-3 py-2 ${submitted && form.ad_platform.length === 0 ? 'border-red-500 bg-red-50' : ''}`}
+              className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && form.ad_platform.length === 0 ? 'border-red-500' : ''}`}
             >
               <option value="">Selecciona plataforma</option>
               <option value="Google Ads">Google Ads</option>
               <option value="Meta Ads">Meta Ads</option>
               <option value="Ambas">Ambas</option>
             </select>
-            {submitted && form.ad_platform.length === 0 && (
-              <div className="text-red-600 text-sm mt-1">Selecciona al menos una plataforma.</div>
-            )}
-            {/* Mostrar las plataformas seleccionadas */}
-            {form.ad_platform.length > 0 && (
-              <div className="mt-2 text-gray-700">
-                Plataformas seleccionadas: {form.ad_platform.join(', ')}
-              </div>
-            )}
+            {submitted && form.ad_platform.length === 0 && <p className="text-red-500 text-sm mt-1">Selecciona al menos una plataforma.</p>}
+            {form.ad_platform.length > 0 && <p className="text-gray-600 text-sm mt-2">Plataformas seleccionadas: {form.ad_platform.join(', ')}</p>}
           </div>
         )}
 
         {step === 2 && (
-          <div>
-            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Sobre tu negocio</h3>
-            <label className="block font-semibold mb-1">¿Cuál es el nombre de tu empresa o marca?</label>
-            <input
-              type="text"
-              name="empresa"
-              value={form.empresa}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.empresa.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Ejemplo: Zapatería Los Pasos, Academia de Inglés Smart"
-            />
-            <label className="block font-semibold mb-1">¿A qué industria o sector pertenece tu negocio?</label>
-            <input
-              type="text"
-              name="industria"
-              value={form.industria}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.industria.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Ejemplo: Calzado, Educación, Tecnología, Salud, etc."
-            />
-            <label className="block font-semibold mb-1">¿Qué producto o servicio quieres promocionar?</label>
-            <input
-              type="text"
-              name="producto"
-              value={form.producto}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.producto.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Ejemplo: Zapatos de cuero para hombre / Clases de inglés online"
-            />
-            <label className="block font-semibold mb-1">¿Qué hace especial tu producto o servicio? (Propuesta de valor)</label>
-            <input
-              type="text"
-              name="propuesta"
-              value={form.propuesta}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${submitted && !form.propuesta.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Ejemplo: Hechos a mano con materiales ecológicos / Profesores nativos con clases en vivo"
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Nombre de tu empresa o marca</label>
+              <input
+                type="text"
+                name="empresa"
+                value={form.empresa}
+                onChange={handleChange}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.empresa.trim() ? 'border-red-500' : ''}`}
+                placeholder="Ejemplo: Zapatería Los Pasos"
+              />
+              {submitted && !form.empresa.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Industria o sector</label>
+              <input
+                type="text"
+                name="industria"
+                value={form.industria}
+                onChange={handleChange}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.industria.trim() ? 'border-red-500' : ''}`}
+                placeholder="Ejemplo: Calzado"
+              />
+              {submitted && !form.industria.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Producto o servicio a promocionar</label>
+              <input
+                type="text"
+                name="producto"
+                value={form.producto}
+                onChange={handleChange}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.producto.trim() ? 'border-red-500' : ''}`}
+                placeholder="Ejemplo: Zapatos de cuero"
+              />
+              {submitted && !form.producto.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Propuesta de valor</label>
+              <input
+                type="text"
+                name="propuesta"
+                value={form.propuesta}
+                onChange={handleChange}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.propuesta.trim() ? 'border-red-500' : ''}`}
+                placeholder="Ejemplo: Hechos a mano con materiales ecológicos"
+              />
+              {submitted && !form.propuesta.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
           </div>
         )}
 
         {step === 3 && (
-          <div>
-            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Objetivo y Público</h3>
-            <label className="block font-semibold mb-1">¿Qué quieres lograr con esta campaña?</label>
-            <select
-              name="objetivo"
-              value={form.objetivo}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${submitted && !form.objetivo ? 'border-red-500 bg-red-50' : ''}`}
-            >
-              <option value="">Selecciona objetivo</option>
-              {campaignObjectives.map(obj => (
-                <option key={obj} value={obj}>{obj}</option>
-              ))}
-            </select>
-            {form.objetivo === 'Otro' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Objetivo de la campaña</label>
+              <select
+                name="objetivo"
+                value={form.objetivo}
+                onChange={handleChange}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.objetivo ? 'border-red-500' : ''}`}
+              >
+                <option value="">Selecciona objetivo</option>
+                {campaignObjectives.map(obj => (
+                  <option key={obj} value={obj}>{obj}</option>
+                ))}
+              </select>
+              {submitted && !form.objetivo && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+              {form.objetivo === 'Otro' && (
+                <input
+                  type="text"
+                  name="otroObjetivo"
+                  value={form.otroObjetivo}
+                  onChange={handleChange}
+                  className={`w-full border border-gray-300 rounded-md px-3 py-2 mt-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.otroObjetivo.trim() ? 'border-red-500' : ''}`}
+                  placeholder="Especifica el objetivo"
+                />
+              )}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Público objetivo</label>
               <input
                 type="text"
-                name="otroObjetivo"
-                value={form.otroObjetivo}
+                name="publico"
+                value={form.publico}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mt-2 ${submitted && !form.otroObjetivo.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="Especifica el objetivo"
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.publico.trim() ? 'border-red-500' : ''}`}
+                placeholder="Ejemplo: Hombres jóvenes interesados en deportes"
               />
-            )}
-            <label className="block font-semibold mb-1 mt-4">¿A quién quieres llegar con tus anuncios?</label>
-            <input
-              type="text"
-              name="publico"
-              value={form.publico}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.publico.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Ejemplo: Hombres jóvenes interesados en deportes / Padres de familia con hijos en secundaria"
-            />
-            <label className="block font-semibold mb-1">¿En qué lugares quieres que aparezcan tus anuncios?</label>
-            <input
-              type="text"
-              name="lugares"
-              value={form.lugares}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${submitted && !form.lugares.trim() ? 'border-red-500 bg-red-50' : ''}`}
-              placeholder="Ejemplo: CDMX, México, Latinoamérica, Estados Unidos"
-            />
+              {submitted && !form.publico.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Lugares para los anuncios</label>
+              <input
+                type="text"
+                name="lugares"
+                value={form.lugares}
+                onChange={handleChange}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.lugares.trim() ? 'border-red-500' : ''}`}
+                placeholder="Ejemplo: CDMX, México"
+              />
+              {submitted && !form.lugares.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
+            {/* Presupuesto movido del paso 4 al paso 3 */}
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Presupuesto</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="presupuesto"
+                  value={form.presupuesto}
+                  onChange={handleChange}
+                  className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.presupuesto.trim() ? 'border-red-500' : ''}`}
+                  placeholder="Cantidad"
+                  min={0}
+                />
+                <select
+                  name="moneda"
+                  value={form.moneda}
+                  onChange={handleChange}
+                  className="border border-gray-300 rounded-md px-2 py-2 text-gray-700"
+                >
+                  <option value="MXN">MXN</option>
+                  <option value="USD">USD</option>
+                  <option value="COP">COP</option>
+                  <option value="EUR">EUR</option>
+                  <option value="ARS">ARS</option>
+                </select>
+              </div>
+              {submitted && !form.presupuesto.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
           </div>
         )}
 
         {step === 4 && (
-          <div>
-            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Presupuesto, Estilo y Destino</h3>
-            <label className="block font-semibold mb-1">¿Cuánto dinero quieres invertir en esta campaña?</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="number"
-                name="presupuesto"
-                value={form.presupuesto}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${submitted && !form.presupuesto.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="Cantidad"
-                min={0}
-              />
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Duración</label>
               <select
-                name="moneda"
-                value={form.moneda}
+                name="duracion"
+                value={form.duracion}
                 onChange={handleChange}
-                className="border rounded px-2 py-2"
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.duracion ? 'border-red-500' : ''}`}
               >
-                <option value="MXN">MXN</option>
-                <option value="USD">USD</option>
-                <option value="COP">COP</option>
-                <option value="EUR">EUR</option>
-                <option value="ARS">ARS</option>
+                <option value="">Selecciona duración</option>
+                <option value="1 semana">1 semana</option>
+                <option value="2 semanas">2 semanas</option>
+                <option value="1 mes">1 mes</option>
+                <option value="Otro">Otro</option>
               </select>
+              {submitted && !form.duracion && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+              {form.duracion === 'Otro' && (
+                <input
+                  type="text"
+                  name="otraDuracion"
+                  value={form.otraDuracion}
+                  onChange={handleChange}
+                  className={`w-full border border-gray-300 rounded-md px-3 py-2 mt-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.otraDuracion.trim() ? 'border-red-500' : ''}`}
+                  placeholder="Especifica la duración"
+                />
+              )}
             </div>
-            <label className="block font-semibold mb-1">¿Por cuánto tiempo quieres que dure la campaña?</label>
-            <select
-              name="duracion"
-              value={form.duracion}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${submitted && !form.duracion ? 'border-red-500 bg-red-50' : ''}`}
-            >
-              <option value="">Selecciona duración</option>
-              <option value="1 semana">1 semana</option>
-              <option value="2 semanas">2 semanas</option>
-              <option value="1 mes">1 mes</option>
-              <option value="Otro">Otro</option>
-            </select>
-            {form.duracion === 'Otro' && (
-              <input
-                type="text"
-                name="otraDuracion"
-                value={form.otraDuracion}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mt-2 ${submitted && !form.otraDuracion.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="Especifica la duración"
-              />
-            )}
-            <label className="block font-semibold mb-1 mt-4">¿Cómo quieres que suenen tus anuncios? (elige 1 o varias)</label>
-            <div className="flex flex-wrap gap-3 mb-2">
-              {['Profesional', 'Amigable / Cercano', 'Divertido', 'Elegante / Premium', 'Urgente (llamado rápido a la acción)'].map(e => (
-                <label key={e} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    name="estilo"
-                    value={e}
-                    checked={form.estilo.includes(e)}
-                    onChange={handleChange}
-                    className="accent-[#2d4792]"
-                  />
-                  {e}
-                </label>
-              ))}
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Estilo de los anuncios</label>
+              <select
+                name="estilo"
+                value={form.estilo[0] || ''}
+                onChange={e => {
+                  setForm({ ...form, estilo: e.target.value ? [e.target.value] : [] });
+                }}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && form.estilo.length === 0 ? 'border-red-500 bg-red-50' : ''}`}
+              >
+                <option value="">Selecciona estilo</option>
+                <option value="Profesional">Profesional</option>
+                <option value="Amigable / Cercano">Amigable / Cercano</option>
+                <option value="Divertido">Divertido</option>
+                <option value="Elegante / Premium">Elegante / Premium</option>
+                <option value="Urgente (llamado rápido a la acción)">Urgente (llamado rápido a la acción)</option>
+              </select>
+              {submitted && form.estilo.length === 0 && <p className="text-red-500 text-sm mt-1">Selecciona al menos un estilo</p>}
             </div>
-            {submitted && form.estilo.length === 0 && (
-              <div className="text-red-600 text-sm mt-1">Selecciona al menos un estilo.</div>
-            )}
-            <label className="block font-semibold mb-1 mt-4">¿Qué acción quieres que realicen?</label>
-            <select
-              name="accion"
-              value={form.accion}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${submitted && !form.accion ? 'border-red-500 bg-red-50' : ''}`}
-            >
-              <option value="">Selecciona acción</option>
-              <option value="Comprar ahora">Comprar ahora</option>
-              <option value="Registrarse">Registrarse</option>
-              <option value="Pedir más información">Pedir más información</option>
-              <option value="Descargar">Descargar</option>
-              <option value="Llamar">Llamar</option>
-            </select>
-            <label className="block font-semibold mb-1 mt-4">¿A dónde llevarás a los que hagan clic?</label>
-            <select
-              name="destinoTipo"
-              value={form.destinoTipo}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoTipo ? 'border-red-500 bg-red-50' : ''}`}
-            >
-              <option value="">Selecciona una opción</option>
-              <option value="Sitio web">Sitio web</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Messenger">Messenger</option>
-              <option value="Producto">Página de producto específica</option>
-              <option value="Otro">Otro</option>
-            </select>
-            {form.destinoTipo === 'Sitio web' && (
-              <input
-                type="url"
-                name="destinoValor"
-                value={form.destinoValor}
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Acción que quieres que realicen</label>
+              <select
+                name="accion"
+                value={form.accion}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="URL del sitio web"
-              />
-            )}
-            {form.destinoTipo === 'WhatsApp' && (
-              <input
-                type="text"
-                name="destinoValor"
-                value={form.destinoValor}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.accion ? 'border-red-500' : ''}`}
+              >
+                <option value="">Selecciona acción</option>
+                <option value="Comprar ahora">Comprar ahora</option>
+                <option value="Registrarse">Registrarse</option>
+                <option value="Pedir más información">Pedir más información</option>
+                <option value="Descargar">Descargar</option>
+                <option value="Llamar">Llamar</option>
+              </select>
+              {submitted && !form.accion && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Destino al hacer clic</label>
+              <select
+                name="destinoTipo"
+                value={form.destinoTipo}
                 onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="Número o link corto de WhatsApp"
-              />
-            )}
-            {form.destinoTipo === 'Messenger' && (
-              <input
-                type="text"
-                name="destinoValor"
-                value={form.destinoValor}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="Usuario o link de Messenger"
-              />
-            )}
-            {form.destinoTipo === 'Producto' && (
-              <input
-                type="text"
-                name="destinoValor"
-                value={form.destinoValor}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="URL o nombre de la página de producto"
-              />
-            )}
-            {form.destinoTipo === 'Otro' && (
-              <input
-                type="text"
-                name="destinoValor"
-                value={form.destinoValor}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 mb-2 ${submitted && !form.destinoValor.trim() ? 'border-red-500 bg-red-50' : ''}`}
-                placeholder="Especifica el destino"
-              />
-            )}
+                className={`w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.destinoTipo ? 'border-red-500' : ''}`}
+              >
+                <option value="">Selecciona una opción</option>
+                <option value="Sitio web">Sitio web</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Messenger">Messenger</option>
+                <option value="Producto">Página de producto específica</option>
+                <option value="Otro">Otro</option>
+              </select>
+              {submitted && !form.destinoTipo && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+              {form.destinoTipo && (
+                <input
+                  type="text"
+                  name="destinoValor"
+                  value={form.destinoValor}
+                  onChange={handleChange}
+                  className={`w-full border border-gray-300 rounded-md px-3 py-2 mt-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500 ${submitted && !form.destinoValor.trim() ? 'border-red-500' : ''}`}
+                  placeholder={form.destinoTipo === 'Sitio web' ? 'URL del sitio web' : 'Especifica el destino'}
+                />
+              )}
+              {submitted && !form.destinoValor.trim() && <p className="text-red-500 text-sm mt-1">Campo requerido</p>}
+            </div>
           </div>
         )}
 
         {step === 5 && (
-          <div>
-            <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Recursos</h3>
-            <label className="block font-semibold mb-1">¿Cómo quieres crear tu anuncio?</label>
-            <div className="flex flex-col gap-3 mb-4">
-              <label className="flex items-start gap-2">
-                <input
-                  type="radio"
-                  name="recursos"
-                  value="productos"
-                  checked={form.recursos === 'productos'}
-                  onChange={handleChange}
-                  className="accent-[#2d4792] mt-1"
-                />
-                <span>
-                  Tengo una foto de mis producto<br />
-                  <span className="text-xs text-gray-500">(La IA la usará para diseñar un anuncio atractivo.)</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2">
-                <input
-                  type="radio"
-                  name="recursos"
-                  value="anuncio"
-                  checked={form.recursos === 'anuncio'}
-                  onChange={handleChange}
-                  className="accent-[#2d4792] mt-1"
-                />
-                <span>
-                  Ya tengo un anuncio hecho<br />
-                  <span className="text-xs text-gray-500">(Sube tu anuncio y se usará en la campaña.)</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2">
-                <input
-                  type="radio"
-                  name="recursos"
-                  value="nada"
-                  checked={form.recursos === 'nada'}
-                  onChange={handleChange}
-                  className="accent-[#2d4792] mt-1"
-                />
-                <span>
-                  No tengo nada, que la IA lo cree desde cero.<br />
-                  <span className="text-xs text-gray-500">(La IA generara un anuncio adaptado a tu campaña desde 0)</span>
-                </span>
-              </label>
-            </div>
+          <div className="space-y-4">
+            <label className="block text-sm text-gray-500 mb-1">¿Cómo quieres crear tu anuncio?</label>
+            <select
+              name="recursos"
+              value={form.recursos}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Selecciona una opción</option>
+              <option value="productos">Tengo fotos o videos de mis productos (La IA los usará para diseñar un anuncio atractivo)</option>
+              <option value="anuncio">Ya tengo un anuncio hecho (Sube tu anuncio y la IA lo adaptará/mejorará)</option>
+              <option value="nada">No tengo nada, que la IA lo cree desde cero</option>
+            </select>
             {(form.recursos === 'productos' || form.recursos === 'anuncio') && (
               <>
-                <input
-                  type="file"
-                  name="archivos"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={e => {
-                    const files = e.target.files ? Array.from(e.target.files) : [];
-                    setForm({ ...form, archivos: files });
-                    setPreviewUrls(files.map(file => URL.createObjectURL(file)));
-                  }}
-                  className="mb-2"
-                />
+                <label className="inline-flex items-center cursor-pointer bg-[#2461e9] hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
+                  <Upload className="w-5 h-5 mr-2" />
+                  Subir archivo
+                  <input
+                    type="file"
+                    name="archivos"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={e => {
+                      const files = e.target.files ? Array.from(e.target.files) : [];
+                      setForm({ ...form, archivos: files });
+                      setPreviewUrls(files.map(file => URL.createObjectURL(file)));
+                    }}
+                    className="hidden"
+                  />
+                </label>
                 {previewUrls.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mt-2 items-center">
                     {form.archivos.map((file, idx) => (
-                      file.type.startsWith('image') ? (
-                        <img key={idx} src={previewUrls[idx]} alt={`Vista previa ${idx + 1}`} className="max-w-xs max-h-40 rounded shadow" />
-                      ) : file.type.startsWith('video') ? (
-                        <video key={idx} src={previewUrls[idx]} controls className="max-w-xs max-h-40 rounded shadow" />
-                      ) : null
+                      <div key={idx} className="relative group">
+                        {file.type.startsWith('image') ? (
+                          <img src={previewUrls[idx]} alt={`Vista previa ${idx + 1}`} className="w-40 h-40 object-cover rounded" />
+                        ) : file.type.startsWith('video') ? (
+                          <video src={previewUrls[idx]} controls className="w-20 h-20 rounded" />
+                        ) : null}
+                        <button
+                          type="button"
+                          className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-80 hover:opacity-100 transition"
+                          title="Quitar archivo"
+                          onClick={() => {
+                            const newArchivos = form.archivos.filter((_, i) => i !== idx);
+                            const newPreviews = previewUrls.filter((_, i) => i !== idx);
+                            setForm({ ...form, archivos: newArchivos });
+                            setPreviewUrls(newPreviews);
+                          }}
+                        >
+                          &times;
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -863,11 +819,11 @@ const CreateCampaignForm: React.FC = () => {
           </div>
         )}
 
-        <div className="flex justify-between mt-6">
+  <div className="flex justify-between items-center pt-8 mt-auto">
           {step > 1 && (
             <button
               type="button"
-              className="bg-gray-300 px-4 py-2 rounded font-bold"
+              className="text-gray-600 text-sm"
               onClick={() => setStep(step - 1)}
             >
               Regresar
@@ -876,7 +832,7 @@ const CreateCampaignForm: React.FC = () => {
           {step === 1 && (
             <button
               type="button"
-              className="bg-gray-300 px-4 py-2 rounded font-bold"
+              className="text-gray-600 text-sm"
               onClick={() => navigate(-1)}
             >
               Regresar
@@ -885,7 +841,8 @@ const CreateCampaignForm: React.FC = () => {
           {step < 5 && (
             <button
               type="button"
-              className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold"
+              className="px-6 py-2 rounded-md font-medium"
+              style={{ backgroundColor: '#2461e9', color: '#fff' }}
               onClick={nextStep}
             >
               Continuar
@@ -894,13 +851,14 @@ const CreateCampaignForm: React.FC = () => {
           {step === 5 && (
             <button
               type="submit"
-              className="bg-[#2d4792] text-white px-4 py-2 rounded font-bold hover:bg-[#1d326b] transition"
+              className="px-6 py-2 rounded-md font-medium"
+              style={{ backgroundColor: '#2461e9', color: '#fff' }}
             >
               Crear campaña
             </button>
           )}
         </div>
-        {error && <div className="text-red-600 font-semibold mt-2 text-center">{error}</div>}
+        {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
       </form>
     </div>
   );

@@ -86,62 +86,53 @@ const ContentGallery: React.FC = () => {
       ) : (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {galleryImages.map((img, idx) => (
-            <div
-              key={idx}
-              className="relative rounded-xl overflow-hidden group bg-white border border-gray-200 shadow flex flex-col"
-              style={{ minHeight: '16rem', height: '320px' }}
-            >
-              <div className="relative w-full h-[15.5rem] flex items-center justify-center bg-white">
-                <img
-                  src={img.url}
-                  alt={img.campaignTitle}
-                  className="object-cover w-full h-full transition duration-200 group-hover:filter group-hover:grayscale group-hover:brightness-75 bg-white"
-                />
-                <div className="absolute top-3 left-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <button
-                    className="bg-[#2563eb] hover:bg-blue-700 text-white rounded px-3 py-1 text-sm font-semibold flex items-center gap-1 shadow"
-                    style={{ pointerEvents: 'auto' }}
-                    title="Descargar imagen"
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      try {
-                        const response = await fetch(img.url, { mode: 'cors' });
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        const blob = await response.blob();
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = downloadUrl;
-                        a.download = `${img.campaignTitle}.png`;
-                        document.body.appendChild(a);
-                        a.click();
-                        setTimeout(() => {
-                          window.URL.revokeObjectURL(downloadUrl);
-                          a.remove();
-                        }, 100);
-                      } catch (e) {
-                        alert('No se pudo descargar la imagen.');
-                      }
-                    }}
-                  >
-                    <Download className="w-4 h-4" /> Descargar
-                  </button>
-                  <button
-                    className="bg-red-600 hover:bg-red-700 text-white rounded px-3 py-1 text-sm font-semibold flex items-center gap-1 shadow"
-                    style={{ pointerEvents: 'auto' }}
-                    title="Eliminar imagen"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setImageToDelete(img.url);
-                      setShowConfirm(true);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" /> Eliminar
-                  </button>
-                </div>
-              </div>
-              <div className="px-4 py-2 flex-1 flex items-center justify-center min-h-[2.2rem]">
-                <span className="font-semibold text-[15px] text-gray-900 leading-tight truncate w-full text-center">{img.campaignTitle}</span>
+            <div key={idx} className="relative w-full h-80 rounded-xl overflow-hidden group bg-white border border-gray-200 shadow">
+              <img
+                src={img.url}
+                alt=""
+                className="object-cover w-full h-full bg-white transition duration-200 group-hover:filter group-hover:grayscale group-hover:brightness-75"
+              />
+              <div className="absolute top-3 left-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  className="bg-[#2563eb] hover:bg-blue-700 text-white rounded px-3 py-1 text-sm font-semibold flex items-center gap-1 shadow"
+                  style={{ pointerEvents: 'auto' }}
+                  title="Descargar imagen"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    try {
+                      const response = await fetch(img.url, { mode: 'cors' });
+                      if (!response.ok) throw new Error('Network response was not ok');
+                      const blob = await response.blob();
+                      const downloadUrl = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.style.display = 'none';
+                      a.href = downloadUrl;
+                      a.download = `imagen.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      setTimeout(() => {
+                        window.URL.revokeObjectURL(downloadUrl);
+                        a.remove();
+                      }, 100);
+                    } catch (e) {
+                      alert('No se pudo descargar la imagen.');
+                    }
+                  }}
+                >
+                  <Download className="w-4 h-4" /> Descargar
+                </button>
+                <button
+                  className="bg-red-600 hover:bg-red-700 text-white rounded px-3 py-1 text-sm font-semibold flex items-center gap-1 shadow"
+                  style={{ pointerEvents: 'auto' }}
+                  title="Eliminar imagen"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setImageToDelete(img.url);
+                    setShowConfirm(true);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" /> Eliminar
+                </button>
               </div>
             </div>
           ))}

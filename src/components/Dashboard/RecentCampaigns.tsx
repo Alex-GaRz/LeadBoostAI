@@ -115,9 +115,8 @@ const RecentCampaigns: React.FC = () => {
             let statusColor = statusLabel === 'Activa' ? 'bg-green-100 text-green-700' : statusLabel === 'Pausada' ? 'bg-yellow-100 text-yellow-700' : statusLabel === 'Finalizada' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700';
             return (
               <div key={c.id} className="rounded-2xl bg-white shadow-md border border-gray-100 overflow-hidden flex flex-col">
-                <div className="relative h-40 w-full overflow-hidden">
-                  <img src={imageUrl} alt={c["Nombre de campaña"] || 'Sin título'} className="object-cover w-full h-full" />
-                  <span className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold shadow ${statusColor}`}>{statusLabel}</span>
+                <div className="relative h-80 w-full overflow-hidden">
+                  <img src={imageUrl} alt={c["Nombre de campaña"] || 'Sin título'} className="w-full h-full object-cover object-center" style={{ background: '#000' }} />
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
                   <h3 className="text-lg font-bold mb-1">{c["Nombre de campaña"] || 'Sin título'}</h3>

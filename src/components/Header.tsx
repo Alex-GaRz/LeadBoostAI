@@ -1,6 +1,6 @@
 import React, { useContext, useRef, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, User, Zap, Bell } from 'lucide-react';
+import { LogOut, Zap, Bell } from 'lucide-react';
 import { signOut } from '../firebase/authService';
 import { useAuth } from '../hooks/useAuth';
 // Contexto para saber si el sidebar está colapsado
@@ -112,12 +112,20 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
 
                 <Link
                   to="/dashboard"
-                  className="flex items-center transition-colors px-3 py-2 rounded-lg order-2 ml-2"
-                  style={{ background: '#0a2540', color: '#fff', marginLeft: 'auto' }}
-                  onMouseOver={e => { e.currentTarget.style.background = '#1b3b89'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = '#0a2540'; }}
+                  className="flex items-center px-3 py-2 order-2 ml-2 focus:outline-none focus:ring-0 bg-transparent"
+                  style={{ background: 'transparent', color: 'inherit', marginLeft: 'auto', boxShadow: 'none', border: 'none' }}
                 >
-                  <User className="w-5 h-5" />
+                  {user?.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt="Avatar"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                      {user?.displayName?.[0] || "U"}
+                    </div>
+                  )}
                 </Link>
 
               </div>

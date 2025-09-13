@@ -45,11 +45,12 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
           </span>
         )}
         <button
-          className="p-2 rounded hover:bg-[#2d4792] transition-colors ml-auto"
+          className="p-1 rounded border border-gray-200 bg-white shadow-sm ml-auto focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors"
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+          style={{ zIndex: 20 }}
         >
-          {collapsed ? <ChevronRight className="w-5 h-5 text-white" /> : <ChevronLeft className="w-5 h-5 text-white" />}
+          {collapsed ? <ChevronRight className="w-4 h-4 text-gray-700" /> : <ChevronLeft className="w-4 h-4 text-gray-700" />}
         </button>
       </div>
       <nav className="flex-1 py-4 px-2">
@@ -81,9 +82,9 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
       <div className="mt-auto border-t border-gray-200 px-2 pb-4 pt-4">
         <button
           onClick={handleSignOut}
-          className={`w-full flex items-center justify-start ${collapsed ? 'px-0 justify-center' : 'px-4'} py-3 rounded-lg font-medium bg-[#0a2540] text-white hover:bg-[#1b3b89] transition-colors`}
+          className={`w-full flex items-center justify-start ${collapsed ? 'px-0 justify-center' : 'px-4'} py-3 rounded-lg font-medium bg-white text-gray-700 hover:bg-gray-100 transition-colors`}
         >
-          <LogOut className="w-5 h-5 mr-2" />
+          <LogOut className="w-5 h-5 mr-2 text-gray-400" />
           {!collapsed && <span>Cerrar Sesión</span>}
         </button>
       </div>
