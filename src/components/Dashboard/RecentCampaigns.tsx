@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { MetaIcon } from '../PlatformIcons';
+import { GoogleIcon } from '../PlatformIcons';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,17 +10,16 @@ import { editCampaign } from '../../utils/editCampaign';
 interface Campaign {
   id: string;
   "Nombre de campaña"?: string;
-  status?: 'Activa' | 'Pausada' | 'En revisión';
+  status?: 'Activa' | 'Pausada' | 'En revisión' | 'Finalizada';
   platform?: string;
   budget?: number;
   budget_currency?: string;
+  generated_image_url?: string;
+  user_image_url?: string;
+  impresiones?: number;
+  clicks?: number;
 }
 
-const statusColors: Record<string, string> = {
-  'Activa': 'bg-green-100 text-green-700',
-  'Pausada': 'bg-yellow-100 text-yellow-700',
-  'En revisión': 'bg-blue-100 text-blue-700',
-};
 
 
 const RecentCampaigns: React.FC = () => {
@@ -52,13 +53,20 @@ const RecentCampaigns: React.FC = () => {
           }
           // Buscar en la subcolección ia_data
           let nombreCampania = d["Nombre de campaña"] || d["campaign_name"];
-          if (!nombreCampania) {
+          let generated_image_url = d.generated_image_url;
+          let user_image_url = d.user_image_url;
+          let impresiones = d.impressions || d.impresiones || 0;
+          let clicks = d.clicks || 0;
+          if (!nombreCampania || !generated_image_url) {
             try {
               const iaDataCol = collection(db, `clients/${user.uid}/campaigns/${doc.id}/ia_data`);
               const iaSnapshot = await getDocs(iaDataCol);
               if (!iaSnapshot.empty) {
                 const iaDocData = iaSnapshot.docs[0].data();
-                nombreCampania = iaDocData["Nombre de campaña"] || iaDocData["campaign_name"];
+                nombreCampania = nombreCampania || iaDocData["Nombre de campaña"] || iaDocData["campaign_name"];
+                generated_image_url = generated_image_url || iaDocData.generated_image_url;
+                impresiones = impresiones || iaDocData.impressions || iaDocData.impresiones || 0;
+                clicks = clicks || iaDocData.clicks || 0;
               }
             } catch {}
           }
@@ -69,6 +77,10 @@ const RecentCampaigns: React.FC = () => {
             platform,
             budget: typeof d.budget_amount === 'number' ? d.budget_amount : (parseFloat(d.budget_amount) || undefined),
             budget_currency: d.budget_currency,
+            generated_image_url,
+            user_image_url,
+            impresiones,
+            clicks,
           };
         }));
         setCampaigns(data);
@@ -86,9 +98,8 @@ const RecentCampaigns: React.FC = () => {
 
   return (
     <div className="border-2 border-white rounded-lg bg-[#f7f8fa] p-6 mb-8">
-      <h2 className="text-xl font-bold text-black mb-1">Mis campañas</h2>
-  {/* Eliminado: Mostrar el título de la campaña fuera de la lista */}
-      <p className="text-gray-600 mb-4">Gestiona y optimiza tus campañas activas</p>
+    <h2 className="text-2xl font-semibold text-black mb-1">Mis campañas</h2>
+    <p className="text-[#6B7280] text-sm mb-4">Gestiona y optimiza tus campañas activas</p>
       {loading ? (
         <div className="text-gray-500 text-center py-8">Cargando campañas...</div>
       ) : campaigns.length === 0 ? (
@@ -96,31 +107,40 @@ const RecentCampaigns: React.FC = () => {
           Aún no tienes campañas, crea tu primera ahora.
         </div>
       ) : (
-        <ul className="divide-y divide-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {campaigns.map((c) => {
-            // Determinar la plataforma a mostrar
-            let platformLabel = c.platform || '—';
+            // Determinar la imagen a mostrar
+            const imageUrl = c.generated_image_url || c.user_image_url || 'https://via.placeholder.com/400x200?text=Sin+imagen';
+            let statusLabel = c.status || 'Activa';
+            let statusColor = statusLabel === 'Activa' ? 'bg-green-100 text-green-700' : statusLabel === 'Pausada' ? 'bg-yellow-100 text-yellow-700' : statusLabel === 'Finalizada' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700';
             return (
-              <li key={c.id} className="flex items-center justify-between py-4">
-                <div className="flex flex-col">
-                  {/* Título de la campaña, visible y claro (usando 'Nombre de campaña') */}
-                  <span className="text-lg font-semibold text-[#2d4792] mb-1">{c["Nombre de campaña"] || 'Sin título'}</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[c.status || 'Activa']}`}>{c.status || 'Activa'}</span>
-                    <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">{platformLabel}</span>
-                    <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                      Presupuesto: {typeof c.budget === 'number' ? `$${c.budget.toLocaleString()}${c.budget_currency ? ' ' + c.budget_currency : ''}` : '—'}
-                    </span>
+              <div key={c.id} className="rounded-2xl bg-white shadow-md border border-gray-100 overflow-hidden flex flex-col">
+                <div className="relative h-40 w-full overflow-hidden">
+                  <img src={imageUrl} alt={c["Nombre de campaña"] || 'Sin título'} className="object-cover w-full h-full" />
+                  <span className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold shadow ${statusColor}`}>{statusLabel}</span>
+                </div>
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="text-lg font-bold mb-1">{c["Nombre de campaña"] || 'Sin título'}</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    {c.platform === 'Meta Ads' && <MetaIcon className="w-5 h-5" />}
+                    {c.platform === 'Google Ads' && <GoogleIcon className="w-5 h-5" />}
+                    {c.platform === 'Mixta' && <><MetaIcon className="w-5 h-5" /><GoogleIcon className="w-5 h-5 ml-1" /></>}
+                    <span className="text-xs text-[#2563eb] font-semibold">{c.platform || '—'}</span>
+                  </div>
+                  <div className="text-sm text-gray-700 mb-2">
+                    <div>Presupuesto: <span className="font-semibold">{typeof c.budget === 'number' ? `$${c.budget.toLocaleString()}` : '—'}</span></div>
+                    <div>Impresiones: <span className="font-semibold">{c.impresiones?.toLocaleString() || '—'}</span></div>
+                    <div>Clicks: <span className="font-semibold">{c.clicks?.toLocaleString() || '—'}</span></div>
+                  </div>
+                  <div className="flex gap-2 mt-auto">
+                    <button className="border border-[#2563eb] text-[#2563eb] font-semibold px-4 py-2 rounded-lg hover:bg-[#2563eb] hover:text-white transition" onClick={() => editCampaign(c.id, navigate)}>Editar</button>
+                    <button className="bg-[#2563eb] text-white font-semibold px-4 py-2 rounded-lg hover:bg-[#1d4ed8] transition" onClick={() => handleViewDetails(c.id)}>Ver detalles</button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => handleViewDetails(c.id)}>Ver detalles</button>
-                  <button className="text-[#2d4792] hover:underline text-sm font-medium" onClick={() => editCampaign(c.id, navigate)}>Editar</button>
-                </div>
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </div>
   );

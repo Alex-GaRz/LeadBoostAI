@@ -57,8 +57,8 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
         <div className={`flex items-center h-16 w-full relative`}> 
           {isDashboard && (
             <span
-              className={`text-xl font-bold text-[#2d4792] absolute left-0 top-1/2 -translate-y-1/2 transition-all duration-300 ${collapsed ? 'ml-6' : 'ml-10'}`}
-              style={{ minWidth: 0 }}
+              className={`font-semibold absolute left-0 top-1/2 -translate-y-1/2 transition-all duration-300 ${collapsed ? 'ml-6' : 'ml-10'}`}
+              style={{ minWidth: 0, fontSize: '24px', color: '#111' }}
             >
               {profile?.companyName || 'Usuario'}
             </span>
@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#2d4792' }}>
                   <Zap className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold" style={{ color: '#F5F5F5' }}>Incrementy</span>
+                <span className="font-semibold" style={{ color: '#F5F5F5', fontSize: '16px' }}>Incrementy</span>
               </Link>
               <nav className="hidden md:flex space-x-8 absolute left-1/2 transform -translate-x-1/2">
                 <Link to="/" className="transition-colors" style={{ color: '#F5F5F5' }}>

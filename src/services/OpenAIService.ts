@@ -50,15 +50,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
    - Audiencias personalizadas/lookalikes
    - Vista Previa (una descripción breve de cómo se verá el anuncio)
    (BD: ai_ad_variants)
-3. Calcula **Resultados esperados** basados en presupuesto, duración y público, usando métricas promedio de Meta Ads:
-   - Alcance
-   - Audiencia
-   - CPC
-   - CTR
-   - Engagement rate
-   - Conversiones
-   - ROAS
-   (BD: ai_expected_results)
+
 
 **Formato de salida requerido (JSON para guardar en BD):**
 {
@@ -92,15 +84,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
       "preview": "..."
     }
   ],
-  "ai_expected_results": {
-    "reach": "...",
-    "audience_size": "...",
-    "cpc": "...",
-    "ctr": "...",
-    "engagement_rate": "...",
-    "conversions": "...",
-    "roas": "..."
-  }
+  
 }
 
 **Nota:** Sé creativo, profesional y enfocado en resultados. Cada variante debe estar adaptada al público, presupuesto, objetivo y estilo proporcionado.
@@ -135,14 +119,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
    - Negative keywords
    - Extensiones de anuncio
    (BD: ai_ad_variants)
-3. Calcula **Resultados esperados** basados en presupuesto, duración y público, usando métricas promedio de Google Ads:
-   - Alcance
-   - Audiencia
-   - CPC
-   - CTR
-   - Conversiones
-   - ROAS
-   (BD: ai_expected_results)
+
 
 **Formato de salida requerido (JSON para guardar en BD):**
 {
@@ -176,14 +153,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
       "ad_extensions": ["...", "..."]
     }
   ],
-  "ai_expected_results": {
-    "reach": "...",
-    "audience_size": "...",
-    "cpc": "...",
-    "ctr": "...",
-    "conversions": "...",
-    "roas": "..."
-  }
+
 }
 
 **Nota:** Sé creativo, profesional y enfocado en resultados. Cada variante debe estar adaptada al público, presupuesto, objetivo y estilo proporcionado.
@@ -219,15 +189,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
      - Audiencias personalizadas/lookalikes
      - Vista Previa (una descripción breve de cómo se verá el anuncio)
      (BD: meta_ai_ad_variants)
-   - Calcula **Resultados esperados** basados en presupuesto, duración y público:
-     - Alcance
-     - Audiencia
-     - CPC
-     - CTR
-     - Engagement rate
-     - Conversiones
-     - ROAS
-     (BD: meta_ai_expected_results)
+
 3. Genera las campañas **Google Ads**:
    - Crea **3 variantes de anuncio generadas por IA**. Para cada variante, incluye:
      - Título sugerido
@@ -238,14 +200,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
      - Negative keywords
      - Extensiones de anuncio
      (BD: google_ai_ad_variants)
-   - Calcula **Resultados esperados** basados en presupuesto, duración y público:
-     - Alcance
-     - Audiencia
-     - CPC
-     - CTR
-     - Conversiones
-     - ROAS
-     (BD: google_ai_expected_results)
+
 
 **Formato de salida requerido (JSON para guardar en BD):**
 {
@@ -279,15 +234,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
       "preview": "..."
     }
   ],
-  "meta_ai_expected_results": {
-    "reach": "...",
-    "audience_size": "...",
-    "cpc": "...",
-    "ctr": "...",
-    "engagement_rate": "...",
-    "conversions": "...",
-    "roas": "..."
-  },
+
   "google_ai_ad_variants": [
     {
       "suggested_title": "...",
@@ -317,14 +264,7 @@ Tu tarea es generar **1 campaña completa** basada en los datos de un cliente y 
       "ad_extensions": ["...", "..."]
     }
   ],
-  "google_ai_expected_results": {
-    "reach": "...",
-    "audience_size": "...",
-    "cpc": "...",
-    "ctr": "...",
-    "conversions": "...",
-    "roas": "..."
-  }
+
 }
 
 **Nota:** Sé creativo, profesional y enfocado en resultados. Cada variante debe estar adaptada al público, presupuesto, objetivo y estilo proporcionado, generando campañas completas y coherentes para Meta Ads y Google Ads.

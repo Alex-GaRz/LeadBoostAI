@@ -498,7 +498,7 @@ const CreateCampaignForm: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100">
+  <div className="w-[700px] h-[700px] min-h-[800px] max-h-[800px] mx-auto bg-white rounded-2xl shadow-lg p-8 mt-8 mb-20 border border-gray-100 flex flex-col justify-between">
       <h2 className="text-2xl font-bold mb-8 text-center text-[#2d4792]">Configurador de Campaña Publicitaria</h2>
       {/* Barra de progreso tipo wizard */}
       <div className="mb-8">
@@ -510,7 +510,7 @@ const CreateCampaignForm: React.FC = () => {
           <div className="h-2 bg-[#2d4792] rounded-full transition-all" style={{ width: `${(step/5)*100}%` }}></div>
         </div>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-8">
+  <form onSubmit={handleSubmit} className="space-y-8 flex-1 overflow-y-auto">
         {step === 1 && (
           <div className="mb-6">
             <h3 className="text-lg font-bold mb-2 text-[#2d4792]">Plataforma de anuncios</h3>

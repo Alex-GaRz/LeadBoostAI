@@ -33,11 +33,11 @@ function App() {
           <Route path="/" element={<><Header /><HomePage /></>} />
           <Route 
             path="/login" 
-            element={user ? <Navigate to="/dashboard" replace /> : (<><Header /><LoginPage /></>)} 
+            element={user ? <Navigate to="/dashboard" replace /> : (<LoginPage />)} 
           />
           <Route 
             path="/register" 
-            element={user ? <Navigate to="/dashboard" replace /> : (<><Header /><RegisterPage /></>)} 
+            element={user ? <Navigate to="/dashboard" replace /> : (<RegisterPage />)} 
           />
           <Route
             path="/dashboard"

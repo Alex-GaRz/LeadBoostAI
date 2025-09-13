@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React from 'react';
 import { ChevronLeft, ChevronRight, Home, Layers, BarChart3, Zap, LogOut, Plus, Image } from 'lucide-react';
+import IncrementyLogo from '../../assets/Incrementy-logo.png';
 import { signOut } from '../../firebase/authService';
 
 const menuItems = [
@@ -32,15 +33,15 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
     }
   };
   return (
-    <aside className={`h-screen ${collapsed ? 'w-20' : 'w-64'} bg-[#0a2540] border-r-0 fixed left-0 top-0 flex flex-col z-30 transition-all duration-300`}>
-      <div className="flex items-center h-16 px-2 border-b border-gray-200 justify-between">
+  <aside className={`h-screen ${collapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed left-0 top-0 flex flex-col z-30 transition-all duration-300 shadow-sm`}>
+  <div className="flex items-center h-16 px-4 border-b border-gray-100 justify-between">
         {collapsed ? (
           <span className="flex items-center justify-center w-full">
-            <Zap className="w-6 h-6 text-white" />
+            <img src={IncrementyLogo} alt="Logo" className="w-6 h-6" />
           </span>
         ) : (
-          <span className="flex items-center text-xl font-bold text-white pl-2">
-            <Zap className="w-6 h-6 mr-2 text-white" /> Incrementy
+          <span className="flex items-center text-xl font-semibold text-gray-900 pl-2">
+            <img src={IncrementyLogo} alt="Logo" className="w-8 h-8 mr-2" /> Incrementy
           </span>
         )}
         <button
@@ -51,36 +52,30 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
           {collapsed ? <ChevronRight className="w-5 h-5 text-white" /> : <ChevronLeft className="w-5 h-5 text-white" />}
         </button>
       </div>
-      <nav className="flex-1 py-6 px-2 space-y-2">
-        {/* Oculta la opción 'Estadísticas' del menú, pero no elimina el código del array */}
-        {menuItems.filter(item => item.label !== 'Estadísticas').map((item) => {
-          // Para 'Inicio', activo si la ruta empieza con /dashboard
-          const isInicio = item.label === 'Inicio';
-          const isActive = isInicio
-            ? location.pathname.startsWith('/dashboard')
-            : location.pathname === item.to;
-          const isBlueButton = item.blue;
-          let linkClass = `flex items-center py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${collapsed ? 'justify-center' : 'w-full px-4'}`;
-          let iconClass = `w-5 h-5 ${!collapsed ? 'mr-3' : ''}`;
-          if (isBlueButton) {
-            linkClass += isActive ? ' bg-white text-[#2d4792]' : ' bg-[#0a2540] text-white hover:bg-[#1b3b89]';
-            iconClass += isActive ? ' text-[#2d4792]' : ' text-white';
-          } else {
-            linkClass += isActive ? ' bg-white text-[#2d4792]' : ' text-[#2d4792] hover:bg-[#e6eaf6]';
-            iconClass += isActive ? ' text-[#2d4792]' : ' text-[#2d4792]';
-          }
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={linkClass}
-              title={item.label}
-            >
-              <item.icon className={iconClass} />
-              {!collapsed && item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 py-4 px-2">
+        <div className="space-y-1">
+          {menuItems.filter(item => item.label !== 'Estadísticas').map((item) => {
+            const isInicio = item.label === 'Inicio';
+            const isActive = isInicio
+              ? location.pathname.startsWith('/dashboard')
+              : location.pathname === item.to;
+            let linkClass = `flex items-center py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${collapsed ? 'justify-center' : 'w-full px-4'}`;
+            let iconClass = `w-5 h-5 ${!collapsed ? 'mr-3' : ''}`;
+            linkClass += isActive ? ' bg-blue-100 text-[#1a237e]' : ' text-gray-700 hover:bg-gray-100';
+            iconClass += isActive ? ' text-[#1a237e]' : ' text-gray-400';
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={linkClass}
+                title={item.label}
+              >
+                <item.icon className={iconClass} />
+                {!collapsed && item.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
       {/* Botón Cerrar Sesión al fondo */}
       <div className="mt-auto border-t border-gray-200 px-2 pb-4 pt-4">
