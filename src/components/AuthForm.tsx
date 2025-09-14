@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import PostRegisterForm from './PostRegisterForm';
 import IncrementyLogo from '../assets/Incrementy-logo.png';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, Chrome } from 'lucide-react';
@@ -17,7 +16,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPostRegisterForm, setShowPostRegisterForm] = useState(false);
+  // Eliminado showPostRegisterForm, ya no se usa
   const navigate = useNavigate();
 
   const isLogin = type === 'login';
@@ -61,10 +60,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     }
   };
 
-  // Mostrar el formulario post-registro solo si es registro y showPostRegisterForm está activo
-  if (!isLogin && showPostRegisterForm) {
-    return <PostRegisterForm onComplete={() => navigate('/dashboard')} />;
-  }
+  // Eliminado formulario post-registro
 
   // Siempre mostrar el formulario de autenticación si no se cumple la condición anterior
   return (

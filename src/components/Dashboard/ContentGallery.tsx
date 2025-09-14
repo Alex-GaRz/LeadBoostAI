@@ -86,7 +86,7 @@ const ContentGallery: React.FC = () => {
       ) : (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {galleryImages.map((img, idx) => (
-            <div key={idx} className="relative w-full h-80 rounded-xl overflow-hidden group bg-white border border-gray-200 shadow">
+            <div key={idx} className="relative w-full h-80 overflow-hidden group bg-white border border-gray-200 shadow">
               <img
                 src={img.url}
                 alt=""

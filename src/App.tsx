@@ -3,12 +3,10 @@ import CreateCampaignForm from './components/Dashboard/CreateCampaignForm';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import PostRegisterPage from './pages/PostRegisterPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 
@@ -61,14 +59,6 @@ function App() {
               <ProtectedRoute>
                 <Header forceDashboard />
                 <div className="flex flex-col items-center w-full">
-                  <button
-                    type="button"
-                    onClick={() => window.location.href = '/dashboard'}
-                    className="mt-4 mb-8 flex items-center bg-[#2d4792] text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-[#1d326b] transition self-start ml-32 gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    Regresar
-                  </button>
                   <div className="flex justify-center w-full">
                     <CreateCampaignForm />
                   </div>
@@ -90,7 +80,7 @@ function App() {
           />
           <Route
             path="/post-register"
-            element={<><Header /><PostRegisterPage /></>}
+            element={<Header />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -9,6 +9,7 @@ import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage
 import { generateCampaignAI } from '../../services/OpenAIService';
 import { generateImage } from '../../services/StabilityAIService';
 
+
 const campaignObjectives = [
   'Conseguir más clientes (ventas)',
   'Que más personas conozcan mi marca',
@@ -71,6 +72,9 @@ const CreateCampaignForm: React.FC = () => {
             recursos: data.recursos || '',
             archivos: [],
           });
+          if (data.assets && data.assets.images_videos) {
+            setExistingImageUrls(data.assets.images_videos);
+          }
         }
       } catch (err) {
         setError('Error al cargar la campaña para editar.');
@@ -104,9 +108,11 @@ const CreateCampaignForm: React.FC = () => {
     archivos: [] as File[]
   });
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [step, setStep] = useState(1); // Controla el paso actual
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  // Eliminado editingSection, ya no se usa
   // Eliminado: const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const handleChange = (
@@ -440,28 +446,66 @@ const CreateCampaignForm: React.FC = () => {
 
   if (showSummary) {
     return (
-  <div className="max-w-6xl w-full min-h-[650px] mx-auto bg-white rounded-xl p-6 mt-8 mb-20 shadow-md">
-        <div className="text-center mb-6">
-          <p className="text-sm text-gray-500">Resumen</p>
-          <p className="text-sm text-gray-500">100% completado</p>
-          <div className="w-full h-1 bg-gray-200 rounded-full mt-2">
-            <div className="h-1 bg-blue-500 rounded-full w-full"></div>
+      <div className="max-w-6xl w-full mx-auto bg-white rounded-xl p-6 mt-8 mb-20 shadow-md">
+        <h2 className="text-xl font-bold mb-4 text-center text-black">Resumen de la campaña</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Plataforma */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">Plataforma</h3>
+              <button onClick={() => { setShowSummary(false); setStep(1); }} className="text-sm text-blue-600">Editar</button>
+            </div>
+            <p className="text-sm">{form.ad_platform.join(', ')}</p>
+          </div>
+          {/* Información del negocio */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">Información del negocio</h3>
+              <button onClick={() => { setShowSummary(false); setStep(2); }} className="text-sm text-blue-600">Editar</button>
+            </div>
+            <p className="text-sm"><b>Empresa:</b> {form.empresa}</p>
+            <p className="text-sm"><b>Industria:</b> {form.industria}</p>
+            <p className="text-sm"><b>Producto/Servicio:</b> {form.producto}</p>
+            <p className="text-sm"><b>Propuesta de valor:</b> {form.propuesta}</p>
+          </div>
+          {/* Objetivo */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">Objetivo</h3>
+              <button onClick={() => { setShowSummary(false); setStep(3); }} className="text-sm text-blue-600">Editar</button>
+            </div>
+            <p className="text-sm">{form.objetivo === 'Otro' ? form.otroObjetivo : form.objetivo}</p>
+          </div>
+          {/* Duración */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">Duración y Presupuesto</h3>
+              <button onClick={() => { setShowSummary(false); setStep(4); }} className="text-sm text-blue-600">Editar</button>
+            </div>
+            <p className="text-sm"><b>Duración:</b> {form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</p>
+            <p className="text-sm"><b>Presupuesto:</b> {form.presupuesto} {form.moneda}</p>
+          </div>
+          {/* Recursos */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">Recursos</h3>
+              <button onClick={() => { setShowSummary(false); setStep(5); }} className="text-sm text-blue-600">Editar</button>
+            </div>
+            <p className="text-sm">{form.recursos}</p>
+            {(existingImageUrls.length > 0 || previewUrls.length > 0) && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {existingImageUrls.map((url, idx) => (
+                  <img key={`existing-${idx}`} src={url} alt={`Imagen existente ${idx + 1}`} className="w-20 h-20 object-cover rounded" />
+                ))}
+                {previewUrls.map((url, idx) => (
+                  <img key={`new-${idx}`} src={url} alt={`Vista previa ${idx + 1}`} className="w-20 h-20 object-cover rounded" />
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <h2 className="text-xl font-bold mb-4 text-center text-black">Resumen de la campaña</h2>
-        <div className="text-gray-600 text-sm leading-relaxed bg-gray-50 rounded-lg p-4">
-          <p>
-            Esta campaña ha sido diseñada para la empresa <b>{form.empresa}</b>, que se especializa en la industria de <b>{form.industria}</b> y ofrece <b>{form.producto}</b> con la propuesta de valor <b>{form.propuesta}</b>.<br /><br />
-            El objetivo principal de la campaña es <b>{form.objetivo === 'Otro' ? form.otroObjetivo : form.objetivo}</b>.<br /><br />
-            Los anuncios estarán dirigidos a <b>{form.publico}</b> en <b>{form.lugares}</b>, y tendrán un estilo <b>{form.estilo.join(', ')}</b>.<br /><br />
-            El presupuesto asignado es de <b>{form.presupuesto} {form.moneda}</b>, con una duración de <b>{form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</b>.<br /><br />
-            Los anuncios invitarán a los usuarios a <b>{form.accion}</b>, dirigiéndolos al destino: <b>{form.destinoValor}</b> (<b>{form.destinoTipo}</b>).<br /><br />
-            Plataforma(s): <b>{form.ad_platform.join(', ')}</b>.
-          </p>
-        </div>
         <div className="flex gap-4 justify-center mt-6">
-          <button type="button" className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md font-medium" onClick={() => setShowSummary(false)}>Editar</button>
-          <button type="button" className="bg-blue-100 text-blue-700 px-6 py-2 rounded-md font-medium" onClick={handleConfirm}>Confirmar y enviar</button>
+          <button type="button" className="bg-[#2563eb] text-white px-6 py-2 rounded-md font-medium" onClick={handleConfirm}>Confirmar y enviar</button>
         </div>
         {error && <div className="text-red-600 text-sm mt-4 text-center">{error}</div>}
       </div>
@@ -860,6 +904,7 @@ const CreateCampaignForm: React.FC = () => {
         </div>
         {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
       </form>
+      {/* Eliminado EditSectionModal, ahora la edición es por navegación de pasos */}
     </div>
   );
 };

@@ -1,10 +1,11 @@
 
 import React from 'react';
+import { IaData, CampaignData } from './DashboardCampaignTabs';
 
 interface AdPreviewProps {
 	platform: string;
-	iaData: any;
-	campaignData: any;
+	iaData: IaData | null;
+	campaignData: CampaignData | undefined;
 	variant?: number;
 	businessName?: string;
 }
@@ -111,12 +112,12 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, v
 									   <div className="text-gray-700 mb-2">{variante["Texto principal"] || 'Sin texto principal'}</div>
 									   <div className="text-sm text-gray-500 mb-2 italic">{variante["Ideas de imágenes/videos"] || ''}</div>
 									   <div className="flex flex-wrap gap-2 mb-2">
-										   {variante["Formatos sugeridos"]?.map((f: string) => (
+										   {(variante["Formatos sugeridos"] || []).map((f: string) => (
 											   <span key={f} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">{f}</span>
 										   ))}
 									   </div>
 									   <div className="flex flex-wrap gap-2 mb-2">
-										   {variante["Audiencias personalizadas/lookalikes"]?.map((a: string) => (
+										   {(variante["Audiencias personalizadas/lookalikes"] || []).map((a: string) => (
 											   <span key={a} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">{a}</span>
 										   ))}
 									   </div>
