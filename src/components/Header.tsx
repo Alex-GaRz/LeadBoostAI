@@ -50,8 +50,7 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
   const { collapsed } = useContext(SidebarContext);
   return (
     <header
-      className={`shadow-sm border-b${!isDashboard ? ' fixed top-0 left-0 w-full z-50' : ''} ${isDashboard ? 'bg-white border-b border-gray-200' : ''}`}
-      style={!isDashboard ? { background: '#0a2540' } : {}}
+      className={`bg-white shadow-sm border-b border-gray-200${!isDashboard ? ' fixed top-0 left-0 w-full z-50' : ''}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className={`flex items-center h-16 w-full relative`}> 
@@ -66,19 +65,19 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
           {!isDashboard && (
             <>
               <Link to="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#2d4792' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#2563eb]">
                   <Zap className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-semibold" style={{ color: '#F5F5F5', fontSize: '16px' }}>Incrementy</span>
+                <span className="font-semibold text-gray-800" style={{ fontSize: '16px' }}>Incrementy</span>
               </Link>
               <nav className="hidden md:flex space-x-8 absolute left-1/2 transform -translate-x-1/2">
-                <Link to="/" className="transition-colors" style={{ color: '#F5F5F5' }}>
+                <Link to="/" className="transition-colors text-gray-600 hover:text-[#2563eb] font-medium">
                   Inicio
                 </Link>
-                <a href="#features" className="transition-colors" style={{ color: '#F5F5F5' }}>
+                <a href="#features" className="transition-colors text-gray-600 hover:text-[#2563eb] font-medium">
                   Características
                 </a>
-                <a href="#pricing" className="transition-colors" style={{ color: '#F5F5F5' }}>
+                <a href="#pricing" className="transition-colors text-gray-600 hover:text-[#2563eb] font-medium">
                   Precios
                 </a>
               </nav>
@@ -133,17 +132,13 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
               <div className="flex items-center space-x-3">
                 <Link
                   to="/login"
-                  className="px-4 py-2 rounded-lg transition-colors"
-                  style={{ color: '#0a2540', background: '#F5F5F5' }}
-                  onMouseOver={e => { e.currentTarget.style.background = '#2d4792'; e.currentTarget.style.color = '#F5F5F5'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#0a2540'; }}
+                  className="px-4 py-2 rounded-lg transition-colors font-medium bg-white text-[#2563eb] border border-[#2563eb] hover:bg-[#2563eb] hover:text-white"
                 >
                   Iniciar Sesión
                 </Link>
                 <Link
                   to="/register"
-                  className="text-white px-4 py-2 rounded-lg transition-colors"
-                  style={{ background: '#1b3b89' }}
+                  className="text-white px-4 py-2 rounded-lg transition-colors font-medium bg-[#2563eb] hover:bg-[#1d4ed8]"
                 >
                   Crear Cuenta
                 </Link>

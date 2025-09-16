@@ -42,12 +42,12 @@ const Features: React.FC = () => {
   ];
 
   return (
-    <section id="features" className="py-20 bg-white">
+    <section id="features" className="py-20 bg-[#f7f8fa]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Características que{' '}
-            <span className="text-transparent bg-clip-text" style={{ background: '#2d4792', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            <span className="text-[#2563eb]">
               impulsan resultados
             </span>
           </h2>
@@ -61,10 +61,9 @@ const Features: React.FC = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group bg-white p-6 rounded-xl border border-gray-100 hover:shadow-lg transition-all duration-300"
-              style={{ borderColor: '#2d4792' }}
+              className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md"
             >
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200" style={{ background: '#2d4792' }}>
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-[#2563eb]">
                 <feature.icon className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">

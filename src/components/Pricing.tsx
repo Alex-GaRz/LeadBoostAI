@@ -55,12 +55,12 @@ const Pricing: React.FC = () => {
   ];
 
   return (
-    <section id="pricing" className="py-20 bg-gray-50">
+    <section id="pricing" className="py-20 bg-[#f7f8fa]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Planes que se adaptan a{' '}
-            <span className="text-transparent bg-clip-text" style={{ background: '#2d4792', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            <span className="text-[#2563eb]">
               tu crecimiento
             </span>
           </h2>
@@ -74,16 +74,15 @@ const Pricing: React.FC = () => {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`bg-white rounded-2xl shadow-lg p-8 relative ${
+              className={`bg-white rounded-2xl shadow-md p-8 relative border ${
                 plan.popular 
-                  ? 'border-2 transform scale-105' 
-                  : 'border border-gray-200'
+                  ? 'border-2 border-[#2563eb]' 
+                  : 'border-gray-100'
               }`}
-              style={plan.popular ? { borderColor: '#2d4792' } : {}}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="text-white px-4 py-1 rounded-full flex items-center space-x-1" style={{ background: '#2d4792' }}>
+                  <div className="bg-[#2563eb] text-white px-4 py-1 rounded-full flex items-center space-x-1">
                     <Star className="w-4 h-4" />
                     <span className="text-sm font-semibold">Más Popular</span>
                   </div>
@@ -107,7 +106,7 @@ const Pricing: React.FC = () => {
                 <ul className="space-y-3">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start space-x-3">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <Check className="w-5 h-5 text-[#2563eb] flex-shrink-0 mt-0.5" />
                       <span className="text-gray-600 text-sm">{feature}</span>
                     </li>
                   ))}
@@ -116,12 +115,11 @@ const Pricing: React.FC = () => {
 
               <Link
                 to="/register"
-                className={`w-full py-3 px-6 rounded-lg font-semibold text-center block transition-all duration-200 ${
+                className={`w-full py-3 px-6 rounded-lg font-semibold text-center block transition-colors duration-200 ${
                   plan.popular
-                    ? 'text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    ? 'bg-[#2563eb] text-white hover:bg-[#1d4ed8]'
+                    : 'bg-white text-[#2563eb] border border-[#2563eb] hover:bg-[#2563eb] hover:text-white'
                 }`}
-                style={plan.popular ? { background: '#2d4792' } : {}}
               >
                 {plan.price === 'Gratis' ? 'Comenzar Gratis' : 'Comenzar Prueba'}
               </Link>
