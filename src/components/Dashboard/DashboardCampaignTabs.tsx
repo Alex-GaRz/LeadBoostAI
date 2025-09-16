@@ -1,4 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
+// Modal de confirmación para editar campaña
+interface ConfirmEditModalProps {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  creditCost?: number;
+}
+const ConfirmEditModal: React.FC<ConfirmEditModalProps> = ({ open, onCancel, onConfirm, creditCost = 1 }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+  <h2 className="text-lg font-bold text-gray-900 mb-5 text-center">¿Estás seguro que quieres editar?</h2>
+  <p className="text-gray-700 mb-4">Editar esta campaña consumirá <span className="font-semibold text-blue-600">créditos</span>. ¿Deseas continuar?</p>
+        <div className="flex justify-end gap-3 mt-4">
+          <button onClick={onCancel} className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300">Cancelar</button>
+          <button onClick={onConfirm} className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700">Continuar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
@@ -66,6 +88,7 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   const [showOtherPreviews, setShowOtherPreviews] = useState(false); // Estado para vistas previas ocultas
   const [showPreview, setShowPreview] = useState(true); // Estado para la vista de solo texto
   const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
+  const [showEditModal, setShowEditModal] = useState(false);
 
 
 
@@ -437,10 +460,19 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
           <div className="flex gap-4 mb-2 w-full">
             <button
               className="flex-1 px-6 py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold rounded-lg shadow transition-colors text-base flex items-center justify-center gap-2"
-              onClick={() => navigate(`/dashboard/campaign/edit/${campaignId}`)}
+              onClick={() => setShowEditModal(true)}
             >
               <Edit3 className="w-5 h-5" style={{ color: '#fff' }} /> Editar Campaña
             </button>
+            <ConfirmEditModal
+              open={showEditModal}
+              creditCost={1}
+              onCancel={() => setShowEditModal(false)}
+              onConfirm={() => {
+                setShowEditModal(false);
+                navigate(`/dashboard/campaign/edit/${campaignId}`);
+              }}
+            />
             <button
               className="flex-1 px-6 py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold rounded-lg shadow transition-colors text-base flex items-center justify-center gap-2"
               onClick={handleExportPDF}
