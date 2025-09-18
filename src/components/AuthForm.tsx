@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import IncrementyLogo from '../assets/Incrementy-logo.png';
+import WolfpaignLogo from '../assets/Wolfpaign-logo.png';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, Chrome } from 'lucide-react';
 import { registerWithEmail, loginWithEmail, loginWithGoogle, AuthError } from '../firebase/authService';
@@ -66,9 +66,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center py-12">
       <div className="w-full max-w-md">
-        {/* Logo de Incrementy */}
+  {/* Logo de Wolfpaign */}
         <div className="flex justify-center mb-8">
-          <img src={IncrementyLogo} alt="Logo" className="w-12 h-12" />
+          <img src={WolfpaignLogo} alt="Logo" className="w-12 h-12" />
         </div>
         <h2 className="text-3xl font-semibold text-black text-center mb-2">
           {isLogin ? 'Iniciar sesión' : 'Crear cuenta'}

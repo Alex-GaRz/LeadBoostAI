@@ -25,7 +25,9 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useAuth } from '../../hooks/useAuth';
-import { exportPDF } from '../../utils/exportPDF';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
+import CampaignPDF from './CampaignPDF';
 import { Users, UploadCloud, CalendarDays, DollarSign, Target, Edit3, Download } from 'lucide-react';
 import AdPreview from './AdPreview';
 
@@ -42,6 +44,7 @@ export interface CampaignData {
   generated_image_url?: string;
   recursos?: string;
   user_image_url?: string;
+  product_service?: string;
 }
 
 export interface IaData {
@@ -98,32 +101,20 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
   const googleAdPreviewRefs = [useRef(null), useRef(null), useRef(null)];
 
   const handleExportPDF = async () => {
-    const isMixta = platforms.some(p => p === 'MetaAds' || p === 'Meta Ads') && platforms.some(p => p === 'GoogleAds' || p === 'Google Ads');
-
-    if (isMixta) {
-      setShowOtherPreviews(true);
-      // Esperar a que React renderice las vistas ocultas
-      await new Promise(resolve => setTimeout(resolve, 100));
+    if (!iaData) {
+      console.error("No IA data available to generate PDF.");
+      return;
     }
 
-    try {
-      await exportPDF({
-        campaignData,
-        iaData,
-        activeTab,
-        adPreviewRefs: activeTab === 'Meta Ads' ? metaAdPreviewRefs : googleAdPreviewRefs,
-        adPreviewRefsMixto: isMixta ? {
-          'Meta Ads': metaAdPreviewRefs,
-          'Google Ads': googleAdPreviewRefs
-        } : undefined
-      });
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-    }
+    // Generate the PDF blob
+    const blob = await pdf(<CampaignPDF campaignData={campaignData} iaData={iaData} />).toBlob();
 
-    if (isMixta) {
-      setShowOtherPreviews(false);
-    }
+    // Sanitize the business name for the filename
+    const businessName = campaignData?.business_name || 'Campaña';
+    const safeFileName = businessName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+    // Save the PDF
+    saveAs(blob, `Reporte_Campaña_${safeFileName}.pdf`);
   };
 
   // Helper: get correct IA data block depending on campaign type and active tab

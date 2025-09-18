@@ -1,6 +1,7 @@
 import React, { useContext, useRef, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Zap, Bell } from 'lucide-react';
+import { LogOut, Bell } from 'lucide-react';
+import WolfpaignLogo from '../assets/Wolfpaign-logo.png';
 import { signOut } from '../firebase/authService';
 import { useAuth } from '../hooks/useAuth';
 // Contexto para saber si el sidebar está colapsado
@@ -65,10 +66,10 @@ const Header: React.FC<HeaderProps> = ({ forceDashboard }) => {
           {!isDashboard && (
             <>
               <Link to="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#2563eb]">
-                  <Zap className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white">
+                  <img src={WolfpaignLogo} alt="Wolfpaign Logo" className="w-8 h-8 object-contain" />
                 </div>
-                <span className="font-semibold text-gray-800" style={{ fontSize: '16px' }}>Incrementy</span>
+                <span className="font-semibold text-gray-800" style={{ fontSize: '16px' }}>Wolfpaign</span>
               </Link>
               <nav className="hidden md:flex space-x-8 absolute left-1/2 transform -translate-x-1/2">
                 <Link to="/" className="transition-colors text-gray-600 hover:text-[#2563eb] font-medium">

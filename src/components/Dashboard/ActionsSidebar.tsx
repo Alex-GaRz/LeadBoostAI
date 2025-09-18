@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React from 'react';
 import { ChevronLeft, ChevronRight, Home, Layers, BarChart3, Zap, LogOut, Plus, Image } from 'lucide-react';
-import IncrementyLogo from '../../assets/Incrementy-logo.png';
+import WolfpaignLogo from '../../assets/Wolfpaign-logo.png';
 import { signOut } from '../../firebase/authService';
 
 const menuItems = [
@@ -34,24 +34,16 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
   };
   return (
   <aside className={`h-screen ${collapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed left-0 top-0 flex flex-col z-30 transition-all duration-300 shadow-sm`}>
-  <div className="flex items-center h-16 px-4 border-b border-gray-100 justify-between">
+  <div className="flex items-center h-16 px-4 border-b border-gray-100">
         {collapsed ? (
           <span className="flex items-center justify-center w-full">
-            <img src={IncrementyLogo} alt="Logo" className="w-6 h-6" />
+            <img src={WolfpaignLogo} alt="Logo" className="w-6 h-6" />
           </span>
         ) : (
           <span className="flex items-center text-xl font-semibold text-gray-900 pl-2">
-            <img src={IncrementyLogo} alt="Logo" className="w-8 h-8 mr-2" /> Incrementy
+            <img src={WolfpaignLogo} alt="Logo" className="w-8 h-8 mr-2" /> Wolfpaign
           </span>
         )}
-        <button
-          className="p-1 rounded border border-gray-200 bg-white shadow-sm ml-auto focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-          style={{ zIndex: 20 }}
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4 text-gray-700" /> : <ChevronLeft className="w-4 h-4 text-gray-700" />}
-        </button>
       </div>
       <nav className="flex-1 py-4 px-2">
         <div className="space-y-1">
@@ -78,8 +70,16 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
           })}
         </div>
       </nav>
-      {/* Botón Cerrar Sesión al fondo */}
-      <div className="mt-auto border-t border-gray-200 px-2 pb-4 pt-4">
+      {/* Botón para colapsar/expandir y botón Cerrar Sesión al fondo */}
+      <div className="mt-auto border-t border-gray-200 px-2 pb-4 pt-4 flex flex-col gap-2">
+        <button
+          className="p-1 rounded border border-gray-200 bg-white shadow-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors mb-2"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+          style={{ zIndex: 20 }}
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4 text-gray-700 mx-auto" /> : <ChevronLeft className="w-4 h-4 text-gray-700 mx-auto" />}
+        </button>
         <button
           onClick={handleSignOut}
           className={`w-full flex items-center justify-start ${collapsed ? 'px-0 justify-center' : 'px-4'} py-3 rounded-lg font-medium bg-white text-gray-700 hover:bg-gray-100 transition-colors`}
