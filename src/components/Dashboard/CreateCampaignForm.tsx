@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { doc, setDoc, serverTimestamp, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
-import { generateCampaignAI } from '../../services/OpenAIService';
+// import { generateCampaignAI } from '../../services/OpenAIService';
 import { generateImage } from '../../services/StabilityAIService';
 
 
@@ -71,6 +71,7 @@ const CreateCampaignForm: React.FC = () => {
             destinoValor: data.landing_page || '',
             recursos: data.recursos || '',
             archivos: [],
+            descripcion: data.descripcion || ''
           });
           if (data.assets && data.assets.images_videos) {
             setExistingImageUrls(data.assets.images_videos);
@@ -105,7 +106,8 @@ const CreateCampaignForm: React.FC = () => {
     destinoTipo: '',
     destinoValor: '',
     recursos: '',
-    archivos: [] as File[]
+    archivos: [] as File[],
+    descripcion: ''
   });
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
@@ -322,6 +324,7 @@ const CreateCampaignForm: React.FC = () => {
           }
         }
 
+        // --- Generación de imagen con IA desactivada temporalmente para pruebas ---
         setIsGeneratingImage(true);
         try {
           const prompt = form.recursos === 'productos'
@@ -348,21 +351,21 @@ const CreateCampaignForm: React.FC = () => {
         }
       }
 
-      // --- Generación de texto con IA ---
-      setIsGeneratingAI(true);
-      let aiData = null;
-      try {
-        aiData = await generateCampaignAI({ ...campaignData, generated_image_url: generatedImageUrl });
-        if (!aiData || Object.keys(aiData).length === 0) {
-          throw new Error('La IA no devolvió datos de texto válidos.');
-        }
-      } catch (aiError: any) {
-        setError(`Error en la generación de texto por IA: ${aiError.message}`);
-        setIsGeneratingAI(false);
-        setLoading(false);
-        return; // Detener el proceso si el texto falla
-      }
-      setIsGeneratingAI(false);
+      // --- Generación de texto con IA DESACTIVADA TEMPORALMENTE ---
+      // setIsGeneratingAI(true);
+      // let aiData = null;
+      // try {
+      //   aiData = await generateCampaignAI({ ...campaignData, generated_image_url: generatedImageUrl });
+      //   if (!aiData || Object.keys(aiData).length === 0) {
+      //     throw new Error('La IA no devolvió datos de texto válidos.');
+      //   }
+      // } catch (aiError: any) {
+      //   setError(`Error en la generación de texto por IA: ${aiError.message}`);
+      //   setIsGeneratingAI(false);
+      //   setLoading(false);
+      //   return; // Detener el proceso si el texto falla
+      // }
+      // setIsGeneratingAI(false);
 
       // Solo guardar la campaña si ambas IAs funcionaron
       if (generatedImageUrl) {
@@ -375,10 +378,10 @@ const CreateCampaignForm: React.FC = () => {
       } else {
         await setDoc(campaignsRef, campaignData);
       }
-      if (aiData) {
-        const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
-        await addDoc(iaDataRef, aiData);
-      }
+      // if (aiData) {
+      //   const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
+      //   await addDoc(iaDataRef, aiData);
+      // }
 
       // Si todo fue exitoso, navegar al dashboard
       setLoading(false);
@@ -447,7 +450,7 @@ const CreateCampaignForm: React.FC = () => {
   if (showSummary) {
     return (
       <div className="max-w-6xl w-full mx-auto bg-white rounded-xl p-6 mt-8 mb-20 shadow-md">
-        <h2 className="text-xl font-bold mb-4 text-center text-black">Resumen de la campaña</h2>
+  <h2 className="text-xl font-semibold mb-4 text-center text-black">Resumen de la campaña</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Plataforma */}
           <div className="bg-gray-50 rounded-lg p-4">
@@ -463,10 +466,10 @@ const CreateCampaignForm: React.FC = () => {
               <h3 className="font-semibold">Información del negocio</h3>
               <button onClick={() => { setShowSummary(false); setStep(2); }} className="text-sm text-blue-600">Editar</button>
             </div>
-            <p className="text-sm"><b>Empresa:</b> {form.empresa}</p>
-            <p className="text-sm"><b>Industria:</b> {form.industria}</p>
-            <p className="text-sm"><b>Producto/Servicio:</b> {form.producto}</p>
-            <p className="text-sm"><b>Propuesta de valor:</b> {form.propuesta}</p>
+            <p className="text-sm font-semibold">Empresa: <span className="font-normal">{form.empresa}</span></p>
+            <p className="text-sm font-semibold">Industria: <span className="font-normal">{form.industria}</span></p>
+            <p className="text-sm font-semibold">Producto/Servicio: <span className="font-normal">{form.producto}</span></p>
+            <p className="text-sm font-semibold">Propuesta de valor: <span className="font-normal">{form.propuesta}</span></p>
           </div>
           {/* Objetivo */}
           <div className="bg-gray-50 rounded-lg p-4">
@@ -482,8 +485,8 @@ const CreateCampaignForm: React.FC = () => {
               <h3 className="font-semibold">Duración y Presupuesto</h3>
               <button onClick={() => { setShowSummary(false); setStep(4); }} className="text-sm text-blue-600">Editar</button>
             </div>
-            <p className="text-sm"><b>Duración:</b> {form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</p>
-            <p className="text-sm"><b>Presupuesto:</b> {form.presupuesto} {form.moneda}</p>
+            <p className="text-sm font-semibold">Duración: <span className="font-normal">{form.duracion === 'Otro' ? form.otraDuracion : form.duracion}</span></p>
+            <p className="text-sm font-semibold">Presupuesto: <span className="font-normal">{form.presupuesto} {form.moneda}</span></p>
           </div>
           {/* Recursos */}
           <div className="bg-gray-50 rounded-lg p-4">
@@ -802,64 +805,169 @@ const CreateCampaignForm: React.FC = () => {
 
         {step === 5 && (
           <div className="space-y-4">
-            <label className="block text-sm text-gray-500 mb-1">¿Cómo quieres crear tu anuncio?</label>
-            <select
-              name="recursos"
-              value={form.recursos}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            >
-              <option value="">Selecciona una opción</option>
-              <option value="productos">Tengo fotos o videos de mis productos (La IA los usará para diseñar un anuncio atractivo)</option>
-              <option value="anuncio">Ya tengo un anuncio hecho (Sube tu anuncio y la IA lo adaptará/mejorará)</option>
-              <option value="nada">No tengo nada, que la IA lo cree desde cero</option>
-            </select>
-            {(form.recursos === 'productos' || form.recursos === 'anuncio') && (
-              <>
-                <label className="inline-flex items-center cursor-pointer bg-[#2461e9] hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
-                  <Upload className="w-5 h-5 mr-2" />
-                  Subir archivo
+            <label className="block text-sm text-gray-700 font-semibold mb-1">
+              ¿Qué elementos tienes disponibles para crear la imagen de tu anuncio y qué deseas que la IA genere?
+            </label>
+            <div className="space-y-3">
+              <div>
+                <label className="flex items-start gap-2 cursor-pointer">
                   <input
-                    type="file"
-                    name="archivos"
-                    accept="image/*,video/*"
-                    multiple
-                    onChange={e => {
-                      const files = e.target.files ? Array.from(e.target.files) : [];
-                      setForm({ ...form, archivos: files });
-                      setPreviewUrls(files.map(file => URL.createObjectURL(file)));
-                    }}
-                    className="hidden"
+                    type="radio"
+                    name="recursos"
+                    value="foto_existente"
+                    checked={form.recursos === 'foto_existente'}
+                    onChange={e => setForm({ ...form, recursos: e.target.value, archivos: [], descripcion: '' })}
+                    className="mt-1"
                   />
+                  <span>
+                    <span className="font-semibold">Tengo una foto de mi producto/servicio</span>
+                    <span className="block text-xs text-gray-500 font-semibold">(La IA usará esta imagen y la adaptará para crear la imagen final del anuncio, ajustando composición, estilo y formato según la plataforma seleccionada)</span>
+                  </span>
                 </label>
-                {previewUrls.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2 items-center">
-                    {form.archivos.map((file, idx) => (
-                      <div key={idx} className="relative group">
-                        {file.type.startsWith('image') ? (
-                          <img src={previewUrls[idx]} alt={`Vista previa ${idx + 1}`} className="w-40 h-40 object-cover rounded" />
-                        ) : file.type.startsWith('video') ? (
-                          <video src={previewUrls[idx]} controls className="w-20 h-20 rounded" />
-                        ) : null}
-                        <button
-                          type="button"
-                          className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-80 hover:opacity-100 transition"
-                          title="Quitar archivo"
-                          onClick={() => {
-                            const newArchivos = form.archivos.filter((_, i) => i !== idx);
-                            const newPreviews = previewUrls.filter((_, i) => i !== idx);
-                            setForm({ ...form, archivos: newArchivos });
-                            setPreviewUrls(newPreviews);
-                          }}
-                        >
-                          &times;
-                        </button>
+                {form.recursos === 'foto_existente' && (
+                  <div className="mt-2">
+                    <label className="inline-flex items-center cursor-pointer bg-[#2461e9] hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
+                      <Upload className="w-5 h-5 mr-2" />
+                      Subir foto
+                      <input
+                        type="file"
+                        name="archivos"
+                        accept="image/*"
+                        onChange={e => {
+                          const files = e.target.files ? Array.from(e.target.files) : [];
+                          setForm({ ...form, archivos: files });
+                          setPreviewUrls(files.map(file => URL.createObjectURL(file)));
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {previewUrls.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2 items-center">
+                        {form.archivos.map((_, idx) => (
+                          <div key={idx} className="relative group">
+                            <img src={previewUrls[idx]} alt={`Vista previa ${idx + 1}`} className="w-40 h-40 object-cover rounded" />
+                            <button
+                              type="button"
+                              className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-80 hover:opacity-100 transition"
+                              title="Quitar archivo"
+                              onClick={() => {
+                                const newArchivos = form.archivos.filter((_, i) => i !== idx);
+                                const newPreviews = previewUrls.filter((_, i) => i !== idx);
+                                setForm({ ...form, archivos: newArchivos });
+                                setPreviewUrls(newPreviews);
+                              }}
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
-              </>
-            )}
+              </div>
+              <div>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="recursos"
+                    value="imagen_lista"
+                    checked={form.recursos === 'imagen_lista'}
+                    onChange={e => setForm({ ...form, recursos: e.target.value, archivos: [], descripcion: '' })}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="font-semibold">Ya tengo una imagen de anuncio lista</span>
+                    <span className="block text-xs text-gray-500 font-semibold">(Sube tu imagen y la IA la replicará tal cual, optimizando solo el formato si es necesario para la plataforma)</span>
+                  </span>
+                </label>
+                {form.recursos === 'imagen_lista' && (
+                  <div className="mt-2">
+                    <label className="inline-flex items-center cursor-pointer bg-[#2461e9] hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
+                      <Upload className="w-5 h-5 mr-2" />
+                      Subir imagen
+                      <input
+                        type="file"
+                        name="archivos"
+                        accept="image/*"
+                        onChange={e => {
+                          const files = e.target.files ? Array.from(e.target.files) : [];
+                          setForm({ ...form, archivos: files });
+                          setPreviewUrls(files.map(file => URL.createObjectURL(file)));
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {previewUrls.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2 items-center">
+                        {form.archivos.map((_, idx) => (
+                          <div key={idx} className="relative group">
+                            <img src={previewUrls[idx]} alt={`Vista previa ${idx + 1}`} className="w-40 h-40 object-cover rounded" />
+                            <button
+                              type="button"
+                              className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-80 hover:opacity-100 transition"
+                              title="Quitar archivo"
+                              onClick={() => {
+                                const newArchivos = form.archivos.filter((_, i) => i !== idx);
+                                const newPreviews = previewUrls.filter((_, i) => i !== idx);
+                                setForm({ ...form, archivos: newArchivos });
+                                setPreviewUrls(newPreviews);
+                              }}
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="recursos"
+                    value="solo_ideas"
+                    checked={form.recursos === 'solo_ideas'}
+                    onChange={e => setForm({ ...form, recursos: e.target.value, archivos: [], descripcion: '' })}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="font-semibold">Solo tengo ideas o conceptos</span>
+                    <span className="block text-xs text-gray-500 font-semibold">(Proporciona descripciones, palabras clave o conceptos; la IA generará la imagen completa desde cero, aplicando estilo, composición y colores adecuados)</span>
+                  </span>
+                </label>
+                {form.recursos === 'solo_ideas' && (
+                  <div className="mt-2">
+                    <textarea
+                      name="descripcion"
+                      value={form.descripcion || ''}
+                      onChange={e => setForm({ ...form, descripcion: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                      placeholder="Describe tus ideas, palabras clave o conceptos para la imagen del anuncio"
+                      rows={3}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="recursos"
+                    value="nada"
+                    checked={form.recursos === 'nada'}
+                    onChange={e => setForm({ ...form, recursos: e.target.value, archivos: [], descripcion: '' })}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="font-semibold">No tengo nada</span>
+                    <span className="block text-xs text-gray-500 font-semibold">(La IA creará toda la imagen del anuncio desde cero: producto/servicio, composición, estilo y formato, adaptados al público y plataforma seleccionada)</span>
+                  </span>
+                </label>
+              </div>
+            </div>
           </div>
         )}
 

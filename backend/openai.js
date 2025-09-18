@@ -17,7 +17,7 @@ async function generateCampaignAI(data) {
       'Authorization': `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-5',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       response_format: { type: 'json_object' },
