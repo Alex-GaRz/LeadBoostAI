@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
 
 
 const { generateCampaignAI } = require('./openai');
-const { generateImage, generateImageToImage } = require('./stabilityai');
+const { generateImageWithVertexAI } = require('./vertexai');
 
 // Multer para manejo de archivos
 const multer = require('multer');
@@ -23,38 +23,39 @@ const upload = multer();
 
 app.post('/api/openai/generate-campaign', async (req, res) => {
   try {
-    const result = await generateCampaignAI(req.body);
+    // Permitir que el frontend indique si espera JSON o texto plano
+    const expectJson = req.body.expectJson !== false; // por defecto true
+    const result = await generateCampaignAI(req.body, expectJson);
     res.json({ success: true, result });
   } catch (err) {
+    console.error('[OpenAI] Error completo:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // Soporta ambos: text-to-image (solo prompt) y image-to-image (prompt + archivo)
-app.post('/api/stabilityai/generate-image', upload.single('init_image'), async (req, res) => {
+app.post('/api/vertexai/generate-image', upload.single('init_image'), async (req, res) => {
   try {
     const prompt = req.body.prompt;
+    
+    // Por ahora, solo implementamos text-to-image con Vertex AI
     if (req.file) {
-      // image-to-image
-      console.log('[IA] Generando imagen a partir de imagen de entrada');
-      const image = await generateImageToImage(prompt, req.file.buffer);
-      if (!image) {
-        console.error('[IA] No se recibió imagen de Stability AI (image-to-image)');
-        return res.status(500).json({ success: false, error: 'No se recibió imagen de la IA' });
-      }
-      return res.json({ success: true, image });
+      // Lógica para image-to-image (si se necesita en el futuro con Vertex)
+      console.log('[IA] Funcionalidad image-to-image con Vertex AI no implementada en este ejemplo.');
+      return res.status(501).json({ success: false, error: 'Image-to-image no implementado para Vertex AI.' });
     } else {
       // text-to-image
-      console.log('[IA] Generando imagen solo con prompt');
-      const image = await generateImage(prompt);
-      if (!image) {
-        console.error('[IA] No se recibió imagen de Stability AI (text-to-image)');
+      console.log('[IA] Generando imagen solo con prompt usando Vertex AI');
+      const imageBase64 = await generateImageWithVertexAI(prompt);
+      if (!imageBase64) {
+        console.error('[IA] No se recibió imagen de Vertex AI (text-to-image)');
         return res.status(500).json({ success: false, error: 'No se recibió imagen de la IA' });
       }
-      return res.json({ success: true, image });
+      // Devolvemos la imagen en base64
+      return res.json({ success: true, image: imageBase64 });
     }
   } catch (err) {
-    console.error('[IA] Error al generar imagen:', err);
+    console.error('[IA] Error al generar imagen con Vertex AI:', err);
     res.status(500).json({ success: false, error: err.message || 'Error desconocido en el backend' });
   }
 });

@@ -3,11 +3,11 @@ import { Download, Upload } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
-import { doc, setDoc, serverTimestamp, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
-// import { generateCampaignAI } from '../../services/OpenAIService';
-import { generateImage } from '../../services/StabilityAIService';
+import { generateCampaignAI } from '../../services/OpenAIService';
+import { generateImageWithVertex } from '../../services/VertexAIService';
 
 
 const campaignObjectives = [
@@ -27,7 +27,8 @@ const CreateCampaignForm: React.FC = () => {
   const isEditMode = !!campaignId;
 
   const base64ToBlob = (base64: string, contentType: string = 'image/png'): Blob => {
-    const byteCharacters = atob(base64.split(',')[1]);
+    const b64 = base64.split(',')[1] ?? base64;
+    const byteCharacters = atob(b64);
     const byteArrays = [];
     for (let offset = 0; offset < byteCharacters.length; offset += 512) {
       const slice = byteCharacters.slice(offset, offset + 512);
@@ -255,12 +256,6 @@ const CreateCampaignForm: React.FC = () => {
         }
       }
 
-      // Mapear el valor de 'recursos' del form a un valor más descriptivo para la BD
-      let recursosValue = '';
-      if (form.recursos === 'productos') recursosValue = 'Tengo fotos o videos de mis productos';
-      else if (form.recursos === 'anuncio') recursosValue = 'Ya tengo un anuncio hecho';
-      else if (form.recursos === 'nada') recursosValue = 'No tengo nada, que la IA lo cree desde cero';
-
       // Construir el objeto de datos inicial de la campaña
       const campaignData: any = {
         ad_platform: form.ad_platform,
@@ -279,18 +274,21 @@ const CreateCampaignForm: React.FC = () => {
         call_to_action: form.accion,
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
-        recursos: recursosValue, // Guardamos el valor completo de la opción
-        assets: { images_videos: fileUrls.length > 0 ? fileUrls : (isEditMode ? undefined : []) },
+        recursos: form.recursos, // foto_existente, imagen_lista, solo_ideas, nada
+        descripcion: form.recursos === 'solo_ideas' ? form.descripcion : null,
+        assets: {
+          images_videos: (form.recursos === 'foto_existente' || form.recursos === 'imagen_lista') && fileUrls.length > 0
+            ? fileUrls
+            : (isEditMode ? undefined : null)
+        },
         ...(isEditMode ? {} : { createdAt: serverTimestamp() }),
       };
 
       // Guardar o actualizar el documento principal de la campaña
 
       // --- Lógica de generación de imágenes y texto con IA ---
-      let generatedImageUrl = null;
-      if (form.recursos === 'productos' || form.recursos === 'nada') {
-        // Validar dimensiones permitidas si hay imagen de entrada (antes de cualquier procesamiento)
-        const imageFile = form.recursos === 'productos' ? form.archivos[0] : undefined;
+      if (form.recursos !== 'imagen_lista') {
+        const imageFile = form.recursos === 'foto_existente' ? form.archivos[0] : undefined;
         if (imageFile) {
           const allowedSizes = [
             [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
@@ -324,31 +322,50 @@ const CreateCampaignForm: React.FC = () => {
           }
         }
 
-        // --- Generación de imagen con IA desactivada temporalmente para pruebas ---
-        setIsGeneratingImage(true);
+        setIsGeneratingAI(true);
         try {
-          const prompt = form.recursos === 'productos'
-            ? `Hyper-realistic fashion photoshoot of a ${form.producto} from the provided reference image, shown on a professional model. The ${form.producto} must appear identical to the reference in color, fabric, texture, seams, and design, without alterations. The model is realistic, photographed in a professional studio setup with soft lighting, 8K quality, cinematic shadows, and fashion editorial style. The main focus is the ${form.producto}, with photorealistic details suitable for e-commerce and fashion catalog presentation.`
-            : `Create a hyper-realistic image for an ad campaign about ${form.producto}. The style should be ${form.estilo.join(', ')}. The target audience is ${form.publico}. The ad should convey a sense of ${form.propuesta}.`;
+          const aiData = await generateCampaignAI(campaignData);
+          console.log('Respuesta de OpenAI:', aiData);
+          const vertexAiPrompt = aiData.vertex_ai_prompt;
+          if (!vertexAiPrompt) {
+            setError('No se recibió prompt para Vertex AI de OpenAI.');
+            setIsGeneratingAI(false);
+            setLoading(false);
+            return;
+          }
+          console.log('Prompt para Vertex AI:', vertexAiPrompt);
 
-          const base64Image = await generateImage(prompt);
-          const imageBlob = base64ToBlob(base64Image);
+          setIsGeneratingImage(true);
+          try {
+            const imageFile = form.recursos === 'foto_existente' ? form.archivos[0] : undefined;
+            const response = await generateImageWithVertex(vertexAiPrompt);
+            const base64Image = response; // La función ahora devuelve la cadena directamente
+            const imageBlob = base64ToBlob(base64Image);
 
-          const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
-          await uploadBytes(generatedImageRef, imageBlob);
-          generatedImageUrl = await getDownloadURL(generatedImageRef);
-        } catch (imageError: any) {
-          setError(`Error al generar la imagen con IA: ${imageError.message}`);
-          setIsGeneratingImage(false);
+            const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
+            await uploadBytes(generatedImageRef, imageBlob);
+            const generatedImageUrl = await getDownloadURL(generatedImageRef);
+            console.log('URL de imagen generada:', generatedImageUrl);
+
+            await setDoc(campaignsRef, { 'assets.image_videos': [generatedImageUrl], generated_image_url: generatedImageUrl }, { merge: true });
+            setIsGeneratingImage(false);
+          } catch (imgError: any) {
+            setError(`Error al generar o subir la imagen: ${imgError.message}`);
+            setIsGeneratingImage(false);
+            setLoading(false);
+            return;
+          }
+
+          const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
+          await addDoc(iaDataRef, aiData);
+
+        } catch (aiError: any) {
+          setError(`Error en la generación de contenido por IA: ${aiError.message}`);
+          setIsGeneratingAI(false);
           setLoading(false);
-          return; // Detener el proceso si la imagen falla
+          return;
         }
-        setIsGeneratingImage(false);
-      } else if (form.recursos === 'anuncio') {
-        // Escenario 2: El usuario ya tiene un anuncio
-        if (fileUrls.length > 0) {
-          campaignData.user_image_url = fileUrls[0]; // Actualizar para el siguiente paso
-        }
+        setIsGeneratingAI(false);
       }
 
       // --- Generación de texto con IA DESACTIVADA TEMPORALMENTE ---
@@ -368,16 +385,25 @@ const CreateCampaignForm: React.FC = () => {
       // setIsGeneratingAI(false);
 
       // Solo guardar la campaña si ambas IAs funcionaron
+      // generatedImageUrl puede estar indefinido si no se generó imagen con IA
+      let generatedImageUrl: string | undefined = undefined;
+      // Buscar si ya se generó una imagen en la sección anterior
+      if (form.recursos !== 'imagen_lista' && form.recursos !== 'nada') {
+        // Si se generó imagen con IA, buscar la url en storage
+        try {
+          const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
+          generatedImageUrl = await getDownloadURL(generatedImageRef);
+        } catch (e) {
+          // Puede no existir si no se generó imagen
+        }
+      }
       if (generatedImageUrl) {
         campaignData.generated_image_url = generatedImageUrl;
       }
       // Guardar campaña y datos IA
-      if (isEditMode) {
-        if (!fileUrls.length) delete campaignData.assets.images_videos;
-        await updateDoc(campaignsRef, campaignData);
-      } else {
-        await setDoc(campaignsRef, campaignData);
-      }
+      // Usar setDoc con merge: true para crear o actualizar siempre
+      if (!fileUrls.length) delete campaignData.assets.images_videos;
+      await setDoc(campaignsRef, campaignData, { merge: true });
       // if (aiData) {
       //   const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
       //   await addDoc(iaDataRef, aiData);
@@ -809,6 +835,7 @@ const CreateCampaignForm: React.FC = () => {
               ¿Qué elementos tienes disponibles para crear la imagen de tu anuncio y qué deseas que la IA genere?
             </label>
             <div className="space-y-3">
+              {/* Opción 1: Tengo una foto de mi producto/servicio */}
               <div>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
@@ -821,7 +848,9 @@ const CreateCampaignForm: React.FC = () => {
                   />
                   <span>
                     <span className="font-semibold">Tengo una foto de mi producto/servicio</span>
-                    <span className="block text-xs text-gray-500 font-semibold">(La IA usará esta imagen y la adaptará para crear la imagen final del anuncio, ajustando composición, estilo y formato según la plataforma seleccionada)</span>
+                    <span className="block text-xs text-gray-500 font-semibold">
+                      La IA usará esta imagen y la adaptará para crear la imagen final del anuncio, ajustando composición, estilo y formato según la plataforma.
+                    </span>
                   </span>
                 </label>
                 {form.recursos === 'foto_existente' && (
@@ -866,6 +895,7 @@ const CreateCampaignForm: React.FC = () => {
                   </div>
                 )}
               </div>
+              {/* Opción 2: Ya tengo una imagen de anuncio lista */}
               <div>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
@@ -878,7 +908,9 @@ const CreateCampaignForm: React.FC = () => {
                   />
                   <span>
                     <span className="font-semibold">Ya tengo una imagen de anuncio lista</span>
-                    <span className="block text-xs text-gray-500 font-semibold">(Sube tu imagen y la IA la replicará tal cual, optimizando solo el formato si es necesario para la plataforma)</span>
+                    <span className="block text-xs text-gray-500 font-semibold">
+                      Sube tu imagen y la IA la replicará tal cual, optimizando solo el formato si es necesario para la plataforma.
+                    </span>
                   </span>
                 </label>
                 {form.recursos === 'imagen_lista' && (
@@ -923,6 +955,7 @@ const CreateCampaignForm: React.FC = () => {
                   </div>
                 )}
               </div>
+              {/* Opción 3: Solo tengo ideas o conceptos */}
               <div>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
@@ -930,12 +963,14 @@ const CreateCampaignForm: React.FC = () => {
                     name="recursos"
                     value="solo_ideas"
                     checked={form.recursos === 'solo_ideas'}
-                    onChange={e => setForm({ ...form, recursos: e.target.value, archivos: [], descripcion: '' })}
+                    onChange={e => setForm({ ...form, recursos: e.target.value, archivos: [] })}
                     className="mt-1"
                   />
                   <span>
                     <span className="font-semibold">Solo tengo ideas o conceptos</span>
-                    <span className="block text-xs text-gray-500 font-semibold">(Proporciona descripciones, palabras clave o conceptos; la IA generará la imagen completa desde cero, aplicando estilo, composición y colores adecuados)</span>
+                    <span className="block text-xs text-gray-500 font-semibold">
+                      Proporciona descripciones, palabras clave o conceptos; la IA generará la imagen completa desde cero, aplicando estilo, composición y colores adecuados.
+                    </span>
                   </span>
                 </label>
                 {form.recursos === 'solo_ideas' && (
@@ -951,6 +986,7 @@ const CreateCampaignForm: React.FC = () => {
                   </div>
                 )}
               </div>
+              {/* Opción 4: No tengo nada */}
               <div>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
@@ -963,7 +999,9 @@ const CreateCampaignForm: React.FC = () => {
                   />
                   <span>
                     <span className="font-semibold">No tengo nada</span>
-                    <span className="block text-xs text-gray-500 font-semibold">(La IA creará toda la imagen del anuncio desde cero: producto/servicio, composición, estilo y formato, adaptados al público y plataforma seleccionada)</span>
+                    <span className="block text-xs text-gray-500 font-semibold">
+                      La IA creará toda la imagen del anuncio desde cero: producto/servicio, composición, estilo y formato, adaptados al público y plataforma seleccionada.
+                    </span>
                   </span>
                 </label>
               </div>

@@ -57,7 +57,10 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, v
 																{imagenUrl ? (
 																	<img src={imagenUrl} alt="Ad" className="object-cover w-full" style={{ display: 'block', maxHeight: 400, width: '100%' }} />
 																) : (
-																	<div className="flex items-center justify-center h-64 text-gray-400">Placeholder</div>
+									<div className="flex items-center justify-center h-64 text-gray-400">
+										<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+										<p className="ml-4">Generando imagen...</p>
+									</div>
 																)}
 															</div>
 																				{/* Pie de anuncio estilo Facebook */}
