@@ -1,68 +1,226 @@
+# Análisis del Flujo de Creación de Campañas: Formulario a Dashboard
 
-// src/services/OpenAIService.ts
-
-// Interfaces para tipar los datos de la campaña y las respuestas de la IA
-interface CampaignData {
-  business_name: string;
-  industry: string;
-  product_service: string;
-  value_proposition: string;
-  campaign_goal: string;
-  target_audience: string;
-  locations: string[];
-  budget_amount: string;
-  budget_currency: string;
-  duration: string;
-  ad_style: string[];
-  call_to_action: string;
-  landing_type: string;
-  landing_page: string;
-  ad_platform: string[];
-  recursos: string;
-  descripcion?: string;
-}
-
-// --- Prompts Finales y Optimizados ---
-
-// Prompt base para el Director de Arte (imagen)
-const ART_DIRECTOR_PROMPT = `
-Eres un Director de Arte y un experto en Prompt Engineering para IAs generadoras de imágenes como Google Imagen. Tu única tarea es convertir una idea de anuncio en un prompt técnico y detallado en inglés, listo para producción.
+Este documento describe el proceso completo de creación de una campaña publicitaria, desde que el usuario introduce los datos en el formulario hasta que los resultados generados por la IA se guardan en la base de datos y se muestran en el dashboard.
 
 ---
-### DATOS DE ENTRADA:
+
+### 1. El Formulario (`CreateCampaignForm.tsx`)
+
+Todo comienza en el componente `CreateCampaignForm.tsx`, que funciona como un asistente de varios pasos para recopilar la información necesaria.
+
+#### Recopilación de Datos:
+El usuario proporciona los siguientes datos, que son cruciales para definir la estrategia de la campaña:
+- **Plataforma de anuncios**: Google Ads, Meta Ads, o ambas.
+- **Información del negocio**: Nombre, industria, producto/servicio y propuesta de valor.
+- **Objetivos y Audiencia**: Objetivo de la campaña, público objetivo y ubicaciones.
+- **Presupuesto y Duración**: Monto, moneda y duración de la campaña.
+- **Estilo y Creatividad**: Estilo del anuncio, llamada a la acción y recursos visuales disponibles.
+
+#### Lógica Clave:
+- **`handleChange`**: Actualiza el estado del formulario (`form`) a medida que el usuario interactúa con los campos.
+- **`handleSubmit`**: Se activa al final del formulario. Valida que todos los campos obligatorios estén completos y, si es así, muestra un resumen de la campaña.
+- **`handleConfirm`**: Es la función central que se ejecuta después de que el usuario confirma el resumen. Orquesta el guardado de datos, las llamadas a las APIs de IA y la navegación final.
+
+---
+
+### 2. Almacenamiento en la Base de Datos (Firestore y Storage)
+
+Una vez que el usuario confirma, `handleConfirm` persiste todos los datos relevantes.
+
+#### A. Documento Principal de la Campaña
+
+- **Ruta**: `clients/{ID_DEL_USUARIO}/campaigns/{ID_DE_LA_CAMPAÑA}`
+- **Método**: `setDoc(..., { merge: true })`
+- **Contenido (Campos guardados del formulario):**
+  - `ad_platform`: `string[]` (Ej: `['Google Ads', 'Meta Ads']`)
+  - `business_name`: `string`
+  - `industry`: `string`
+  - `product_service`: `string`
+  - `value_proposition`: `string`
+  - `campaign_goal`: `string`
+  - `target_audience`: `string`
+  - `locations`: `string[]`
+  - `budget_amount`: `string`
+  - `budget_currency`: `string`
+  - `duration`: `string`
+  - `ad_style`: `string[]`
+  - `call_to_action`: `string`
+  - `landing_type`: `string`
+  - `landing_page`: `string`
+  - `recursos`: `string`
+  - `descripcion`: `string` (Opcional)
+  - `userId`: `string` (ID del usuario autenticado)
+  - `createdAt`: `Timestamp` (Fecha de creación)
+  - `campaign_name`: `string` (El nombre que el usuario le da a la campaña)
+  - `generated_image_url`: `string` (URL de la imagen generada por IA, se añade después)
+
+#### B. Subcolección de Datos de IA
+
+- **Ruta**: `clients/{ID_DEL_USUARIO}/campaigns/{ID_DE_LA_CAMPAÑA}/ia_data`
+- **Método**: `addDoc()` para cada nueva generación.
+- **Contenido (Campos guardados de la IA):**
+  - `campaign_name`: `string` (Nombre de campaña sugerido por la IA).
+  - `campaign_creative_concept`: `string` (Concepto visual detallado, usado como entrada para el prompt de imagen).
+  - `vertex_ai_prompt`: `string` (El prompt técnico final enviado a Vertex AI).
+  - `ai_ad_variants` (o `meta_ai_ad_variants` / `google_ai_ad_variants`): `Array` de objetos, cada uno con los textos específicos de la plataforma (títulos, descripciones, etc.).
+  - `createdAt`: `Timestamp` (Fecha de la generación).
+
+#### C. Almacenamiento de Archivos (Firebase Storage)
+
+- **Imágenes del Usuario**: `clients/{ID_DEL_USUARIO}/campaigns/{ID_DE_LA_CAMPAÑA}/user_uploads/`
+- **Imágenes Generadas por IA**: `clients/{ID_DEL_USUARIO}/campaigns/{ID_DE_LA_CAMPAÑA}/ia_data/generated_image.png`
+
+---
+
+### 3. Flujo de Generación con Inteligencia Artificial
+
+Este es el núcleo del proceso, donde los datos del formulario se convierten en contenido creativo.
+
+#### A. Datos de Entrada para OpenAI (Paso 1 - Marketing)
+
+La función `buildPrompt` utiliza los siguientes campos del objeto `campaignData` para rellenar las plantillas (`META_PROMPT`, `GOOGLE_PROMPT`, `BOTH_PROMPT`):
+- `{business_name}`
+- `{industry}`
+- `{product_service}`
+- `{value_proposition}`
+- `{campaign_goal}`
+- `{target_audience}`
+- `{locations}` (unido como string)
+- `{ad_style}` (unido como string)
+- `{call_to_action}`
+- `{landing_type}`
+
+#### B. Datos de Salida de OpenAI (Paso 1 - Marketing)
+
+La primera llamada a OpenAI devuelve un objeto JSON con la siguiente estructura detallada:
+
+**Si la plataforma es "Meta Ads":**
+```json
+{
+  "campaign_name": "string",
+  "campaign_creative_concept": "string",
+  "ai_ad_variants": [
+    {
+      "title": "string (máx 40 chars)",
+      "main_text": "string (máx 125 chars)",
+      "cta": "string",
+      "audiences": ["string", "string"]
+    },
+    // ...2 variantes más
+  ]
+}
+```
+
+**Si la plataforma es "Google Ads":**
+```json
+{
+  "campaign_name": "string",
+  "campaign_creative_concept": "string",
+  "ai_ad_variants": [
+    {
+      "headlines": ["string (máx 30)", "string", "string"],
+      "descriptions": ["string (máx 90)", "string"],
+      "keywords": ["string", "string", "string", "string", "string"],
+      "negative_keywords": ["string", "string", "string"],
+      "ad_extensions": ["string", "string"]
+    },
+    // ...2 variantes más
+  ]
+}
+```
+
+**Si son ambas plataformas, el JSON contiene `meta_ai_ad_variants` y `google_ai_ad_variants`.**
+
+#### C. Flujo de Generación de Imagen (Paso 2 y Vertex AI)
+
+1.  **Entrada para OpenAI (Paso 2 - Arte)**:
+    - `{image_idea}`: El campo `campaign_creative_concept` de la respuesta anterior.
+    - `{has_uploaded_image}`: Un booleano (`true` o `false`).
+
+2.  **Salida de OpenAI (Paso 2 - Arte)**:
+    - Un único `string` que es el prompt técnico para la IA de imágenes. Este es el `vertex_ai_prompt`.
+
+3.  **Entrada para Vertex AI**:
+    - El `vertex_ai_prompt` (string).
+
+4.  **Salida de Vertex AI**:
+    - Una imagen codificada en `base64` (string).
+
+---
+
+### 4. Visualización en el Dashboard de Campañas
+
+Una vez que la campaña está creada, el usuario es redirigido al dashboard (`/dashboard/campaign/{ID_DE_LA_CAMPAÑA}`), donde se muestran los resultados.
+
+#### Datos que SÍ se Muestran al Usuario:
+- **Nombre de la campaña** (`campaignData.campaign_name` o el de la IA).
+- **Datos del formulario original**: Se leen del documento principal para que el usuario recuerde lo que configuró (objetivo, presupuesto, etc.).
+- **Variantes de Anuncios**: Se leen de la subcolección `ia_data` y se muestran los diferentes títulos, textos principales, keywords y audiencias sugeridas.
+- **Imagen Generada**: Se muestra la imagen obtenida de la URL `generated_image_url` guardada en el documento principal.
+
+#### Datos que NO se Muestran (Datos Internos):
+- **`campaign_creative_concept`**: Es un dato intermedio crucial para el flujo de IA, pero no se muestra al usuario. Se guarda para registro.
+- **`vertex_ai_prompt`**: Es un dato técnico que no tiene valor para el usuario final. Se guarda en la base de datos (`ia_data`) para registro y depuración, pero no se visualiza.
+- **IDs internos**: `campaign_id` y los IDs de los documentos en la subcolección `ia_data`.
+- **`createdAt`**: Se usa para ordenar campañas pero no se muestra prominentemente.
+
+### Diagrama de Flujo Simplificado
+
+```mermaid
+graph TD
+    A[Formulario: Usuario llena datos] --> B{handleConfirm};
+    B --> C[Guarda datos del form en Firestore];
+    B --> D[Paso 1: Llama a OpenAI (Marketing)];
+    D --> E{OpenAI genera textos y 'campaign_creative_concept'};
+    E --> F[Guarda textos en subcolección 'ia_data'];
+    E --> G[Paso 2: Llama a OpenAI (Arte) con 'campaign_creative_concept'];
+    G --> H{OpenAI genera 'vertex_ai_prompt' final};
+    H --> I[Llama a Vertex AI con 'vertex_ai_prompt'];
+    I --> J{Vertex AI genera imagen en base64};
+    J --> K[Sube imagen a Storage y guarda URL];
+    K --> L[Dashboard muestra datos y la imagen final];
+    C --> L;
+    F --> L;
+```
+
+---
+
+### Apéndice: Prompts Completos
+
+Aquí se detallan los prompts completos utilizados en el backend para orquestar las llamadas a la API de OpenAI.
+
+<details>
+<summary><strong>1. ART_DIRECTOR_PROMPT</strong></summary>
+
+```
+Eres un Director de Arte y experto en Prompt Engineering para IAs generadoras de imágenes como Google Imagen. Tu única tarea es convertir una idea de anuncio en un prompt técnico y detallado en inglés.
+---
+DATOS DE ENTRADA:
 1. Idea del Anuncio: "{image_idea}"
 2. ¿Se usa una imagen de producto existente?: {has_uploaded_image}
-
 ---
-### REGLAS CRÍTICAS:
-
-#### 1. Si "¿Se usa una imagen de producto existente?" es 'false' (Modo Text-to-Image):
-   - Crea un prompt desde cero que describa la "Idea del Anuncio" de forma aspiracional y detallada.
-   - Debe incluir: sujeto, acción, entorno, iluminación, ángulo de cámara y detalles técnicos (ej. lente, apertura, estilo fotográfico).
-   - Ejemplo: "Cinematic product photography of a young woman smiling peacefully on a cozy balcony during sunrise, holding a steaming mug of coffee, soft morning light, shallow depth of field, photorealistic, 8k, shot on Sony A7III."
-
-#### 2. Si "¿Se usa una imagen de producto existente?" es 'true' (Modo Composición/Inpainting):
-   - **TU OBJETIVO ES REALIZAR UNA COMPOSICIÓN FOTORREALISTA, INTEGRANDO EL PRODUCTO ORIGINAL EN UN NUEVO FONDO GENERADO.**
-   - Imagina que la imagen del producto es una capa intocable en Photoshop. Tu única tarea es generar la capa de fondo que irá detrás.
-   - **El prompt que generes debe describir EXCLUSIVAMENTE el nuevo escenario, la iluminación y el ambiente.**
-   - **El prompt DEBE EMPEZAR** con una frase técnica que indique la intención, como:
-     - "Photorealistic composition, placing the masked subject onto..."
-     - "Inpainting the background behind the user's uploaded product. The new background is..."
-     - "Studio-quality product placement. The foreground subject is fixed. The generated background scene is..."
-   - **REGLAS ESTRICTAS:**
-     - **¡PROHIBIDO describir el producto!** El modelo ya lo tiene como entrada.
-     - **¡PROHIBIDO alterar la forma, color, textura o cualquier detalle del producto original!** La instrucción es PRESERVARLO.
-     - **¡PROHIBIDO inventar personas usando el producto** a menos que la "Idea del Anuncio" lo pida explícitamente, y aun así, el producto debe ser el asset original.
-   - **Ejemplo:**
-     - **Idea de Anuncio:** "Un zapato de lujo en un taller de artesano."
-     - **Prompt Generado:** "Photorealistic composition, placing the masked subject onto a rustic artisan's workbench in a workshop. The scene is bathed in warm, soft morning light streaming from a window on the left. In the background, vintage leatherworking tools like an awl and a hammer are softly blurred. Moody, atmospheric, shallow depth of field, shot on a 50mm lens."
-
+REGLAS CRÍTICAS:
+1. Si "¿Se usa una imagen de producto existente?" es 'false':
+  - Crea un prompt desde cero que describa la "Idea del Anuncio" de forma aspiracional y detallada, incluyendo sujeto, acción, entorno, iluminación y detalles técnicos de cámara (ej. lente, apertura).
+  - Ejemplo: "Cinematic product photography of a young woman smiling peacefully on a cozy balcony during sunrise, holding a steaming mug of coffee, soft morning light, shallow depth of field, photorealistic, 8k, shot on Sony A7III."
+2. Si "¿Se usa una imagen de producto existente?" es 'true':
+  - TU OBJETIVO ES INTEGRAR EL PRODUCTO EXISTENTE EN UN NUEVO FONDO.
+  - EL PROMPT DEBE EMPEZAR OBLIGATORIAMENTE con la frase: "A high-end product advertisement featuring the user's uploaded product, elegantly displayed on a..."
+  - Después de esa frase, describe el escenario basado en la "Idea del Anuncio", detallando el entorno, la iluminación y el estilo fotográfico.
+  - ¡PROHIBIDO describir el producto!
+  - ¡PROHIBIDO inventar personas usando el producto! La instrucción es colocar el producto existente en un nuevo escenario.
+  - Ejemplo: "A high-end product advertisement featuring the user's uploaded product, elegantly displayed on a sunlit cobblestone street in Mexico City, with historic colonial facades and a cozy café terrace softly blurred in the background. The scene should have warm golden-hour lighting, shallow depth of field, and an editorial-quality composition."
 ---
-### Salida requerida:
+Salida requerida:
 Entrega únicamente el texto del prompt en inglés, sin explicaciones, comillas ni texto introductorio.
-`;
+```
 
-const META_PROMPT = `
+</details>
+
+<details>
+<summary><strong>2. META_PROMPT</strong></summary>
+
+```
 Eres un Director de Marketing Estratégico y un Copywriter experto en campañas de Meta Ads a nivel internacional. Tu misión es analizar a un cliente y desarrollar una campaña publicitaria completa, incluyendo una única visión creativa y los textos de los anuncios, altamente adaptados al contexto proporcionado.
 
 ---
@@ -144,9 +302,14 @@ Luego, crea **3 variantes de anuncio** de texto, cada una con un ángulo único:
     }
   ]
 }
-`;
+```
 
-const GOOGLE_PROMPT = `
+</details>
+
+<details>
+<summary><strong>3. GOOGLE_PROMPT</strong></summary>
+
+```
 Eres un Director de Marketing Digital y un Especialista en Performance con más de 15 años de experiencia en Google Ads. Tu misión es analizar a un cliente y desarrollar una campaña de búsqueda completa, incluyendo la estrategia de palabras clave, los textos de los anuncios y la configuración de campaña, todo altamente adaptado al contexto proporcionado.
 
 ---
@@ -224,9 +387,14 @@ Luego, crea 3 variantes de anuncio de texto, cada una con un ángulo único (Emo
     }
   ]
 }
-`;
+```
 
-const BOTH_PROMPT = `
+</details>
+
+<details>
+<summary><strong>4. BOTH_PROMPT</strong></summary>
+
+```
 Eres un Director de Marketing Digital y Estratega de Campañas 360, experto en maximizar el rendimiento coordinado en Meta Ads y Google Ads. Tu misión es analizar a un cliente y desarrollar una campaña publicitaria integral, asegurando que la estrategia visual, el tono de voz y los mensajes clave sean coherentes pero adaptados a las fortalezas de cada plataforma.
 
 ---
@@ -328,129 +496,8 @@ Crea 3 variantes de anuncio de texto (alineadas con los ángulos Emocional, Raci
       "ad_extensions": ["...", "..."]
     }
   ]
-}`;
-
-
-
-/**
- * Reemplaza los placeholders en el prompt con los datos de la campaña.
- */
-function buildPrompt(promptTemplate: string, data: CampaignData): string {
-  let prompt = promptTemplate;
-  const variables: { [key: string]: string | undefined } = {
-    '{business_name}': data.business_name,
-    '{industry}': data.industry,
-    '{product_service}': data.product_service,
-    '{value_proposition}': data.value_proposition,
-    '{campaign_goal}': data.campaign_goal,
-    '{target_audience}': data.target_audience,
-    '{locations}': data.locations.join(', '),
-    '{budget_amount}': data.budget_amount,
-    '{budget_currency}': data.budget_currency,
-    '{duration}': data.duration,
-    '{ad_style}': data.ad_style.join(', '),
-    '{call_to_action}': data.call_to_action,
-    '{landing_type}': data.landing_type,
-    '{landing_page}': data.landing_page,
-    '{recursos}': data.recursos,
-    '{descripcion}': data.descripcion,
-  };
-
-  for (const [key, value] of Object.entries(variables)) {
-    if (value) {
-      prompt = prompt.replace(new RegExp(key, 'g'), value);
-    }
-  }
-
-  if (data.recursos === 'imagen_lista') {
-    // Si recursos es 'imagen_lista', eliminamos el fragmento de prompt para Vertex AI.
-    const vertexPromptFragment = /Usa la información del cliente.*Devuelve solo el prompt textual listo para enviar a Vertex, sin explicaciones adicionales\./;
-    prompt = prompt.replace(vertexPromptFragment, '');
-  }
-
-  return prompt;
 }
+```
 
-/**
- * Genera contenido de campaña usando la API de OpenAI.
- * @param data - Los datos de la campaña del formulario.
- * @returns El objeto JSON con los datos de la campaña generados por la IA.
- */
+</details>
 
-/**
- * Refactor: Genera la campaña en dos pasos (copy y prompt de imagen).
- * @param data - Datos del formulario del cliente.
- * @param imageIdeaIndex - (opcional) Índice de la image_video_idea a usar para el prompt de imagen (por defecto 0).
- * @param hasUploadedImage - Booleano: ¿el usuario subió una imagen de producto?
- * @returns Objeto JSON final con vertex_ai_prompt.
- */
-export async function generateCampaignAI(
-  data: CampaignData,
-  imageIdeaIndex: number = 0,
-  hasUploadedImage: boolean = false
-): Promise<any> {
-  // 1. Primera llamada: Copywriter
-  let promptTemplate: string;
-  const hasGoogle = data.ad_platform.includes('Google Ads');
-  const hasMeta = data.ad_platform.includes('Meta Ads');
-  if (hasGoogle && hasMeta) {
-    promptTemplate = BOTH_PROMPT;
-  } else if (hasGoogle) {
-    promptTemplate = GOOGLE_PROMPT;
-  } else if (hasMeta) {
-    promptTemplate = META_PROMPT;
-  } else {
-    throw new Error('No se ha especificado una plataforma de anuncios válida.');
-  }
-  const copyPrompt = buildPrompt(promptTemplate, data);
-  let copyResponse;
-  try {
-    const response = await fetch('/api/openai/generate-campaign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, prompt: copyPrompt }),
-    });
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error || 'Error al generar la campaña con IA');
-  copyResponse = JSON.parse(result.result);
-  // Mostrar el JSON generado por OpenAI en la consola del navegador
-  console.log('Respuesta OpenAI (copyResponse):', copyResponse);
-  } catch (error) {
-    throw new Error('Hubo un problema al generar la campaña (copywriter). Inténtelo de nuevo más tarde.');
-  }
-
-  // 2. Segunda llamada: Director de Arte
-  // Extraer la idea de imagen solo desde campaign_creative_concept
-  let imageIdea = '';
-  if (copyResponse && typeof copyResponse.campaign_creative_concept === 'string' && copyResponse.campaign_creative_concept.length > 0) {
-    imageIdea = copyResponse.campaign_creative_concept;
-  } else {
-    throw new Error('No se pudo extraer campaign_creative_concept para el prompt de arte. Respuesta IA: ' + JSON.stringify(copyResponse));
-  }
-
-  // Construir el prompt para el Director de Arte usando la constante y reemplazando los placeholders
-  const artPrompt = ART_DIRECTOR_PROMPT
-    .replace('{image_idea}', imageIdea)
-    .replace('{has_uploaded_image}', String(hasUploadedImage));
-
-  let vertexPrompt = '';
-  try {
-    const response = await fetch('/api/openai/generate-campaign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: artPrompt, expectJson: false }),
-    });
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error || 'Error al generar el prompt de imagen');
-    vertexPrompt = result.result?.trim();
-  } catch (error) {
-    throw new Error('Hubo un problema al generar el prompt de imagen. Inténtelo de nuevo más tarde.');
-  }
-
-  // 3. Combinar resultados y asegurar que vertex_ai_prompt nunca sea vacío
-  const finalResult = {
-    ...copyResponse,
-    vertex_ai_prompt: vertexPrompt || imageIdea || '',
-  };
-  return finalResult;
-}
