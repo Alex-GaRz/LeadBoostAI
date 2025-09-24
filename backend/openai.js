@@ -14,7 +14,7 @@ async function generateCampaignAI(data, expectJson = true) {
 
   const prompt = data.prompt;
   const body = {
-    model: 'gpt-5',
+    model: 'gpt-3.5-turbo',
     messages: [{ role: 'user', content: prompt }],
     temperature: 1,
   };
