@@ -1,7 +1,25 @@
-
 import React from 'react';
 import { FaThumbsUp, FaComment, FaShare, FaHeart, FaLaugh } from 'react-icons/fa';
-import { IaData, CampaignData } from './DashboardCampaignTabs';
+import { IaData } from './DashboardCampaignTabs';
+
+export interface CampaignData {
+  objetivo?: string;
+  budget_amount?: string;
+  budget_currency?: string;
+  duracion?: string;
+  target_audience?: string;
+  publico?: string;
+  locations?: string[];
+  lugares?: string[];
+  business_name?: string;
+  generated_image_url?: string;
+  recursos?: string;
+  user_image_url?: string;
+  product_service?: string;
+  assets?: {
+    images_videos?: string[];
+  };
+}
 
 interface AdPreviewProps {
 	platform: string;
@@ -12,26 +30,34 @@ interface AdPreviewProps {
 }
 
 const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, variant, businessName }) => {
-	// Helper para obtener los datos de la variante
-	const getVar = (n: 1 | 2 | 3) => iaData?.["Anuncio generado por IA"]?.[`Variante ${n}`] || {};
+		// Helper para obtener los datos de la variante
+		const getVar = (n: 1 | 2 | 3) => iaData?.["Anuncio generado por IA"]?.[`Variante ${n}`] || {};
 
-	// Si se pasa variant, solo mostrar esa variante
-	const variantsToShow = variant ? [variant] : [1, 2, 3];
+		// Si se pasa variant, solo mostrar esa variante
+		const variantsToShow = variant ? [variant] : [1, 2, 3];
 
-			return (
-				<div className="w-full h-full flex flex-col gap-6 justify-stretch items-stretch">
-					{/* Vista previa para Meta Ads */}
-					{platform === 'Meta Ads' && iaData && (
-						<>
-							{variantsToShow.map((v) => {
-								const variante = getVar(v as 1 | 2 | 3);
-								const brand = businessName ? String(businessName) : 'Nombre de marca';
-								  const patrocinado = 'Publicidad';
-								  const textoPrincipal = variante['Texto principal'] || 'Sin texto principal';
-								  const titulo = variante['Título del anuncio'] || 'Sin título';
-								  const cta = variante['CTA'] || 'Más información';
-								  const imagenUrl = campaignData?.user_image_url || campaignData?.generated_image_url;
-								  const descripcion = titulo;
+		// Priorizar la imagen generada por IA si existe
+		const getImagenUrl = (campaignData?: CampaignData) => {
+			if (!campaignData) return undefined;
+			if (campaignData.generated_image_url) return campaignData.generated_image_url;
+			if (campaignData.assets?.images_videos && campaignData.assets.images_videos.length > 0) return campaignData.assets.images_videos[0];
+			return undefined;
+		};
+
+				return (
+					<div className="w-full h-full flex flex-col gap-6 justify-stretch items-stretch">
+						{/* Vista previa para Meta Ads */}
+						{platform === 'Meta Ads' && iaData && (
+							<>
+								{variantsToShow.map((v) => {
+									const variante = getVar(v as 1 | 2 | 3);
+									const brand = businessName ? String(businessName) : 'Nombre de marca';
+										const patrocinado = 'Publicidad';
+										const textoPrincipal = variante['Texto principal'] || 'Sin texto principal';
+										const titulo = variante['Título del anuncio'] || 'Sin título';
+										const cta = variante['CTA'] || 'Más información';
+										const imagenUrl = getImagenUrl(campaignData);
+										const descripcion = titulo;
 																// Reacciones y conteos fijos para demo
 																  const likes = '13,326';
 																  const comentarios = '1 mil comentarios';
@@ -123,7 +149,7 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, v
 					   <>
 						   {variantsToShow.map((v) => {
 							   const variante = getVar(v as 1 | 2 | 3);
-							   const imagenUrl = campaignData?.user_image_url || campaignData?.generated_image_url;
+							   const imagenUrl = getImagenUrl(campaignData);
 
 							   return (
 								   <div key={v} className="flex flex-col h-full w-full border border-gray-200 rounded-lg bg-gray-50 shadow-md mb-4 max-w-md mx-auto font-sans p-4">
@@ -134,7 +160,7 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, v
 									   )}
 									   <div className="text-xl font-bold text-gray-800 mb-1">{variante["Título sugerido"] || 'Sin título'}</div>
 									   <div className="text-sm text-gray-600 mb-3">{variante["Descripción corta"] || 'Sin texto principal'}</div>
-									   
+                                       
 									   <div className="mt-auto pt-3 border-t border-gray-200">
 										   <button className="bg-blue-500 text-white w-full py-2 rounded-md font-semibold hover:bg-blue-600 transition-colors">
 											   {variante["CTA"] || 'Más información'}

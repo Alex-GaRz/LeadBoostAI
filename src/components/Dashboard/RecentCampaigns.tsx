@@ -54,7 +54,8 @@ const RecentCampaigns: React.FC = () => {
           // Buscar en la subcolección ia_data
           let nombreCampania = d["Nombre de campaña"] || d["campaign_name"];
           let generated_image_url = d.generated_image_url;
-          let user_image_url = d.user_image_url;
+          // Corregido: Buscar la imagen del usuario en la ubicación correcta
+          let user_image_url = d.assets?.images_videos?.[0];
           let impresiones = d.impressions || d.impresiones || 0;
           let clicks = d.clicks || 0;
           if (!nombreCampania || !generated_image_url) {

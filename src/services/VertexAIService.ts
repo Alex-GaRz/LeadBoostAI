@@ -5,17 +5,22 @@ const API_BASE_URL = 'http://localhost:4000'; // Asegúrate de que coincida con 
 /**
  * Genera una imagen utilizando el backend que se comunica con Vertex AI.
  * @param prompt - El prompt de texto para la generación de la imagen.
+ * @param imageFile - Opcional. El archivo de imagen para los escenarios de image-to-image.
  * @returns La imagen generada en formato base64.
  */
-export async function generateImageWithVertex(prompt: string): Promise<string> {
+export async function generateImageWithVertex(prompt: string, imageFile?: File): Promise<string> {
   try {
     console.log('Enviando solicitud de imagen a Vertex AI a través del backend...');
+    
+    const formData = new FormData();
+    formData.append('prompt', prompt);
+    if (imageFile) {
+      formData.append('init_image', imageFile);
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/vertexai/generate-image`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt }),
+      body: formData, // No se necesita 'Content-Type', el navegador lo establece automáticamente para FormData
     });
 
     if (!response.ok) {

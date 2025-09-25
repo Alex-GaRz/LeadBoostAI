@@ -26,40 +26,32 @@ interface CampaignData {
 
 // Prompt base para el Director de Arte (imagen)
 const ART_DIRECTOR_PROMPT = `
-Eres un Director de Arte y un experto en Prompt Engineering para IAs generadoras de imágenes como Google Imagen. Tu única tarea es convertir una idea de anuncio en un prompt técnico y detallado en inglés, listo para producción.
+Tu tarea es crear un prompt en inglés para una IA generadora de imágenes.
 
 ---
-### DATOS DE ENTRADA:
-1. Idea del Anuncio: "{image_idea}"
-2. ¿Se usa una imagen de producto existente?: {has_uploaded_image}
+### CONTEXTO:
+- Se te dará una "Idea de Anuncio".
+- Tu prompt debe describir un fondo o escenario para una imagen de producto que ya existe.
 
 ---
-### REGLAS CRÍTICAS:
-
-#### 1. Si "¿Se usa una imagen de producto existente?" es 'false' (Modo Text-to-Image):
-   - Crea un prompt desde cero que describa la "Idea del Anuncio" de forma aspiracional y detallada.
-   - Debe incluir: sujeto, acción, entorno, iluminación, ángulo de cámara y detalles técnicos (ej. lente, apertura, estilo fotográfico).
-   - Ejemplo: "Cinematic product photography of a young woman smiling peacefully on a cozy balcony during sunrise, holding a steaming mug of coffee, soft morning light, shallow depth of field, photorealistic, 8k, shot on Sony A7III."
-
-#### 2. Si "¿Se usa una imagen de producto existente?" es 'true' (Modo Composición/Inpainting):
-   - **TU OBJETIVO ES REALIZAR UNA COMPOSICIÓN FOTORREALISTA, INTEGRANDO EL PRODUCTO ORIGINAL EN UN NUEVO FONDO GENERADO.**
-   - Imagina que la imagen del producto es una capa intocable en Photoshop. Tu única tarea es generar la capa de fondo que irá detrás.
-   - **El prompt que generes debe describir EXCLUSIVAMENTE el nuevo escenario, la iluminación y el ambiente.**
-   - **El prompt DEBE EMPEZAR** con una frase técnica que indique la intención, como:
-     - "Photorealistic composition, placing the masked subject onto..."
-     - "Inpainting the background behind the user's uploaded product. The new background is..."
-     - "Studio-quality product placement. The foreground subject is fixed. The generated background scene is..."
-   - **REGLAS ESTRICTAS:**
-     - **¡PROHIBIDO describir el producto!** El modelo ya lo tiene como entrada.
-     - **¡PROHIBIDO alterar la forma, color, textura o cualquier detalle del producto original!** La instrucción es PRESERVARLO.
-     - **¡PROHIBIDO inventar personas usando el producto** a menos que la "Idea del Anuncio" lo pida explícitamente, y aun así, el producto debe ser el asset original.
-   - **Ejemplo:**
-     - **Idea de Anuncio:** "Un zapato de lujo en un taller de artesano."
-     - **Prompt Generado:** "Photorealistic composition, placing the masked subject onto a rustic artisan's workbench in a workshop. The scene is bathed in warm, soft morning light streaming from a window on the left. In the background, vintage leatherworking tools like an awl and a hammer are softly blurred. Moody, atmospheric, shallow depth of field, shot on a 50mm lens."
+### IDEA DE ANUNCIO:
+"{image_idea}"
 
 ---
-### Salida requerida:
-Entrega únicamente el texto del prompt en inglés, sin explicaciones, comillas ni texto introductorio.
+### REGLAS ABSOLUTAS:
+1.  **Describe ÚNICAMENTE el fondo.**
+2.  **NO menciones el producto, el sujeto o sus características (color, forma, material). NUNCA.**
+3.  Tu prompt debe detallar el escenario, la iluminación y el estilo fotográfico del fondo.
+4.  El prompt debe empezar con "Photorealistic background of..."
+
+---
+### EJEMPLO:
+- **Idea de Anuncio:** "Un zapato de lujo en un taller de artesano."
+- **Prompt Generado:** "Photorealistic background of a rustic artisan's workbench inside a workshop. The scene is bathed in warm, soft morning light streaming from a side window. In the background, vintage leatherworking tools are softly blurred. Moody, atmospheric, shallow depth of field."
+
+---
+### INSTRUCCIÓN FINAL:
+Genera únicamente el prompt en inglés, sin explicaciones ni texto adicional.
 `;
 
 const META_PROMPT = `
@@ -412,9 +404,18 @@ export async function generateCampaignAI(
     });
     const result = await response.json();
     if (!result.success) throw new Error(result.error || 'Error al generar la campaña con IA');
-  copyResponse = JSON.parse(result.result);
-  // Mostrar el JSON generado por OpenAI en la consola del navegador
-  console.log('Respuesta OpenAI (copyResponse):', copyResponse);
+    copyResponse = JSON.parse(result.result);
+
+    // --- INICIO DE LA MODIFICACIÓN PARA ESCENARIO 3 ---
+    // Si el usuario proveyó su propia idea, la usamos en lugar de la que generó la IA.
+    if (data.recursos === 'solo_ideas' && data.descripcion) {
+      console.log("Escenario 'solo_ideas' detectado. Reemplazando 'campaign_creative_concept' con la descripción del usuario.");
+      copyResponse.campaign_creative_concept = data.descripcion;
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
+
+    // Mostrar el JSON (ya modificado si aplica) en la consola del navegador
+    console.log('Respuesta OpenAI (copyResponse):', copyResponse);
   } catch (error) {
     throw new Error('Hubo un problema al generar la campaña (copywriter). Inténtelo de nuevo más tarde.');
   }

@@ -45,6 +45,9 @@ export interface CampaignData {
   recursos?: string;
   user_image_url?: string;
   product_service?: string;
+  assets?: {
+    images_videos?: string[];
+  };
 }
 
 export interface IaData {
@@ -138,9 +141,9 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
       const googleVariants: { [key: string]: any } = {};
       docData.google_ai_ad_variants.forEach((variant: any, idx: number) => {
         googleVariants[`Variante ${idx + 1}`] = {
-          "Título sugerido": variant.suggested_title,
-          "Descripción corta": variant.short_description,
-          "Keywords recomendadas": variant.recommended_keywords,
+          "Título sugerido": Array.isArray(variant.headlines) && variant.headlines.length > 0 ? variant.headlines[0] : (variant.suggested_title || 'Sin título'),
+          "Descripción corta": Array.isArray(variant.descriptions) && variant.descriptions.length > 0 ? variant.descriptions[0] : (variant.short_description || 'Sin texto principal'),
+          "Keywords recomendadas": variant.keywords || variant.recommended_keywords,
           "CTA": variant.cta,
           "Estrategia de puja": variant.bidding_strategy,
           "Negative keywords": variant.negative_keywords,
@@ -191,15 +194,17 @@ const DashboardCampaignTabs: React.FC<DashboardCampaignTabsProps> = ({ platforms
       const variants: { [key: string]: any } = {};
       docData.ai_ad_variants.forEach((variant: any, idx: number) => {
         if (
+          (Array.isArray(variant.headlines) && variant.headlines.length > 0) ||
+          (Array.isArray(variant.descriptions) && variant.descriptions.length > 0) ||
           variant.suggested_title !== undefined ||
           variant.short_description !== undefined ||
           variant.recommended_keywords !== undefined
         ) {
           // Google Ads
           variants[`Variante ${idx + 1}`] = {
-            "Título sugerido": variant.suggested_title,
-            "Descripción corta": variant.short_description,
-            "Keywords recomendadas": variant.recommended_keywords,
+            "Título sugerido": Array.isArray(variant.headlines) && variant.headlines.length > 0 ? variant.headlines[0] : (variant.suggested_title || 'Sin título'),
+            "Descripción corta": Array.isArray(variant.descriptions) && variant.descriptions.length > 0 ? variant.descriptions[0] : (variant.short_description || 'Sin texto principal'),
+            "Keywords recomendadas": variant.keywords || variant.recommended_keywords,
             "CTA": variant.cta,
             "Estrategia de puja": variant.bidding_strategy,
             "Negative keywords": variant.negative_keywords,

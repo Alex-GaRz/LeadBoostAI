@@ -37,23 +37,34 @@ app.post('/api/openai/generate-campaign', async (req, res) => {
 app.post('/api/vertexai/generate-image', upload.single('init_image'), async (req, res) => {
   try {
     const prompt = req.body.prompt;
-    
-    // Por ahora, solo implementamos text-to-image con Vertex AI
+
+    // --- CÓDIGO A AÑADIR ---
+    console.log('--- PROMPT FINAL RECIBIDO POR EL BACKEND ---');
+    console.log(prompt);
+    console.log('--------------------------------------------');
+    // --- FIN DEL CÓDIGO A AÑADIR ---
+    let imageBase64;
     if (req.file) {
-      // Lógica para image-to-image (si se necesita en el futuro con Vertex)
-      console.log('[IA] Funcionalidad image-to-image con Vertex AI no implementada en este ejemplo.');
-      return res.status(501).json({ success: false, error: 'Image-to-image no implementado para Vertex AI.' });
+      // Escenario 1: inpainting/composición
+      console.log('[IA] Se recibió una imagen de referencia. Procediendo a generar imagen con prompt + imagen (inpainting/composición).');
+      // Convertir buffer a base64
+      const imageBuffer = req.file.buffer;
+      const imageMime = req.file.mimetype || 'image/png';
+      const imageBase64String = imageBuffer.toString('base64');
+      // Llamar a Vertex AI con prompt + imagen
+      imageBase64 = await generateImageWithVertexAI(prompt, imageBase64String, imageMime);
     } else {
-      // text-to-image
+      // Escenarios text-to-image
       console.log('[IA] Generando imagen solo con prompt usando Vertex AI');
-      const imageBase64 = await generateImageWithVertexAI(prompt);
-      if (!imageBase64) {
-        console.error('[IA] No se recibió imagen de Vertex AI (text-to-image)');
-        return res.status(500).json({ success: false, error: 'No se recibió imagen de la IA' });
-      }
-      // Devolvemos la imagen en base64
-      return res.json({ success: true, image: imageBase64 });
+      imageBase64 = await generateImageWithVertexAI(prompt);
     }
+    if (!imageBase64) {
+      console.error('[IA] No se recibió imagen de Vertex AI');
+      return res.status(500).json({ success: false, error: 'No se recibió imagen de la IA' });
+    }
+    // Devolvemos la imagen en base64
+    return res.json({ success: true, image: imageBase64 });
+
   } catch (err) {
     console.error('[IA] Error al generar imagen con Vertex AI:', err);
     res.status(500).json({ success: false, error: err.message || 'Error desconocido en el backend' });

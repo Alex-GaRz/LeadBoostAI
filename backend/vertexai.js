@@ -22,12 +22,33 @@ const predictionServiceClient = new PredictionServiceClient(clientOptions);
  * @param {string} prompt - El prompt de texto para la generación de la imagen.
  * @returns {Promise<string>} - La imagen generada en formato base64.
  */
-async function generateImageWithVertexAI(prompt) {
+async function generateImageWithVertexAI(prompt, imageBase64String = null, imageMime = 'image/png') {
   const endpoint = `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/${PUBLISHER}/models/${MODEL}`;
 
-  const instance = {
-    prompt: prompt,
-  };
+  // Log y validación del prompt
+  console.log('[VertexAI] Prompt recibido:', prompt);
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    console.error('[VertexAI] Error: Prompt vacío o inválido.');
+    throw new Error('Prompt vacío o inválido recibido para generación de imagen.');
+  }
+
+  let instance;
+  if (imageBase64String) {
+    // Inpainting/composición: La imagen base64 debe ir dentro de un objeto anidado.
+    instance = {
+      prompt: prompt,
+      image: {
+        bytesBase64Encoded: imageBase64String
+      }
+      // El mimeType no es necesario aquí si ya está implícito en el formato
+    };
+    console.log('[VertexAI] Enviando instancia con imagen base64 para inpainting/composición.');
+  } else {
+    // Text-to-image
+    instance = {
+      prompt: prompt,
+    };
+  }
   const parameters = {
     sampleCount: 1, // Generar una sola imagen
   };

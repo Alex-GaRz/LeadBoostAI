@@ -5,7 +5,7 @@ import { generateId } from '../../utils/generateId';
 import { useAuth } from '../../hooks/useAuth';
 import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase/firebaseConfig';
-import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { generateCampaignAI } from '../../services/OpenAIService';
 import { generateImageWithVertex } from '../../services/VertexAIService';
 
@@ -115,8 +115,19 @@ const CreateCampaignForm: React.FC = () => {
   const [step, setStep] = useState(1); // Controla el paso actual
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  // Eliminado editingSection, ya no se usa
-  // Eliminado: const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    setForm(prev => ({ ...prev, archivos: files }));
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    setPreviewUrls(files.map(file => URL.createObjectURL(file)));
+  };
+
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -171,7 +182,6 @@ const CreateCampaignForm: React.FC = () => {
       setError('Todos los campos son obligatorios.');
       return;
     }
-    // Validar dimensiones de imagen antes de mostrar el resumen
     if ((form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
       const allowedSizes = [
         [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
@@ -202,7 +212,6 @@ const CreateCampaignForm: React.FC = () => {
   };
 
   const handleConfirm = async () => {
-    // Validar dimensiones de imagen antes de cualquier procesamiento
     if ((form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
       const allowedSizes = [
         [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
@@ -232,7 +241,7 @@ const CreateCampaignForm: React.FC = () => {
         try {
           await fileLoadPromise;
         } catch {
-          return; // Detener el proceso si la imagen no es válida
+          return;
         }
       }
     }
@@ -245,7 +254,6 @@ const CreateCampaignForm: React.FC = () => {
     const campaignsRef = doc(db, `clients/${user.uid}/campaigns/${campaign_id}`);
 
     try {
-      // Primero, subir archivos si los hay
       let fileUrls: string[] = [];
       if (form.archivos && form.archivos.length > 0) {
         for (const file of form.archivos) {
@@ -256,7 +264,6 @@ const CreateCampaignForm: React.FC = () => {
         }
       }
 
-      // Construir el objeto de datos inicial de la campaña
       const campaignData: any = {
         ad_platform: form.ad_platform,
         campaign_id,
@@ -274,142 +281,91 @@ const CreateCampaignForm: React.FC = () => {
         call_to_action: form.accion,
         landing_page: form.destinoValor,
         landing_type: form.destinoTipo,
-        recursos: form.recursos, // foto_existente, imagen_lista, solo_ideas, nada
+        recursos: form.recursos,
         descripcion: form.recursos === 'solo_ideas' ? form.descripcion : null,
         assets: {
-          images_videos: (form.recursos === 'foto_existente' || form.recursos === 'imagen_lista') && fileUrls.length > 0
-            ? fileUrls
-            : (isEditMode ? undefined : null)
+          images_videos:
+            (form.recursos === 'foto_existente' || form.recursos === 'imagen_lista') && fileUrls.length > 0 && form.recursos === 'imagen_lista'
+              ? fileUrls
+              : (isEditMode ? undefined : null)
         },
         ...(isEditMode ? {} : { createdAt: serverTimestamp() }),
       };
 
-      // Guardar o actualizar el documento principal de la campaña
-
-      // --- Lógica de generación de imágenes y texto con IA ---
+      let generatedImageUrl: string | undefined = undefined;
       if (form.recursos !== 'imagen_lista') {
-        const imageFile = form.recursos === 'foto_existente' ? form.archivos[0] : undefined;
-        if (imageFile) {
-          const allowedSizes = [
-            [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
-            [640, 1536], [768, 1344], [832, 1216], [896, 1152]
-          ];
-          const img = document.createElement('img');
-          const fileReader = new FileReader();
-          const fileLoadPromise = new Promise<void>((resolve, reject) => {
-            fileReader.onload = () => {
-              img.onload = () => {
-                const valid = allowedSizes.some(([w, h]) => (img.width === w && img.height === h));
-                if (!valid) {
-                  setError(`La imagen de entrada debe tener una de las siguientes dimensiones exactas: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152. La imagen seleccionada es ${img.width}x${img.height}.`);
-                  setIsGeneratingImage(false);
-                  setLoading(false);
-                  reject();
-                } else {
-                  resolve();
-                }
-              };
-              img.onerror = reject;
-              img.src = fileReader.result as string;
-            };
-            fileReader.onerror = reject;
-            fileReader.readAsDataURL(imageFile);
-          });
-          try {
-            await fileLoadPromise;
-          } catch {
-            return; // Detener el proceso si la imagen no es válida
-          }
-        }
-
-        setIsGeneratingAI(true);
+        setIsGeneratingImage(true);
         try {
-          const aiData = await generateCampaignAI(campaignData);
-          console.log('Respuesta de OpenAI:', aiData);
-          const vertexAiPrompt = aiData.vertex_ai_prompt;
-          if (!vertexAiPrompt) {
-            setError('No se recibió prompt para Vertex AI de OpenAI.');
-            setIsGeneratingAI(false);
-            setLoading(false);
-            return;
-          }
-          console.log('Prompt para Vertex AI:', vertexAiPrompt);
+          // Debe ser 'foto_existente' para inpainting
+          const hasUploadedImage = form.recursos === 'foto_existente' && form.archivos.length > 0;
+          const aiContentForImage = await generateCampaignAI(campaignData, 0, hasUploadedImage);
 
-          setIsGeneratingImage(true);
-          try {
-            const imageFile = form.recursos === 'foto_existente' ? form.archivos[0] : undefined;
-            const response = await generateImageWithVertex(vertexAiPrompt);
-            const base64Image = response; // La función ahora devuelve la cadena directamente
-            const imageBlob = base64ToBlob(base64Image);
-
-            const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
-            await uploadBytes(generatedImageRef, imageBlob);
-            const generatedImageUrl = await getDownloadURL(generatedImageRef);
-            console.log('URL de imagen generada:', generatedImageUrl);
-
-            await setDoc(campaignsRef, { 'assets.image_videos': [generatedImageUrl], generated_image_url: generatedImageUrl }, { merge: true });
-            setIsGeneratingImage(false);
-          } catch (imgError: any) {
-            setError(`Error al generar o subir la imagen: ${imgError.message}`);
-            setIsGeneratingImage(false);
-            setLoading(false);
-            return;
+          if (!aiContentForImage.vertex_ai_prompt) {
+            throw new Error("La IA no generó un prompt de imagen válido.");
           }
 
-          const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
-          await addDoc(iaDataRef, aiData);
+          // Enviar el archivo de imagen solo si corresponde
+          const imageFile = hasUploadedImage ? form.archivos[0] : undefined;
+          const imageBase64 = await generateImageWithVertex(
+            aiContentForImage.vertex_ai_prompt,
+            imageFile
+          );
+          if (!imageBase64) {
+            throw new Error('La IA no devolvió una imagen válida.');
+          }
 
-        } catch (aiError: any) {
-          setError(`Error en la generación de contenido por IA: ${aiError.message}`);
-          setIsGeneratingAI(false);
+          const imageBlob = base64ToBlob(imageBase64);
+          const storageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
+          const snapshot = await uploadBytes(storageRef, imageBlob);
+          generatedImageUrl = await getDownloadURL(snapshot.ref);
+
+          campaignData.generated_image_url = generatedImageUrl;
+          // En escenario 1 (foto_existente), solo guardar la imagen generada por IA en assets.images_videos
+          if (form.recursos === 'foto_existente') {
+            campaignData.assets.images_videos = [generatedImageUrl];
+          } else if (!campaignData.assets.images_videos || !Array.isArray(campaignData.assets.images_videos)) {
+            campaignData.assets.images_videos = [generatedImageUrl];
+          }
+
+        } catch (imgError: any) {
+          setError(`Error en la generación de imagen por IA: ${imgError.message}`);
+          setIsGeneratingImage(false);
           setLoading(false);
           return;
         }
-        setIsGeneratingAI(false);
+        setIsGeneratingImage(false);
       }
 
-      // --- Generación de texto con IA DESACTIVADA TEMPORALMENTE ---
-      // setIsGeneratingAI(true);
-      // let aiData = null;
-      // try {
-      //   aiData = await generateCampaignAI({ ...campaignData, generated_image_url: generatedImageUrl });
-      //   if (!aiData || Object.keys(aiData).length === 0) {
-      //     throw new Error('La IA no devolvió datos de texto válidos.');
-      //   }
-      // } catch (aiError: any) {
-      //   setError(`Error en la generación de texto por IA: ${aiError.message}`);
-      //   setIsGeneratingAI(false);
-      //   setLoading(false);
-      //   return; // Detener el proceso si el texto falla
-      // }
-      // setIsGeneratingAI(false);
-
-      // Solo guardar la campaña si ambas IAs funcionaron
-      // generatedImageUrl puede estar indefinido si no se generó imagen con IA
-      let generatedImageUrl: string | undefined = undefined;
-      // Buscar si ya se generó una imagen en la sección anterior
-      if (form.recursos !== 'imagen_lista' && form.recursos !== 'nada') {
-        // Si se generó imagen con IA, buscar la url en storage
-        try {
-          const generatedImageRef = ref(storage, `clients/${user.uid}/campaigns/${campaign_id}/ia_data/generated_image.png`);
-          generatedImageUrl = await getDownloadURL(generatedImageRef);
-        } catch (e) {
-          // Puede no existir si no se generó imagen
+      setIsGeneratingAI(true);
+      let aiData = null;
+      try {
+        const hasUploadedImage = form.recursos === 'productos' && form.archivos.length > 0;
+        aiData = await generateCampaignAI({ ...campaignData, generated_image_url: generatedImageUrl }, 0, hasUploadedImage);
+        if (!aiData || Object.keys(aiData).length === 0) {
+          throw new Error('La IA no devolvió datos de texto válidos.');
         }
+        // Si la IA devuelve campaign_name, guárdalo en el documento principal
+        if (aiData.campaign_name) {
+          campaignData.campaign_name = aiData.campaign_name;
+        }
+      } catch (aiError: any) {
+        setError(`Error en la generación de texto por IA: ${aiError.message}`);
+        setIsGeneratingAI(false);
+        setLoading(false);
+        return;
       }
-      if (generatedImageUrl) {
-        campaignData.generated_image_url = generatedImageUrl;
-      }
-      // Guardar campaña y datos IA
-      // Usar setDoc con merge: true para crear o actualizar siempre
-      if (!fileUrls.length) delete campaignData.assets.images_videos;
-      await setDoc(campaignsRef, campaignData, { merge: true });
-      // if (aiData) {
-      //   const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
-      //   await addDoc(iaDataRef, aiData);
-      // }
+      setIsGeneratingAI(false);
 
-      // Si todo fue exitoso, navegar al dashboard
+      if (!fileUrls.length && campaignData.assets.images_videos && campaignData.assets.images_videos.length === 0) {
+        delete campaignData.assets.images_videos;
+      }
+      await setDoc(campaignsRef, campaignData, { merge: true });
+      
+      if (aiData) {
+        const iaDataRef = collection(db, `clients/${user.uid}/campaigns/${campaign_id}/ia_data`);
+        await addDoc(iaDataRef, { ...aiData, createdAt: serverTimestamp() });
+      }
+
       setLoading(false);
       navigate(`/dashboard/campaign/${campaign_id}`);
 
@@ -424,7 +380,6 @@ const CreateCampaignForm: React.FC = () => {
 
   const nextStep = async () => {
     setError('');
-    // Validar dimensiones de imagen antes de avanzar desde el paso 5 y si corresponde
     if (step === 5 && (form.recursos === 'productos' || form.recursos === 'anuncio') && form.archivos && form.archivos.length > 0) {
       const allowedSizes = [
         [1024, 1024], [1152, 896], [1216, 832], [1344, 768], [1536, 640],
@@ -452,8 +407,6 @@ const CreateCampaignForm: React.FC = () => {
     }
     setStep(step + 1);
   };
-
-  // Eliminado prevStep, ya no se usa
 
   if (isGeneratingImage || isGeneratingAI) {
     return (
@@ -862,11 +815,7 @@ const CreateCampaignForm: React.FC = () => {
                         type="file"
                         name="archivos"
                         accept="image/*"
-                        onChange={e => {
-                          const files = e.target.files ? Array.from(e.target.files) : [];
-                          setForm({ ...form, archivos: files });
-                          setPreviewUrls(files.map(file => URL.createObjectURL(file)));
-                        }}
+                        onChange={handleFileChange}
                         className="hidden"
                       />
                     </label>
@@ -922,11 +871,7 @@ const CreateCampaignForm: React.FC = () => {
                         type="file"
                         name="archivos"
                         accept="image/*"
-                        onChange={e => {
-                          const files = e.target.files ? Array.from(e.target.files) : [];
-                          setForm({ ...form, archivos: files });
-                          setPreviewUrls(files.map(file => URL.createObjectURL(file)));
-                        }}
+                        onChange={handleFileChange}
                         className="hidden"
                       />
                     </label>
@@ -1050,7 +995,6 @@ const CreateCampaignForm: React.FC = () => {
         </div>
         {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
       </form>
-      {/* Eliminado EditSectionModal, ahora la edición es por navegación de pasos */}
     </div>
   );
 };
