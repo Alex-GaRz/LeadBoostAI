@@ -1,8 +1,17 @@
 // backend/index.js
 
+
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+
+// Inicializar Firebase Admin con credenciales de servicio
+const admin = require('firebase-admin');
+const serviceAccount = require('./serviceAccountKey.json');
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 
 const app = express();
 app.use(cors());
@@ -34,6 +43,48 @@ app.post('/api/openai/generate-campaign', async (req, res) => {
 });
 
 // Soporta ambos: text-to-image (solo prompt) y image-to-image (prompt + archivo)
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const db = getFirestore();
+
+app.post('/api/battle-plans', async (req, res) => {
+  try {
+    const {
+      planName,
+      playbookType,
+      userId,
+      radarConfig
+    } = req.body;
+
+    // Validación básica
+    if (!planName || !playbookType || !userId || !radarConfig) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios.' });
+    }
+
+    // Construir el objeto del plan de batalla
+    const battlePlanData = {
+      planName,
+      playbookType,
+      status: 'ACTIVE',
+      createdAt: Timestamp.now(),
+      userId,
+      radarConfig,
+      automationMode: 'MANUAL'
+    };
+
+    // Crear el documento en Firestore
+    const docRef = await db
+      .collection('clients')
+      .doc(userId)
+      .collection('battle_plans')
+      .add(battlePlanData);
+
+    res.status(201).json({ success: true, planId: docRef.id });
+  } catch (error) {
+    console.error('[BattlePlan] Error al crear el plan:', error.message);
+    res.status(500).json({ error: 'Error al crear el plan de batalla.' });
+  }
+});
+
 app.post('/api/vertexai/generate-image', upload.single('init_image'), async (req, res) => {
   try {
     const prompt = req.body.prompt;
