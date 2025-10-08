@@ -14,6 +14,7 @@
     "@types/file-saver": "^2.0.7",
     "@types/node": "^24.2.1",
     "@types/react-pdf": "^6.2.0",
+    "axios": "^1.12.2",
     "file-saver": "^2.0.5",
     "firebase": "^12.1.0",
     "html2canvas": "^1.4.1",
