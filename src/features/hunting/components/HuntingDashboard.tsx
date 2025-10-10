@@ -19,6 +19,7 @@ interface Props {
 }
 
 const HuntingDashboard: React.FC<Props> = ({ missionId }) => {
+  console.log("PASO 2 (LLEGADA): El Panel de Resultados recibió este ID:", missionId);
   const { user } = useAuth();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +30,25 @@ const HuntingDashboard: React.FC<Props> = ({ missionId }) => {
     setIsLoading(true);
     const oppRef = collection(db, `clients/${user.uid}/battle_plans/${missionId}/opportunities`);
     const unsubscribe = onSnapshot(oppRef, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Opportunity));
+      const rawData = snapshot.docs.map(doc => doc.data());
+      console.log("Datos crudos de Firestore:", rawData);
+      const docs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          source: data.source || "N/A",
+          signalText: data.signalText || "Sin señal",
+          status: data.status || "PENDIENTE",
+          targetProfile: {
+            name: data.targetProfile?.name || "Prospecto Sin Nombre",
+            jobTitle: data.targetProfile?.jobTitle || "Sin Cargo",
+            companyName: data.targetProfile?.companyName || "Sin Empresa",
+            linkedinURL: data.targetProfile?.linkedinURL || "",
+          },
+          sourceURL: data.sourceURL || "",
+          detectedAt: data.detectedAt || "",
+        };
+      });
       setOpportunities(docs);
       setIsLoading(false);
     }, (error) => {

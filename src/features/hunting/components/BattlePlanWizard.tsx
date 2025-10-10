@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import RadarConfigForm from "./RadarConfigForm";
 import { useAuth } from "../../../hooks/useAuth";
 import axios from "axios";
@@ -14,6 +15,7 @@ interface BattlePlanWizardProps {
 }
 
 const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated }) => {
+  const navigate = useNavigate();
   // Estado para RadarConfigForm
   const [industries, setIndustries] = useState("");
   const [companySizes, setCompanySizes] = useState("");
@@ -62,7 +64,9 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
     try {
       const response = await axios.post("/api/battle-plans", battlePlanData);
       if (response.data && response.data.success && response.data.planId) {
-        handleMissionCreated(response.data.planId);
+        const newMissionId = response.data.planId;
+        handleMissionCreated(newMissionId);
+        navigate(`/hunting/${newMissionId}`);
       } else {
         setError("No se pudo crear el plan. Intenta de nuevo.");
       }

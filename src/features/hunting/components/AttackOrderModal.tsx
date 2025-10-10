@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import axios from "axios";
 
 interface AttackOrderModalProps {
   opportunity: any;
@@ -6,6 +7,29 @@ interface AttackOrderModalProps {
 }
 
 const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, onClose }) => {
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Lógica principal de lanzamiento
+  const handleLaunch = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post("/api/execute-attack", { opportunity });
+      if (response.data.success) {
+        alert("¡Campaña generada con éxito!");
+        onClose();
+      } else {
+        setError(response.data.error || "Error desconocido");
+      }
+    } catch (err: any) {
+      setError("Hubo un problema al lanzar la campaña. Por favor, revisa la consola del servidor.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!opportunity) return null;
 
   return (
@@ -34,12 +58,16 @@ const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, onClos
             Cancelar
           </button>
           <button
-            className="px-6 py-2 rounded bg-green-600 text-white font-bold hover:bg-green-700 transition"
-            onClick={() => {/* Acción futura */}}
+            className="px-6 py-2 rounded bg-green-600 text-white font-bold hover:bg-green-700 transition disabled:opacity-60"
+            onClick={handleLaunch}
+            disabled={isLoading}
           >
-            LANZAR AHORA
+            {isLoading ? "Lanzando..." : "LANZAR AHORA"}
           </button>
         </div>
+        {error && (
+          <p className="text-red-500 mt-2">{error}</p>
+        )}
       </div>
     </div>
   );

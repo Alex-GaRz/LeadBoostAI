@@ -6,8 +6,9 @@ const HuntingPage: React.FC = () => {
   const [missionId, setMissionId] = useState<string>("");
 
   // Esta función se pasará al wizard para actualizar el missionId cuando se cree una misión
-  const handleMissionCreated = (id: string) => {
-    setMissionId(id);
+  const handleMissionCreated = (newMissionId: string) => {
+    console.log("PASO 1 (ÉXITO): La Campaña se creó. El ID es:", newMissionId);
+    setMissionId(newMissionId);
   };
 
   return (

@@ -7,9 +7,13 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import HuntingPage from './pages/HuntingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+
+// Nuevos componentes de la sección hunting
+import MissionListPage from './pages/MissionListPage';
+import CreateMissionPage from './pages/CreateMissionPage';
+import MissionDetailPage from './pages/MissionDetailPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -50,8 +54,23 @@ function App() {
             path="/hunting"
             element={
               <ProtectedRoute>
-                <Header />
-                <HuntingPage />
+                <MissionListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hunting/new"
+            element={
+              <ProtectedRoute>
+                <CreateMissionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hunting/:missionId"
+            element={
+              <ProtectedRoute>
+                <MissionDetailPage />
               </ProtectedRoute>
             }
           />
@@ -76,7 +95,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/crear-campana"
             element={
