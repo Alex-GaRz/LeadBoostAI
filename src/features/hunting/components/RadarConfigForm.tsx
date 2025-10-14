@@ -19,6 +19,10 @@ interface RadarConfigFormProps {
   setMonitorsFunding: (v: boolean) => void;
   monitorsHiring: boolean;
   setMonitorsHiring: (v: boolean) => void;
+  imageStyle: string;
+  setImageStyle: (v: string) => void;
+  imageDescription: string;
+  setImageDescription: (v: string) => void;
 }
 
 const RadarConfigForm: React.FC<RadarConfigFormProps> = ({
@@ -39,110 +43,138 @@ const RadarConfigForm: React.FC<RadarConfigFormProps> = ({
   monitorsFunding,
   setMonitorsFunding,
   monitorsHiring,
-  setMonitorsHiring
+  setMonitorsHiring,
+  imageStyle,
+  setImageStyle,
+  imageDescription,
+  setImageDescription
 }) => {
   return (
-    <div className="bg-gray-50 p-6 rounded-lg shadow mb-6">
+    <div className="bg-brand-bg p-6 rounded-lg shadow mb-6">
       {/* Demographics Section */}
-      <h3 className="text-lg font-semibold mb-4 text-gray-700">Demographics</h3>
+  <h3 className="text-lg font-semibold mb-4 text-brand-base">Demographics</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Industrias</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Industrias</label>
           <input
             type="text"
             value={industries}
             onChange={e => setIndustries(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: SaaS, Retail, Finanzas"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Tamaños de Empresa</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Tamaños de Empresa</label>
           <input
             type="text"
             value={companySizes}
             onChange={e => setCompanySizes(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: 1-50, 51-200, 201+"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Ubicaciones</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Ubicaciones</label>
           <input
             type="text"
             value={locations}
             onChange={e => setLocations(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: México, USA, España"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Puestos de Trabajo</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Puestos de Trabajo</label>
           <input
             type="text"
             value={jobTitles}
             onChange={e => setJobTitles(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: CEO, CTO, Marketing Manager"
           />
         </div>
       </div>
 
       {/* Signals Section */}
-      <h3 className="text-lg font-semibold mb-4 text-gray-700">Señales</h3>
+  <h3 className="text-lg font-semibold mb-4 text-brand-base">Señales</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Competidores</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Competidores</label>
           <input
             type="text"
             value={competitors}
             onChange={e => setCompetitors(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: Salesforce, HubSpot"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Palabras Clave de Frustración</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Palabras Clave de Frustración</label>
           <input
             type="text"
             value={frustrationKeywords}
             onChange={e => setFrustrationKeywords(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: lento, caro, difícil"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Palabras Clave de Búsqueda</label>
+          <label className="block text-sm font-medium text-brand-label mb-1">Palabras Clave de Búsqueda</label>
           <input
             type="text"
             value={searchKeywords}
             onChange={e => setSearchKeywords(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
             placeholder="Ej: CRM, automatización"
           />
         </div>
       </div>
 
+      {/* Directivas de Imagen */}
+  <h3 className="text-lg font-semibold mb-4 text-brand-base">Directivas de Imagen</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium text-brand-label mb-1">Estilo de Imagen</label>
+          <input
+            type="text"
+            value={imageStyle}
+            onChange={e => setImageStyle(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
+            placeholder="Ej: Fotografía profesional, minimalista"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-brand-label mb-1">Descripción de Imagen</label>
+          <input
+            type="text"
+            value={imageDescription}
+            onChange={e => setImageDescription(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
+            placeholder="Ej: Una oficina moderna y limpia con luz natural"
+          />
+        </div>
+      </div>
       {/* Purchase Events Section */}
-      <h3 className="text-lg font-semibold mb-4 text-gray-700">Eventos de Compra</h3>
+  <h3 className="text-lg font-semibold mb-4 text-brand-base">Eventos de Compra</h3>
       <div className="flex gap-8 mb-2">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={monitorsFunding}
             onChange={e => setMonitorsFunding(e.target.checked)}
-            className="form-checkbox h-5 w-5 text-blue-600"
+            className="form-checkbox h-5 w-5 text-brand-action"
           />
-          <span className="text-gray-700">Monitorear Rondas de Financiamiento</span>
+          <span className="text-brand-base">Monitorear Rondas de Financiamiento</span>
         </label>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={monitorsHiring}
             onChange={e => setMonitorsHiring(e.target.checked)}
-            className="form-checkbox h-5 w-5 text-blue-600"
+            className="form-checkbox h-5 w-5 text-brand-action"
           />
-          <span className="text-gray-700">Monitorear Contrataciones</span>
+          <span className="text-brand-base">Monitorear Contrataciones</span>
         </label>
       </div>
     </div>

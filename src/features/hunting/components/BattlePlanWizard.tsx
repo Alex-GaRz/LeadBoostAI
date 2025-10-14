@@ -31,6 +31,9 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
   const [playbookType, setPlaybookType] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Estado para directivas de imagen
+  const [imageStyle, setImageStyle] = useState("");
+  const [imageDescription, setImageDescription] = useState("");
 
   // Si no se pasa la prop, usar función vacía por defecto
   const handleMissionCreated = onMissionCreated || (() => {});
@@ -51,7 +54,9 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
       frustrationKeywords,
       searchKeywords,
       monitorsFunding,
-      monitorsHiring
+      monitorsHiring,
+      imageStyle,
+      imageDescription
     };
     const battlePlanData = {
       planName,
@@ -80,19 +85,19 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
 
   return (
   <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
-  <h2 className="text-2xl font-bold mb-6 text-gray-800">Configurar Plan de Batalla</h2>
+  <h2 className="text-2xl font-bold mb-6 text-brand-title">Configurar Plan de Batalla</h2>
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Plan</label>
+  <label className="block text-sm font-medium text-brand-label mb-1">Nombre del Plan</label>
         <input
           type="text"
           value={planName}
           onChange={e => setPlanName(e.target.value)}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-action"
           placeholder="Ejemplo: Plan Q4 Competidores"
         />
       </div>
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Playbook</label>
+  <label className="block text-sm font-medium text-brand-label mb-2">Tipo de Playbook</label>
         <div className="flex gap-3">
           {playbookOptions.map(option => (
             <button
@@ -101,8 +106,8 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
               onClick={() => setPlaybookType(option)}
               className={`px-4 py-2 rounded-md border font-semibold transition-colors duration-150 ${
                 playbookType === option
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-blue-100"
+                  ? "bg-brand-action text-white border-brand-action"
+                  : "bg-brand-secondary text-brand-base border-brand-secondary hover:bg-brand-action/10"
               }`}
             >
               {option}
@@ -111,24 +116,28 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
         </div>
       </div>
       <RadarConfigForm
-        industries={industries}
-        setIndustries={setIndustries}
-        companySizes={companySizes}
-        setCompanySizes={setCompanySizes}
-        locations={locations}
-        setLocations={setLocations}
-        jobTitles={jobTitles}
-        setJobTitles={setJobTitles}
-        competitors={competitors}
-        setCompetitors={setCompetitors}
-        frustrationKeywords={frustrationKeywords}
-        setFrustrationKeywords={setFrustrationKeywords}
-        searchKeywords={searchKeywords}
-        setSearchKeywords={setSearchKeywords}
-        monitorsFunding={monitorsFunding}
-        setMonitorsFunding={setMonitorsFunding}
-        monitorsHiring={monitorsHiring}
-        setMonitorsHiring={setMonitorsHiring}
+  industries={industries}
+  setIndustries={setIndustries}
+  companySizes={companySizes}
+  setCompanySizes={setCompanySizes}
+  locations={locations}
+  setLocations={setLocations}
+  jobTitles={jobTitles}
+  setJobTitles={setJobTitles}
+  competitors={competitors}
+  setCompetitors={setCompetitors}
+  frustrationKeywords={frustrationKeywords}
+  setFrustrationKeywords={setFrustrationKeywords}
+  searchKeywords={searchKeywords}
+  setSearchKeywords={setSearchKeywords}
+  monitorsFunding={monitorsFunding}
+  setMonitorsFunding={setMonitorsFunding}
+  monitorsHiring={monitorsHiring}
+  setMonitorsHiring={setMonitorsHiring}
+  imageStyle={imageStyle}
+  setImageStyle={setImageStyle}
+  imageDescription={imageDescription}
+  setImageDescription={setImageDescription}
       />
       {error && (
         <div className="text-red-600 font-semibold mb-4">{error}</div>
@@ -137,7 +146,7 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
         <button
           type="submit"
           disabled={isLoading}
-          className={`px-6 py-2 bg-green-600 text-white rounded-md font-bold transition-colors ${isLoading ? "opacity-60 cursor-not-allowed" : "hover:bg-green-700"}`}
+          className={`px-6 py-2 bg-brand-primary text-white rounded-md font-bold transition-colors ${isLoading ? "opacity-60 cursor-not-allowed" : "hover:bg-brand-primary/80"}`}
         >
           {isLoading ? "Guardando..." : "Guardar Plan de Batalla"}
         </button>

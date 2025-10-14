@@ -22,7 +22,8 @@ require('dotenv').config();
 const admin = require('firebase-admin');
 const serviceAccount = require('./serviceAccountKey.json');
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: "leadboost-ai-1966c.firebasestorage.app"
 });
 
 
@@ -41,61 +42,92 @@ const { generateImageWithVertexAI } = require('./vertexai');
 
 // Nuevo endpoint traductor: recibe opportunity, traduce y ejecuta generación de campaña
 app.post('/api/execute-attack', async (req, res) => {
-  try {
-    const opportunity = req.body.opportunity;
-    if (!opportunity || !opportunity.targetProfile) {
-      return res.status(400).json({ success: false, error: 'Faltan datos de oportunidad.' });
-    }
-    console.log('[ExecuteAttack] opportunity recibido:', opportunity);
+    console.log('[API] Endpoint /api/execute-attack alcanzado.');
+    try {
+        // 1. Recibir y validar los datos del front-end (opportunity, strategyId y userId)
+        const { opportunity, strategyId } = req.body;
+        const userId = opportunity?.userId; // O como sea que obtengas el userId
 
-      // Inicialización y mapeo completo de campaignDataForAI
-      const campaignDataForAI = {
-        business_name: opportunity.targetProfile.companyName || 'Empresa Desconocida',
-        industry: opportunity.targetProfile.industry || 'Servicios profesionales',
-        product_service: opportunity.product_service || 'Solución personalizada',
-        value_proposition: opportunity.signalText || 'Propuesta de valor no especificada',
-        campaign_goal: opportunity.campaign_goal || 'Generar oportunidad de venta directa',
-        target_audience: `${opportunity.targetProfile.name || ''}${opportunity.targetProfile.jobTitle ? ', ' + opportunity.targetProfile.jobTitle : ''}`.trim(),
-        locations: opportunity.locations || ['Ciudad de México'],
-        budget_amount: opportunity.budget_amount || 1000,
-        budget_currency: opportunity.budget_currency || 'USD',
-        duration: opportunity.duration || '7 días',
-        ad_style: opportunity.ad_style || 'Directo, personalizado, enfocado en dolor',
-        call_to_action: opportunity.call_to_action || 'Agenda una llamada',
-        landing_type: opportunity.landing_type || 'Formulario de contacto',
-        landing_page: opportunity.landing_page || 'https://ejemplo.com/contacto',
-        ad_platform: opportunity.ad_platform || 'LinkedIn',
-        recursos: opportunity.recursos || ['Imagen profesional', 'Texto persuasivo'],
-        descripcion: opportunity.descripcion || 'Campaña dirigida a un objetivo específico para resolver un dolor puntual.',
-      };
+        if (!opportunity || !strategyId || !userId) {
+            console.error('[API] Error: Faltan datos críticos en la petición.');
+            return res.status(400).json({ error: "Faltan datos críticos (opportunity, strategyId o userId)." });
+        }
 
-      // Llamada a la función principal de IA
-      const newCampaignResult = await generateCampaignAI(campaignDataForAI);
-      console.log('[ExecuteAttack] Resultado IA:', newCampaignResult);
-      // Parsear la respuesta si es string
-      let parsedResult = newCampaignResult;
-      if (typeof newCampaignResult === 'string') {
+        // 2. "Traducir" la Oportunidad al formato CampaignData (tu lógica existente)
+        const campaignDataForAI = {
+            business_name: opportunity.targetProfile.companyName,
+            value_proposition: opportunity.signalText,
+            target_audience: `El objetivo es ${opportunity.targetProfile.name}, ${opportunity.targetProfile.jobTitle}`,
+            // ... y todos los demás campos por defecto que ya definimos
+        };
+
+      // Leer el battle_plan desde Firestore
+      const battlePlanRef = db.collection(`clients/${userId}/battle_plans`).doc(strategyId);
+      const battlePlanDoc = await battlePlanRef.get();
+      if (!battlePlanDoc.exists) {
+        return res.status(404).json({ error: 'battle_plan no encontrado' });
+      }
+      const battlePlan = battlePlanDoc.data();
+  // Extraer prompt principal y campos de imagen desde radarConfig
+  const campaignPrompt = battlePlan?.prompt || req.body.prompt;
+  const imageStyle = battlePlan?.radarConfig?.imageStyle || req.body.imageStyle || '';
+  const imageDescription = battlePlan?.radarConfig?.imageDescription || req.body.imageDescription || '';
+      // Llamar a la IA para generar la campaña, pasando instrucciones de imagen
+      const aiResult = await generateCampaignAI({ prompt: campaignPrompt, strategyId, imageStyle, imageDescription }, userId, strategyId, true);
+
+      // Generar imagen con Vertex AI si hay instrucciones de imagen
+      let generatedImageUrl = '';
+      if (imageStyle || imageDescription) {
+        // Construir prompt técnico para imagen
+        const artDirectorPrompt = `Genera una imagen para la campaña. Estilo: ${imageStyle}. Descripción: ${imageDescription}.`;
         try {
-          parsedResult = JSON.parse(newCampaignResult);
-        } catch (e) {
-          throw new Error('La respuesta de la IA no es un JSON válido.');
+          const imageBase64 = await generateImageWithVertexAI(artDirectorPrompt);
+          // Subir imagen a Firebase Storage y obtener URL
+          const bucket = admin.storage().bucket();
+          const fileName = `clients/${userId}/campaign_images/${aiResult.id || Date.now()}.png`;
+          const file = bucket.file(fileName);
+          await file.save(Buffer.from(imageBase64, 'base64'), {
+            contentType: 'image/png',
+            public: true
+          });
+          // Hacer pública la imagen y obtener URL
+          await file.makePublic();
+          generatedImageUrl = file.publicUrl();
+          console.log('[API] Imagen subida a Storage. URL:', generatedImageUrl);
+        } catch (imgErr) {
+          console.error('[API] Error al generar/subir imagen:', imgErr);
         }
       }
-      // Validación del resultado
-      if (!parsedResult || !parsedResult.id) {
-        throw new Error('La IA no devolvió un ID de campaña válido.');
+
+      // Añadir la URL generada al resultado de la campaña y guardar en Firestore
+      if (generatedImageUrl) {
+        aiResult.generated_image_url = generatedImageUrl;
+        // Actualizar el documento de campaña en Firestore
+        try {
+          const db = admin.firestore();
+          const campaignCollectionRef = db.collection(`clients/${userId}/campaigns`);
+          await campaignCollectionRef.doc(aiResult.id).update({ generated_image_url: generatedImageUrl });
+        } catch (firestoreErr) {
+          console.error('[API] Error al actualizar la campaña con la URL de imagen:', firestoreErr);
+        }
       }
-      // Respuesta exitosa con status 201 y el ID de la campaña
-      return res.status(201).json({ success: true, newCampaignId: parsedResult.id });
-  } catch (err) {
-    console.error('[ExecuteAttack] Error:', err);
-    // Si el error viene de la IA, mostrar el objeto completo si existe
-    if (err.response && err.response.data) {
-      console.error('[ExecuteAttack] Error IA:', err.response.data);
+
+        // 4. Validar que la IA devolvió un resultado válido
+        if (!aiResult || !aiResult.id) {
+            throw new Error("La generación de IA no devolvió un resultado con ID válido.");
+        }
+
+        // 5. ***** LA CORRECCIÓN CRÍTICA *****
+        // Nos aseguramos de devolver el RESULTADO DE LA IA (`aiResult`), 
+        // no los datos de entrada (`campaignDataForAI`).
+        console.log('[API] Éxito. Enviando resultado de la IA al front-end:', aiResult);
+        res.status(201).json({ success: true, campaignResult: aiResult });
+
+    } catch (error) {
+        console.error("[API] ERROR CRÍTICO en /api/execute-attack:", error);
+        res.status(500).json({ error: "Error interno al ejecutar el ataque." });
     }
-    res.status(500).json({ success: false, error: err.message || 'Error interno del servidor.' });
-  }
-});
+}); // <-- Cierre correcto de la función y la ruta
 
 // Multer para manejo de archivos
 const multer = require('multer');

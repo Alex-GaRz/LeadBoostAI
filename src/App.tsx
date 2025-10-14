@@ -1,3 +1,5 @@
+
+// Nuevos componentes de la sección hunting
 import DashboardCampaignPage from './components/Dashboard/DashboardCampaignPage';
 import CreateCampaignForm from './components/Dashboard/CreateCampaignForm';
 import React from 'react';
@@ -14,6 +16,8 @@ import { useAuth } from './hooks/useAuth';
 import MissionListPage from './pages/MissionListPage';
 import CreateMissionPage from './pages/CreateMissionPage';
 import MissionDetailPage from './pages/MissionDetailPage';
+import GeneratedCampaignsPage from './pages/GeneratedCampaignsPage';
+import MicroCampaignDetailPage from './pages/MicroCampaignDetailPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -103,6 +107,22 @@ function App() {
                 <div className="flex justify-center w-full">
                   <CreateCampaignForm />
                 </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/generated-campaigns"
+            element={
+              <ProtectedRoute>
+                <GeneratedCampaignsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/micro-campaign-detail"
+            element={
+              <ProtectedRoute>
+                <MicroCampaignDetailPage />
               </ProtectedRoute>
             }
           />

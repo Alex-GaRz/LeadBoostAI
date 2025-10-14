@@ -6,13 +6,11 @@ import { signOut } from '../../firebase/authService';
 
 const menuItems = [
   { label: 'Inicio', to: '/dashboard', icon: Home },
-  { label: 'Crear Campañas', to: '/dashboard#crear-campana', icon: Plus, blue: true },
-  { label: 'Mis campañas', to: '/dashboard#campanias-recientes', icon: Layers, blue: true },
-  { label: 'Estadísticas', to: '/dashboard#reportes-insights', icon: BarChart3, blue: true },
-  { label: 'Galeria de contenido', to: '/dashboard#galeria-contenido', icon: Image, blue: true },
-  // { label: 'Contenido para anuncios', to: '/dashboard/contenido', icon: Image }, // Eliminado temporalmente
-  // { label: 'Analisis de competidores', to: '/dashboard/competidores', icon: Users }, // Oculto temporalmente
-  // { label: 'Configuración', to: '/dashboard/configuracion', icon: Settings } // Eliminado temporalmente
+  // { label: 'Crear Campañas', to: '/dashboard#crear-campana', icon: Plus, blue: true }, // Ocultado temporalmente
+  // { label: 'Galeria de contenido', to: '/dashboard#galeria-contenido', icon: Image, blue: true }, // Ocultado temporalmente
+  { label: 'Adquisición Inteligente', to: '/hunting', icon: Zap, blue: true, prominent: true },
+  { label: 'Campañas Generadas', to: '/generated-campaigns', icon: Layers, blue: true },
+  // { label: 'Estadísticas', to: '/dashboard#reportes-insights', icon: BarChart3, blue: true }, // Ocultado temporalmente
 ];
 
 interface ActionsSidebarProps {
@@ -47,7 +45,11 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
       </div>
       <nav className="flex-1 py-4 px-2">
         <div className="space-y-1">
-          {menuItems.filter(item => item.label !== 'Estadísticas').map((item) => {
+          {menuItems.map((item) => {
+            // Si el ítem está comentado, no se renderiza
+            if (item.label === 'Crear Campañas' || item.label === 'Galeria de contenido' || item.label === 'Estadísticas') {
+              return null;
+            }
             const isInicio = item.label === 'Inicio';
             const isActive = isInicio
               ? location.pathname.startsWith('/dashboard')
@@ -56,6 +58,7 @@ const ActionsSidebar: React.FC<ActionsSidebarProps> = ({ collapsed, setCollapsed
             let iconClass = `w-5 h-5 ${!collapsed ? 'mr-3' : ''}`;
             linkClass += isActive ? ' bg-blue-100 text-[#1a237e]' : ' text-gray-700 hover:bg-gray-100';
             iconClass += isActive ? ' text-[#1a237e]' : ' text-gray-400';
+            // Eliminar estilos extra para mantener consistencia visual con los demás enlaces
             return (
               <Link
                 key={item.to}

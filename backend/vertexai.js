@@ -27,6 +27,15 @@ async function generateImageWithVertexAI(prompt, imageBase64String = null, image
 
   // Log y validación del prompt
   console.log('[VertexAI] Prompt recibido:', prompt);
+  // Diagnóstico para instrucciones de imagen
+  if (typeof prompt === 'string' && prompt.includes('[INSTRUCCIONES DE IMAGEN]')) {
+    const styleMatch = prompt.match(/Estilo: (.*)/);
+    const descMatch = prompt.match(/Descripción: (.*)/);
+    console.log('[VertexAI] Instrucciones de imagen detectadas:', {
+      imageStyle: styleMatch ? styleMatch[1] : '',
+      imageDescription: descMatch ? descMatch[1] : ''
+    });
+  }
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     console.error('[VertexAI] Error: Prompt vacío o inválido.');
     throw new Error('Prompt vacío o inválido recibido para generación de imagen.');
