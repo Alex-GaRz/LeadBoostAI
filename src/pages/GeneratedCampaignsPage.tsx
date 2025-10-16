@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Card from '../components/Dashboard/Card';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { useAuth } from '../hooks/useAuth';
@@ -73,44 +74,44 @@ const GeneratedCampaignsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900">Panel de Campañas Generadas</h1>
-      <div className="flex items-center mb-6 gap-2">
+      <h1 className="text-heading-2 font-bold mb-6 text-text">Panel de Campañas Generadas</h1>
+      <Card className="mb-6 p-4 flex items-center gap-2">
         <input
           type="text"
           placeholder="Buscar estrategia..."
-          className="border rounded px-3 py-2 w-full max-w-xs"
+          className="border border-border rounded px-3 py-2 w-full max-w-xs text-body"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <button className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold">Filtrar</button>
-        <button className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold">Ordenar</button>
-      </div>
+        <button className="px-4 py-2 rounded-lg bg-secondary text-text font-semibold hover:bg-card transition">Filtrar</button>
+        <button className="px-4 py-2 rounded-lg bg-secondary text-text font-semibold hover:bg-card transition">Ordenar</button>
+      </Card>
       {isLoading ? (
-        <div className="text-center py-10 text-gray-500">Cargando...</div>
+        <Card className="text-label text-center py-10">Cargando...</Card>
       ) : (
         <div className="space-y-4">
           {groupedStrategies
             .filter(strategy => strategy.planName?.toLowerCase().includes(search.toLowerCase()))
             .map(strategy => (
-              <div key={strategy.id} className="border rounded-lg shadow-sm bg-white">
+              <Card key={strategy.id} className="p-0">
                 <button
-                  className="w-full flex justify-between items-center px-6 py-4 text-lg font-semibold text-gray-800 hover:bg-gray-50 focus:outline-none"
+                  className="w-full flex justify-between items-center px-6 py-4 text-lg font-semibold text-text hover:bg-background focus:outline-none"
                   onClick={() => setExpandedStrategyId(expandedStrategyId === strategy.id ? null : strategy.id)}
                 >
                   <span>{strategy.planName || 'Sin nombre'}</span>
-                  <span className="text-sm text-gray-500">{strategy.generatedCampaigns.length} campañas</span>
+                  <span className="text-sm text-label">{strategy.generatedCampaigns.length} campañas</span>
                 </button>
                 {expandedStrategyId === strategy.id && (
-                  <div className="border-t px-6 py-4 bg-gray-50">
+                  <div className="border-t border-border px-6 py-4 bg-background">
                     {strategy.generatedCampaigns.length === 0 ? (
-                      <div className="text-gray-400">No hay campañas generadas para esta estrategia.</div>
+                      <div className="text-label">No hay campañas generadas para esta estrategia.</div>
                     ) : (
                       <ul className="space-y-2">
                         {strategy.generatedCampaigns.map((campaign: Campaign) => (
-                          <li key={campaign.id} className="p-3 rounded bg-white border hover:shadow flex justify-between items-center">
-                            <div className="font-medium text-gray-800">{campaign.name || 'Sin nombre'}</div>
+                          <li key={campaign.id} className="p-3 rounded bg-card border border-border hover:shadow flex justify-between items-center">
+                            <div className="font-medium text-text">{campaign.name || 'Sin nombre'}</div>
                             <button
-                              className="ml-4 px-4 py-1 bg-blue-600 text-white rounded text-sm font-semibold"
+                              className="ml-4 px-4 py-1 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-accent transition"
                               onClick={() => navigate('/micro-campaign-detail', { state: { campaignResult: campaign } })}
                             >
                               Ver Detalle
@@ -121,7 +122,7 @@ const GeneratedCampaignsPage: React.FC = () => {
                     )}
                   </div>
                 )}
-              </div>
+              </Card>
             ))}
         </div>
       )}

@@ -2,6 +2,7 @@
 
 const { PredictionServiceClient } = require('@google-cloud/aiplatform').v1;
 const { helpers } = require('@google-cloud/aiplatform');
+const admin = require('firebase-admin');
 
 // --- Configuración de Vertex AI ---
 // Estos valores deben coincidir con tu configuración en Google Cloud.
@@ -18,11 +19,58 @@ const clientOptions = {
 const predictionServiceClient = new PredictionServiceClient(clientOptions);
 
 /**
- * Genera una imagen utilizando la API de Vertex AI.
- * @param {string} prompt - El prompt de texto para la generación de la imagen.
- * @returns {Promise<string>} - La imagen generada en formato base64.
+ * Sube una imagen en base64 a Firebase Storage y devuelve la URL pública.
+ * @param {string} imageBase64 - La imagen en formato base64.
+ * @param {string} userId - ID del usuario para la ruta del archivo.
+ * @param {string} campaignId - ID de la campaña.
+ * @returns {Promise<string>} - La URL pública de la imagen subida.
  */
-async function generateImageWithVertexAI(prompt, imageBase64String = null, imageMime = 'image/png') {
+async function uploadImageToStorage(imageBase64, userId, campaignId) {
+  try {
+    // Convertir base64 a buffer
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    
+    // Generar ruta consistente con campañas: clients/{userId}/campaigns/{campaignId}/image.png
+    const fileName = `clients/${userId}/campaigns/${campaignId}/image.png`;
+    
+    // Obtener referencia al bucket de Storage
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(fileName);
+    
+    // Subir el archivo
+    console.log('[Storage] Subiendo imagen a Firebase Storage:', fileName);
+    await file.save(imageBuffer, {
+      metadata: {
+        contentType: 'image/png',
+        metadata: {
+          userId: userId,
+          campaignId: campaignId,
+          createdAt: new Date().toISOString()
+        }
+      }
+    });
+    
+    // Hacer el archivo público y obtener la URL
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    
+    console.log('[Storage] Imagen subida exitosamente. URL:', publicUrl);
+    return publicUrl;
+    
+  } catch (error) {
+    console.error('[Storage] Error subiendo imagen:', error);
+    throw new Error('Error al subir imagen a Firebase Storage: ' + error.message);
+  }
+}
+
+/**
+ * Genera una imagen utilizando la API de Vertex AI y la sube a Firebase Storage.
+ * @param {string} prompt - El prompt de texto para la generación de la imagen.
+ * @param {string} userId - ID del usuario para la ruta del archivo.
+ * @param {string} campaignId - ID de la campaña.
+ * @returns {Promise<object>} - Objeto con imageUrl y base64.
+ */
+async function generateImageWithVertexAI(prompt, userId = 'anonymous', campaignId = 'temp', imageBase64String = null, imageMime = 'image/png') {
   const endpoint = `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/${PUBLISHER}/models/${MODEL}`;
 
   // Log y validación del prompt
@@ -80,7 +128,13 @@ async function generateImageWithVertexAI(prompt, imageBase64String = null, image
     const imageBase64 = response.predictions[0].structValue.fields.bytesBase64Encoded.stringValue;
     console.log('Imagen recibida de Vertex AI.');
     
-    return imageBase64;
+    // Subir la imagen a Firebase Storage
+    const imageUrl = await uploadImageToStorage(imageBase64, userId, campaignId);
+    
+    return {
+      imageUrl: imageUrl,
+      base64: imageBase64
+    };
 
   } catch (error) {
     console.error('Error al generar la imagen con Vertex AI:', error);

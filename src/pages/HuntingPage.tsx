@@ -7,16 +7,22 @@ const HuntingPage: React.FC = () => {
 
   // Esta función se pasará al wizard para actualizar el missionId cuando se cree una misión
   const handleMissionCreated = (newMissionId: string) => {
-    console.log("PASO 1 (ÉXITO): La Campaña se creó. El ID es:", newMissionId);
     setMissionId(newMissionId);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Configuración de Hunting</h1>
-        <BattlePlanWizard onMissionCreated={handleMissionCreated} />
-  <HuntingDashboard strategyId={missionId} />
+    <div className="min-h-screen bg-background py-10">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2 text-text">Crear Nueva Misión de Caza</h1>
+        <div className="text-base text-muted mb-8">Configurar Plan de Batalla</div>
+        <div className="bg-white rounded-xl shadow p-8 mb-10">
+          <BattlePlanWizard onMissionCreated={handleMissionCreated} />
+        </div>
+        {missionId && (
+          <div className="mt-10">
+            <HuntingDashboard strategyId={missionId} />
+          </div>
+        )}
       </div>
     </div>
   );

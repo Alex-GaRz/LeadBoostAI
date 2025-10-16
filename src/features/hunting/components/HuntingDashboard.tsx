@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Button from '../../../components/Dashboard/Button';
 
 import AttackOrderModal from "./AttackOrderModal";
 import { useAuth } from "../../../hooks/useAuth";
@@ -58,27 +59,23 @@ const HuntingDashboard: React.FC<Props> = ({ strategyId }) => {
     return () => unsubscribe();
   }, [user?.uid, strategyId]);
 
-  // Métricas de ejemplo (puedes calcularlas con los datos reales si lo deseas)
-  const metrics = {
-    signals: opportunities.length,
-    profiles: opportunities.length,
-    opportunities: opportunities.length
-  };
+  // Métricas dinámicas basadas en datos reales
+  const opportunitiesCount = opportunities.length;
 
   return (
   <div className="max-w-4xl mx-auto mt-10">
       {/* Embudo de Inteligencia */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <div className="bg-brand-info rounded-xl p-6 text-center shadow">
-          <div className="text-4xl font-bold text-brand-info-strong mb-2">{metrics.signals}</div>
+          <div className="text-4xl font-bold text-brand-info-strong mb-2">{opportunitiesCount}</div>
           <div className="text-lg font-semibold text-brand-label">Señales Detectadas</div>
         </div>
         <div className="bg-brand-success rounded-xl p-6 text-center shadow">
-          <div className="text-4xl font-bold text-brand-success-strong mb-2">{metrics.profiles}</div>
+          <div className="text-4xl font-bold text-brand-success-strong mb-2">{opportunitiesCount}</div>
           <div className="text-lg font-semibold text-brand-label">Perfiles Identificados</div>
         </div>
         <div className="bg-brand-accent rounded-xl p-6 text-center shadow">
-          <div className="text-4xl font-bold text-brand-accent-strong mb-2">{metrics.opportunities}</div>
+          <div className="text-4xl font-bold text-brand-accent-strong mb-2">{opportunitiesCount}</div>
           <div className="text-lg font-semibold text-brand-label">Oportunidades Calificadas</div>
         </div>
       </div>
@@ -106,12 +103,14 @@ const HuntingDashboard: React.FC<Props> = ({ strategyId }) => {
                 <div className="inline-block px-3 py-1 rounded-full bg-brand-muted text-xs font-bold text-brand-label">{opp.status}</div>
               </div>
               <div className="mt-4 md:mt-0 md:ml-6">
-                <button
-                  className="px-5 py-2 bg-brand-action text-white rounded-md font-bold hover:bg-brand-action-hover transition-colors"
+                <Button
+                  variant="primary"
+                  size="md"
                   onClick={() => setSelectedOpportunity(opp)}
+                  className="w-full md:w-auto"
                 >
                   Revisar y Actuar
-                </button>
+                </Button>
               </div>
             </div>
           ))}

@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import Card from '../../../components/Dashboard/Card';
+import Modal from '../../../components/Dashboard/Modal';
+import Button from '../../../components/Dashboard/Button';
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../../../hooks/useAuth";
@@ -39,45 +42,39 @@ const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, strate
   if (!opportunity) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 relative">
-        <>
-          <h2 className="text-2xl font-bold mb-4 text-brand-title">
-            Confirmar Acción para: {opportunity.targetProfile?.name || "Prospecto"}
-          </h2>
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-brand-base mb-2">Señal Detectada</h3>
-            <div className="bg-brand-bg p-3 rounded text-brand-title">
-              {opportunity.signalText || "Sin señal"}
+    <Modal open={!!opportunity} onClose={onClose} title={`Crear Campaña para: ${opportunity.targetProfile?.name || 'Prospecto'}`}>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-label font-semibold mb-2">Señal Detectada</h3>
+          <Card className="bg-background p-3 rounded text-text mb-2">
+            {opportunity.signalText || 'Sin señal'}
+            <div className="flex gap-2 mt-2">
+              {opportunity.targetProfile?.jobTitle && (
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-semibold">{opportunity.targetProfile.jobTitle}</span>
+              )}
+              {opportunity.targetProfile?.companyName && (
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-semibold">{opportunity.targetProfile.companyName}</span>
+              )}
             </div>
-          </div>
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-brand-base mb-2">Acción a Ejecutar</h3>
-            <div className="bg-brand-action/10 p-3 rounded text-brand-action">
-              Se lanzará una micro-campaña personalizada a este objetivo.
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <button
-              className="px-4 py-2 rounded bg-brand-secondary text-brand-base font-semibold hover:bg-brand-secondary/80 transition"
-              onClick={onClose}
-            >
-              Cancelar
-            </button>
-            <button
-              className="px-6 py-2 rounded bg-brand-primary text-white font-bold hover:bg-brand-primary/80 transition disabled:opacity-60"
-              onClick={handleLaunch}
-              disabled={isLoading}
-            >
-              {isLoading ? "Lanzando..." : "LANZAR AHORA"}
-            </button>
-          </div>
-          {error && (
-            <p className="text-red-500 mt-2">{error}</p>
-          )}
-        </>
+          </Card>
+        </div>
+        <div>
+          <h3 className="text-label font-semibold mb-2">Acción a Ejecutar</h3>
+          <Card className="bg-primary/10 p-3 rounded text-primary">
+            Se lanzará una micro-campaña personalizada a este objetivo.
+          </Card>
+        </div>
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" size="md" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" size="md" onClick={handleLaunch} disabled={isLoading}>
+            {isLoading ? 'Lanzando...' : 'Lanzar Micro-Campaña Ahora'}
+          </Button>
+        </div>
+        {error && (
+          <p className="text-error mt-2">{error}</p>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 };
 

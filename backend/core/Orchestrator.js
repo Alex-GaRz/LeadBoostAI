@@ -1,3 +1,15 @@
+/**
+ * Nueva estructura para el campo ai_pipeline_results en un documento opportunity:
+ *
+ * ai_pipeline_results: {
+ *   analysisResult: { ... },
+ *   strategyResult: { ... },
+ *   copyResult: { ... },
+ *   artDirectionResult: { ... }
+ * }
+ *
+ * Cada subcampo es un map anidado con los resultados de cada etapa del pipeline de IA.
+ */
 
 const admin = require('firebase-admin');
 const serviceAccount = require('../serviceAccountKey.json');

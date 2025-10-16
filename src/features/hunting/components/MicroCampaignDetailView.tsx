@@ -5,32 +5,49 @@ interface MicroCampaignDetailViewProps {
   campaignResult: any;
 }
 
-// ...existing code...
 const MicroCampaignDetailView: React.FC<MicroCampaignDetailViewProps> = ({ campaignResult }) => {
-  console.log("--- DATOS CRUDOS QUE LLEGAN AL PREVIEW ---", campaignResult);
-  // Extraer la primera variante de anuncio
-  const variants = campaignResult?.ai_ad_variants || campaignResult?.meta_ai_ad_variants || [];
-  const firstVariant = Array.isArray(variants) && variants.length > 0 ? variants[0] : undefined;
-  const imageUrl = campaignResult?.generated_image_url || "https://via.placeholder.com/400x300?text=Sin+Imagen";
+  
+  // --- INICIO DEL ADAPTADOR INTELIGENTE ---
 
-  // Adaptar props para AdPreview
-  const platform = Array.isArray(campaignResult?.ad_platform)
-    ? campaignResult.ad_platform[0]
-    : (campaignResult?.ad_platform || "Meta Ads");
-  const iaData = {
+  // 1. Construir el objeto `campaignData` que AdPreview espera.
+  const campaignDataForPreview = {
+    business_name: campaignResult?.business_name || "Tu Empresa",
+    generated_image_url: campaignResult?.generated_image_url || ""
+  };
+
+  // 2. Extraer variantes de anuncios del formato moderno
+  const variants = campaignResult?.ad_variants || 
+                  campaignResult?.copyResult?.ad_variants || 
+                  campaignResult?.ai_ad_variants || 
+                  campaignResult?.meta_ai_ad_variants || [];
+
+  // 3. Construir el objeto `iaData` complejo que AdPreview espera.
+  const iaDataForPreview = {
     "Anuncio generado por IA": {
       "Variante 1": {
-        "Título del anuncio": firstVariant?.title || "Título no Disponible",
-        "Texto principal": firstVariant?.main_text || "Texto principal no disponible",
-        "CTA": firstVariant?.cta || "Más información",
+        "Título del anuncio": variants?.[0]?.title || "",
+        "Texto principal": variants?.[0]?.text || variants?.[0]?.main_text || "",
+        "CTA": variants?.[0]?.cta || "Más Información"
+      },
+      "Variante 2": {
+        "Título del anuncio": variants?.[1]?.title || "",
+        "Texto principal": variants?.[1]?.text || variants?.[1]?.main_text || "",
+        "CTA": variants?.[1]?.cta || "Más Información"
+      },
+      "Variante 3": {
+        "Título del anuncio": variants?.[2]?.title || "",
+        "Texto principal": variants?.[2]?.text || variants?.[2]?.main_text || "",
+        "CTA": variants?.[2]?.cta || "Más Información"
       }
     }
   };
-  const campaignData = {
-    generated_image_url: imageUrl,
-    business_name: campaignResult?.business_name || "Empresa Desconocida",
-    // Puedes mapear más campos si AdPreview los requiere
-  };
+
+  // 4. Determinar la plataforma
+  const platform = Array.isArray(campaignResult?.ad_platform)
+    ? campaignResult.ad_platform[0]
+    : (campaignResult?.ad_platform || "Meta Ads");
+
+  // --- FIN DEL ADAPTADOR INTELIGENTE ---
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-brand-bg rounded-xl shadow-lg p-8 flex flex-col items-center">
@@ -38,10 +55,10 @@ const MicroCampaignDetailView: React.FC<MicroCampaignDetailViewProps> = ({ campa
       <div className="w-full mb-8">
         <AdPreview
           platform={platform}
-          iaData={iaData}
-          campaignData={campaignData}
+          iaData={iaDataForPreview}
+          campaignData={campaignDataForPreview}
           variant={1}
-          businessName={campaignResult?.business_name || "Empresa Desconocida"}
+          businessName={campaignDataForPreview.business_name}
         />
       </div>
   <h4 className="text-lg font-semibold mt-6 mb-2 w-full text-left text-brand-label">Variantes de Texto Generadas:</h4>
@@ -53,7 +70,7 @@ const MicroCampaignDetailView: React.FC<MicroCampaignDetailViewProps> = ({ campa
               className="border border-brand-muted rounded-lg p-4 bg-brand-section shadow-sm"
             >
               <div className="font-bold text-brand-base text-base mb-1">{variant.title || `Variante ${idx + 1}`}</div>
-              <div className="text-brand-text text-sm mb-2">{variant.main_text || "Sin texto principal"}</div>
+              <div className="text-brand-text text-sm mb-2">{variant.text || variant.main_text || "Sin texto principal"}</div>
               {variant.cta && (
                 <div className="text-brand-action font-semibold text-sm">CTA: {variant.cta}</div>
               )}

@@ -5,9 +5,9 @@ import { useAuth } from "../../../hooks/useAuth";
 import axios from "axios";
 
 const playbookOptions = [
-  "Adquisición de Competidores",
+  "Detección de Dolor",
   "Generación de Demanda",
-  "Expansión de Mercado",
+  "Análisis de Mercado",
 ];
 
 interface BattlePlanWizardProps {
@@ -24,6 +24,7 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
   const [competitors, setCompetitors] = useState("");
   const [frustrationKeywords, setFrustrationKeywords] = useState("");
   const [searchKeywords, setSearchKeywords] = useState("");
+  const [excludeKeywords, setExcludeKeywords] = useState("");
   const [monitorsFunding, setMonitorsFunding] = useState(false);
   const [monitorsHiring, setMonitorsHiring] = useState(false);
   const { user } = useAuth();
@@ -44,19 +45,30 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    // Recopilar datos del formulario y radarConfig
+    // Helper to split comma-separated values into trimmed arrays
+    const splitToArray = (str: string) => str
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    // Preprocess radarConfig into new nested structure
     const radarConfig = {
-      industries,
-      companySizes,
-      locations,
-      jobTitles,
-      competitors,
-      frustrationKeywords,
-      searchKeywords,
-      monitorsFunding,
-      monitorsHiring,
-      imageStyle,
-      imageDescription
+      profile: {
+        industries: splitToArray(industries),
+        companySizes: splitToArray(companySizes),
+        locations: splitToArray(locations),
+        jobTitles: splitToArray(jobTitles)
+      },
+      signals: {
+        competitors: splitToArray(competitors),
+        frustrationKeywords: splitToArray(frustrationKeywords),
+        searchKeywords: splitToArray(searchKeywords),
+        excludeKeywords: splitToArray(excludeKeywords)
+      },
+      triggers: {
+        monitorsFunding,
+        monitorsHiring
+      }
     };
     const battlePlanData = {
       planName,
@@ -64,7 +76,6 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
       userId: user?.uid,
       radarConfig
     };
-    console.log("battlePlanData enviado:", battlePlanData);
     console.log("battlePlanData enviado:", battlePlanData);
     try {
       const response = await axios.post("/api/battle-plans", battlePlanData);
@@ -84,10 +95,10 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
 
 
   return (
-  <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+  <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md mb-10">
   <h2 className="text-2xl font-bold mb-6 text-brand-title">Configurar Plan de Batalla</h2>
-      <div className="mb-4">
-  <label className="block text-sm font-medium text-brand-label mb-1">Nombre del Plan</label>
+    <div className="mb-4">
+  <label className="block text-sm font-medium text-brand-label mb-1">Nombre de la Estrategia</label>
         <input
           type="text"
           value={planName}
@@ -106,8 +117,8 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
               onClick={() => setPlaybookType(option)}
               className={`px-4 py-2 rounded-md border font-semibold transition-colors duration-150 ${
                 playbookType === option
-                  ? "bg-brand-action text-white border-brand-action"
-                  : "bg-brand-secondary text-brand-base border-brand-secondary hover:bg-brand-action/10"
+                  ? "bg-primary text-white border-primary"
+                  : "bg-primary/10 text-primary border-primary hover:bg-primary/20"
               }`}
             >
               {option}
@@ -130,6 +141,8 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
   setFrustrationKeywords={setFrustrationKeywords}
   searchKeywords={searchKeywords}
   setSearchKeywords={setSearchKeywords}
+  excludeKeywords={excludeKeywords}
+  setExcludeKeywords={setExcludeKeywords}
   monitorsFunding={monitorsFunding}
   setMonitorsFunding={setMonitorsFunding}
   monitorsHiring={monitorsHiring}
@@ -138,6 +151,28 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
   setImageStyle={setImageStyle}
   imageDescription={imageDescription}
   setImageDescription={setImageDescription}
+  labels={{
+  industries: 'Industrias Objetivo',
+  jobTitles: 'Cargos de los Decisores',
+  competitors: 'Competidores a Monitorear',
+  frustrationKeywords: 'Problemas o Puntos de Dolor',
+  searchKeywords: 'Frases de Búsqueda Activa',
+  excludeKeywords: 'Palabras Clave a Excluir',
+  demographics: 'Perfil del Prospecto Ideal',
+  signals: 'Señales de Intención de Compra',
+  events: 'Eventos de Compra'
+  }}
+  placeholders={{
+  industries: 'Ej: SaaS, Retail, Finanzas',
+  jobTitles: 'Ej: CEO, Director de Marketing, VP de Ventas',
+  frustrationKeywords: 'Ej: "reportes limitados", "mala integración", "precio subió"',
+  searchKeywords: 'Ej: "alternativas a hubspot", "mejor crm para agencias"',
+  excludeKeywords: 'Ej: gratis, empleo, curso'
+  }}
+  tooltips={{
+    monitorsFunding: 'Ideal para encontrar empresas con nuevo presupuesto y presión para crecer.',
+    monitorsHiring: 'Ideal para detectar empresas que están creando nuevos departamentos o expandiendo equipos, lo que genera nuevas necesidades de herramientas.'
+  }}
       />
       {error && (
         <div className="text-red-600 font-semibold mb-4">{error}</div>
@@ -146,7 +181,7 @@ const BattlePlanWizard: React.FC<BattlePlanWizardProps> = ({ onMissionCreated })
         <button
           type="submit"
           disabled={isLoading}
-          className={`px-6 py-2 bg-brand-primary text-white rounded-md font-bold transition-colors ${isLoading ? "opacity-60 cursor-not-allowed" : "hover:bg-brand-primary/80"}`}
+          className={`inline-flex items-center justify-center px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow transition-colors duration-200 text-base ${isLoading ? "opacity-60 cursor-not-allowed" : "hover:bg-accent"}`}
         >
           {isLoading ? "Guardando..." : "Guardar Plan de Batalla"}
         </button>
