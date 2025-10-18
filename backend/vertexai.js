@@ -19,10 +19,11 @@ const clientOptions = {
 const predictionServiceClient = new PredictionServiceClient(clientOptions);
 
 /**
- * Sube una imagen en base64 a Firebase Storage y devuelve la URL pública.
+ * Sube una imagen en base64 a Firebase Storage usando arquitectura atómica.
+ * La ruta del archivo usa directamente el campaignId para garantizar consistencia.
  * @param {string} imageBase64 - La imagen en formato base64.
  * @param {string} userId - ID del usuario para la ruta del archivo.
- * @param {string} campaignId - ID de la campaña.
+ * @param {string} campaignId - ID de la campaña (debe existir en Firestore).
  * @returns {Promise<string>} - La URL pública de la imagen subida.
  */
 async function uploadImageToStorage(imageBase64, userId, campaignId) {
@@ -30,22 +31,27 @@ async function uploadImageToStorage(imageBase64, userId, campaignId) {
     // Convertir base64 a buffer
     const imageBuffer = Buffer.from(imageBase64, 'base64');
     
-    // Generar ruta consistente con campañas: clients/{userId}/campaigns/{campaignId}/image.png
-    const fileName = `clients/${userId}/campaigns/${campaignId}/image.png`;
+    // ARQUITECTURA ATÓMICA: Usar directamente el campaignId para nombrar la carpeta
+    // Esto garantiza que cada documento de campaña tenga su carpeta única correspondiente
+    const fileName = `clients/${userId}/campaigns/${campaignId}/generated_image.png`;
     
     // Obtener referencia al bucket de Storage
     const bucket = admin.storage().bucket();
     const file = bucket.file(fileName);
     
     // Subir el archivo
-    console.log('[Storage] Subiendo imagen a Firebase Storage:', fileName);
+    console.log('[Storage ATÓMIC] Subiendo imagen usando arquitectura atómica:', fileName);
+    console.log('[Storage ATÓMIC] CampaignId:', campaignId);
+    
     await file.save(imageBuffer, {
       metadata: {
         contentType: 'image/png',
         metadata: {
           userId: userId,
           campaignId: campaignId,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          atomicArchitecture: true, // Marcador para identificar la nueva arquitectura
+          description: 'Imagen generada usando arquitectura atómica campaignId -> Storage folder'
         }
       }
     });
@@ -54,11 +60,11 @@ async function uploadImageToStorage(imageBase64, userId, campaignId) {
     await file.makePublic();
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
     
-    console.log('[Storage] Imagen subida exitosamente. URL:', publicUrl);
+    console.log('[Storage ATÓMIC] ✅ Imagen subida exitosamente con arquitectura atómica. URL:', publicUrl);
     return publicUrl;
     
   } catch (error) {
-    console.error('[Storage] Error subiendo imagen:', error);
+    console.error('[Storage ATÓMIC] ❌ Error subiendo imagen:', error);
     throw new Error('Error al subir imagen a Firebase Storage: ' + error.message);
   }
 }

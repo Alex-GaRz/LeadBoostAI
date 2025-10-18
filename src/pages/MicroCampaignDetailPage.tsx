@@ -5,8 +5,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 const MicroCampaignDetailPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  // Espera que campaignResult venga por state
+  // Espera que campaignResult y userBusinessName vengan por state
   const campaignResult = location.state?.campaignResult;
+  const userBusinessName = location.state?.userBusinessName || 'Tu Empresa';
 
   if (!campaignResult) {
     return (
@@ -21,7 +22,10 @@ const MicroCampaignDetailPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto py-10">
-      <MicroCampaignDetailView campaignResult={campaignResult} />
+      <MicroCampaignDetailView 
+        campaignResult={campaignResult} 
+        userBusinessName={userBusinessName}
+      />
     </div>
   );
 };

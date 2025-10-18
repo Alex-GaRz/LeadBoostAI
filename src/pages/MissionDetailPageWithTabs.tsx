@@ -17,7 +17,7 @@ interface Mission {
   radarConfig?: any;
 }
 
-const MissionDetailPage: React.FC = () => {
+const MissionDetailPageWithTabs: React.FC = () => {
   const { missionId: strategyId } = useParams<{ missionId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ const MissionDetailPage: React.FC = () => {
   const [opportunitiesCount, setOpportunitiesCount] = useState(0);
   const [campaignsCount, setCampaignsCount] = useState(0);
 
-  // Configuración de pestañas
+  // Configuración de pestañas según el plan
   const tabs = [
     {
       id: 'prospects',
@@ -55,13 +55,17 @@ const MissionDetailPage: React.FC = () => {
     }
   ];
 
-  // Callback para manejar cambio de pestañas
+  // Callback para manejar cambio de pestañas con URL sync
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId);
     setSearchParams({ tab: tabId });
   }, [setSearchParams]);
 
-  // Callbacks para actualizar contadores
+  // Callbacks para actualizar contadores dinámicos
+  const handleOpportunityCountChange = useCallback((count: number) => {
+    setOpportunitiesCount(count);
+  }, []);
+
   const handleCampaignCountChange = useCallback((count: number) => {
     setCampaignsCount(count);
   }, []);
@@ -158,6 +162,7 @@ const MissionDetailPage: React.FC = () => {
     return () => unsubscribe();
   }, [user?.uid, strategyId]);
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -169,6 +174,7 @@ const MissionDetailPage: React.FC = () => {
     );
   }
 
+  // Error state
   if (!missionData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -192,12 +198,46 @@ const MissionDetailPage: React.FC = () => {
     );
   }
 
+  // Main render - Centro de Mando con Pestañas
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header Section */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Título y estadísticas */}
+          {/* Breadcrumb Navigation */}
+          <nav className="flex mb-4" aria-label="Breadcrumb">
+            <ol className="inline-flex items-center space-x-1 md:space-x-3">
+              <li className="inline-flex items-center">
+                <button
+                  onClick={() => navigate('/')}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  Inicio
+                </button>
+              </li>
+              <li>
+                <div className="flex items-center">
+                  <span className="mx-2 text-gray-400">/</span>
+                  <button
+                    onClick={() => navigate('/hunting')}
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Misiones
+                  </button>
+                </div>
+              </li>
+              <li aria-current="page">
+                <div className="flex items-center">
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-900 font-medium">
+                    {missionData.planName}
+                  </span>
+                </div>
+              </li>
+            </ol>
+          </nav>
+
+          {/* Header Title and Stats */}
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -207,23 +247,47 @@ const MissionDetailPage: React.FC = () => {
                 Gestiona todos los aspectos de tu estrategia de prospección
               </p>
             </div>
+            
+            {/* Statistics Cards */}
+            <div className="flex items-center space-x-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-indigo-600">{opportunitiesCount}</div>
+                <div className="text-sm text-gray-500">Prospectos</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">{campaignsCount}</div>
+                <div className="text-sm text-gray-500">Campañas</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${missionData.status === 'active' ? 'text-green-600' : 'text-gray-400'}`}>
+                  {missionData.status === 'active' ? '🟢' : '⏸️'}
+                </div>
+                <div className="text-sm text-gray-500">Estado</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Navegación de pestañas */}
+      {/* Tab Navigation */}
       <TabNavigation 
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
 
-      {/* Contenido de la pestaña activa */}
+      {/* Active Tab Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderActiveTab()}
+        <div 
+          id={`${activeTab}-panel`}
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab}`}
+        >
+          {renderActiveTab()}
+        </div>
       </div>
     </div>
   );
 };
 
-export default MissionDetailPage;
+export default MissionDetailPageWithTabs;

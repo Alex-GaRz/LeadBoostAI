@@ -35,10 +35,179 @@ app.get('/', (req, res) => {
   res.send('Backend funcionando y seguro!');
 });
 
+// 🎯 ENDPOINT DE DIAGNÓSTICO: Verificar consistencia atómica
+app.get('/api/validate-atomic-consistency/:userId/:campaignId', async (req, res) => {
+  try {
+    const { userId, campaignId } = req.params;
+    
+    console.log(`[ATOMIC DIAGNOSTIC] Validando consistencia para userId: ${userId}, campaignId: ${campaignId}`);
+    
+    const validationResult = await validateAtomicConsistency(userId, campaignId);
+    
+    res.status(200).json({
+      success: true,
+      validation: validationResult,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[ATOMIC DIAGNOSTIC] Error en diagnóstico:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 🎯 ENDPOINT PARA CREAR OPPORTUNITIES DE PRUEBA
+app.post('/api/create-test-opportunities', async (req, res) => {
+  try {
+    const { userId, strategyId, opportunities } = req.body;
+    
+    if (!userId || !strategyId) {
+      return res.status(400).json({
+        success: false,
+        error: "userId y strategyId son requeridos"
+      });
+    }
+    
+    if (!opportunities || !Array.isArray(opportunities) || opportunities.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Se requiere un array de opportunities válido"
+      });
+    }
+    
+    console.log(`[CREATE OPPORTUNITIES] Creando ${opportunities.length} opportunities para userId: ${userId}, strategyId: ${strategyId}`);
+    
+    const db = admin.firestore();
+    const createdOpportunities = [];
+    
+    // Crear cada opportunity en Firebase
+    for (let i = 0; i < opportunities.length; i++) {
+      const opportunity = opportunities[i];
+      
+      // Generar un ID único si no se proporciona
+      const opportunityId = opportunity.id || `test-opp-${Date.now()}-${i}`;
+      
+      // Estructura completa de la opportunity
+      const opportunityData = {
+        id: opportunityId,
+        source: opportunity.source || "Test Data",
+        signalText: opportunity.signalText || `Señal de prueba ${i + 1}`,
+        status: opportunity.status || "PENDIENTE",
+        targetProfile: {
+          name: opportunity.targetProfile?.name || `Prospecto Test ${i + 1}`,
+          jobTitle: opportunity.targetProfile?.jobTitle || "Director General",
+          companyName: opportunity.targetProfile?.companyName || `Empresa Test ${i + 1}`,
+          linkedinURL: opportunity.targetProfile?.linkedinURL || ""
+        },
+        sourceURL: opportunity.sourceURL || "",
+        detectedAt: opportunity.detectedAt || new Date().toISOString(),
+        badge: opportunity.badge || "test",
+        created_by: "postman_test",
+        created_at: new Date().toISOString()
+      };
+      
+      // Guardar en Firebase
+      const opportunityRef = db.doc(`clients/${userId}/battle_plans/${strategyId}/opportunities/${opportunityId}`);
+      await opportunityRef.set(opportunityData);
+      
+      createdOpportunities.push({
+        id: opportunityId,
+        ...opportunityData
+      });
+      
+      console.log(`[CREATE OPPORTUNITIES] ✅ Opportunity ${i + 1}/${opportunities.length} creada: ${opportunityId}`);
+    }
+    
+    console.log(`[CREATE OPPORTUNITIES] ✅ Todas las opportunities creadas exitosamente`);
+    
+    res.status(201).json({
+      success: true,
+      message: `${opportunities.length} opportunities creadas exitosamente`,
+      created_opportunities: createdOpportunities,
+      firebase_path: `clients/${userId}/battle_plans/${strategyId}/opportunities/`,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[CREATE OPPORTUNITIES] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 
 
 const { generateCampaignAI, analyzeSignal, defineStrategy, createImagePrompt } = require('./openai');
 const { generateImageWithVertexAI } = require('./vertexai');
+
+/**
+ * 🎯 ARQUITECTURA ATÓMICA: Función de validación
+ * Verifica que el documento en Firestore y el archivo en Storage estén sincronizados
+ * @param {string} userId - ID del usuario
+ * @param {string} campaignId - ID de la campaña
+ * @returns {Promise<object>} - Estado de la consistencia atómica
+ */
+async function validateAtomicConsistency(userId, campaignId) {
+  try {
+    const db = admin.firestore();
+    
+    // Verificar documento en Firestore
+    const campaignRef = db.doc(`clients/${userId}/campaigns/${campaignId}`);
+    const campaignDoc = await campaignRef.get();
+    
+    if (!campaignDoc.exists) {
+      return { 
+        isConsistent: false, 
+        error: 'Documento no existe en Firestore',
+        firestoreExists: false,
+        storageExists: null
+      };
+    }
+    
+    const campaignData = campaignDoc.data();
+    const imageUrl = campaignData.generated_image_url;
+    
+    // Verificar archivo en Storage
+    const expectedPath = `clients/${userId}/campaigns/${campaignId}/generated_image.png`;
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(expectedPath);
+    
+    const [storageExists] = await file.exists();
+    
+    const result = {
+      isConsistent: !!(imageUrl && storageExists),
+      firestoreExists: true,
+      storageExists: storageExists,
+      expectedPath: expectedPath,
+      actualImageUrl: imageUrl,
+      campaignId: campaignId
+    };
+    
+    if (result.isConsistent) {
+      console.log(`[ATOMIC VALIDATION] ✅ Consistencia atómica verificada para campaignId: ${campaignId}`);
+    } else {
+      console.warn(`[ATOMIC VALIDATION] ⚠️ Inconsistencia detectada para campaignId: ${campaignId}`, result);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error(`[ATOMIC VALIDATION] ❌ Error validando consistencia para campaignId: ${campaignId}`, error);
+    return { 
+      isConsistent: false, 
+      error: error.message,
+      firestoreExists: null,
+      storageExists: null
+    };
+  }
+}
 
 // Nuevo endpoint traductor: recibe opportunity, traduce y ejecuta generación de campaña
 app.post('/api/execute-attack', async (req, res) => {
@@ -87,19 +256,24 @@ app.post('/api/execute-attack', async (req, res) => {
         await opportunityRef.update({
           'ai_pipeline_results.strategyResult': strategyResult
         });
-        // 7. Ejecutar la etapa Copywriter
+        // 7. Ejecutar la etapa Copywriter (genera exactamente 3 variantes de texto)
         console.log('[PIPELINE 3/4] Iniciando Copywriter...');
         const copyResult = await generateCampaignAI(strategyResult, opportunity.targetProfile);
-        console.log('[PIPELINE 3/4] Copywriter completado. Resultado:', copyResult);
+        console.log('[PIPELINE 3/4] ✅ Copywriter completado - Variantes generadas:', copyResult.ad_variants?.length || 0);
+        
+        // Validación crítica: Asegurar que tenemos exactamente 3 variantes
+        if (!copyResult.ad_variants || copyResult.ad_variants.length !== 3) {
+            console.warn('[PIPELINE 3/4] ⚠️ ADVERTENCIA: El Copywriter no generó exactamente 3 variantes');
+        }
         // 8. Guardar el resultado del copywriting
         await opportunityRef.update({
           'ai_pipeline_results.copyResult': copyResult
         });
         
-        // 9. Ejecutar la etapa Director de Arte
-        console.log('[PIPELINE 4/4] Iniciando Director de Arte (Prompt)...');
+        // 9. Ejecutar la etapa Director de Arte (genera 1 imagen maestra para las 3 variantes)
+        console.log('[PIPELINE 4/4] Iniciando Director de Arte (Imagen Maestra)...');
         const imagePromptResult = await createImagePrompt(strategyResult, copyResult);
-        console.log('[PIPELINE 4/4] Director de Arte (Prompt) completado. Resultado:', imagePromptResult);
+        console.log('[PIPELINE 4/4] ✅ Director de Arte completado - Imagen maestra definida para complementar las 3 variantes');
         console.log('[API] Resultado del Director de Arte:', imagePromptResult);
         
         // 10. Guardar el prompt de imagen
@@ -125,9 +299,9 @@ app.post('/api/execute-attack', async (req, res) => {
           strategy_angle: strategyResult.angle,
           key_message: strategyResult.key_message,
           
-          ad_variants: copyResult.ad_variants,
-          image_prompt: imagePromptResult.image_prompt,
-          generated_image_url: '', // Se actualizará después
+          ad_variants: copyResult.ad_variants, // Array con exactamente 3 variantes de texto
+          image_prompt: imagePromptResult.image_prompt, // Prompt para 1 imagen maestra
+          generated_image_url: '', // Se actualizará con 1 URL de imagen que complementa las 3 variantes
           
           // Metadatos
           created_at: new Date().toISOString(),
@@ -142,39 +316,51 @@ app.post('/api/execute-attack', async (req, res) => {
           target_profile: opportunity.targetProfile
         };
         
-        // 12. Guardar la campaña para obtener el ID
+        // 12. 🎯 ARQUITECTURA ATÓMICA: Crear documento en Firestore PRIMERO para obtener ID
+        console.log('[ARQUITECTURA ATÓMICA] Paso 1: Creando documento en Firestore...');
         const db = admin.firestore();
         const campaignCollectionRef = db.collection(`clients/${userId}/campaigns`);
         const campaignDocRef = await campaignCollectionRef.add(finalCampaignData);
         const campaignId = campaignDocRef.id;
         
-        console.log('[API] Campaña inicial guardada con ID:', campaignId);
+        console.log('[ARQUITECTURA ATÓMICA] ✅ Paso 1 completado. Campaign ID:', campaignId);
+        console.log('[ARQUITECTURA ATÓMICA] Paso 2: Generando imagen usando Campaign ID...');
         
-        // 13. Generar la imagen usando el campaignId
+        // 13. 🎯 ARQUITECTURA ATÓMICA: Generar imagen usando el campaignId como ruta
         let generated_image_url = '';
         if (imagePromptResult.image_prompt && imagePromptResult.image_prompt.trim().length > 0) {
           try {
-            console.log('[PIPELINE 4/4] Generando imagen...');
+            console.log('[PIPELINE 4/4] Generando imagen con arquitectura atómica...');
+            console.log('[PIPELINE 4/4] Storage path será: clients/' + userId + '/campaigns/' + campaignId + '/generated_image.png');
+            
             const imageResult = await generateImageWithVertexAI(
               imagePromptResult.image_prompt, 
               userId, 
-              campaignId
+              campaignId // 🎯 ID atómico que determinará la carpeta en Storage
             );
             generated_image_url = imageResult.imageUrl || '';
-            console.log('[PIPELINE 4/4] Generación de imagen completada. URL:', generated_image_url);
+            console.log('[PIPELINE 4/4] ✅ Generación de imagen completada con arquitectura atómica. URL:', generated_image_url);
           } catch (imageError) {
-            console.error('[API] Error generando imagen:', imageError);
+            console.error('[API] ❌ Error generando imagen:', imageError);
             generated_image_url = ''; // Continuar sin imagen si falla
           }
         } else {
-          console.log('[API] Prompt de imagen vacío, saltando generación de imagen.');
+          console.log('[API] ⚠️ Prompt de imagen vacío, saltando generación de imagen.');
         }
         
-        // 14. Actualizar la campaña con la URL de la imagen y cambiar status
+        // 14. 🎯 ARQUITECTURA ATÓMICA: Actualizar documento con URL final y status
+        console.log('[ARQUITECTURA ATÓMICA] Paso 3: Actualizando documento con imagen URL...');
         await campaignDocRef.update({
           generated_image_url: generated_image_url,
           status: 'generated'
         });
+        console.log('[ARQUITECTURA ATÓMICA] ✅ Todos los pasos completados. Documento y Storage sincronizados.');
+        
+        // 14.1. 🎯 VALIDACIÓN ATÓMICA: Verificar consistencia
+        const validationResult = await validateAtomicConsistency(userId, campaignId);
+        if (!validationResult.isConsistent) {
+          console.warn('[ARQUITECTURA ATÓMICA] ⚠️ Advertencia: Inconsistencia detectada:', validationResult);
+        }
         
         // 15. Guardar la URL de la imagen generada en la oportunidad
         await opportunityRef.update({
@@ -185,9 +371,14 @@ app.post('/api/execute-attack', async (req, res) => {
         const updatedCampaign = await campaignDocRef.get();
         const finalCampaignDataComplete = updatedCampaign.data();
         
-        console.log('[PIPELINE] Todas las etapas completadas con éxito. Creando documento final en "campaigns".');
+        // 17. Log de resumen del pipeline optimizado
+        console.log('[PIPELINE] ✅ PIPELINE OPTIMIZADO COMPLETADO:');
+        console.log(`[PIPELINE]    📝 Copywriter: ${copyResult.ad_variants?.length || 0} variantes generadas`);
+        console.log(`[PIPELINE]    🎨 Director de Arte: 1 imagen maestra creada`);
+        console.log(`[PIPELINE]    📊 Estructura: 1 Imagen + 3 Textos (optimización de costos y velocidad)`);
+        console.log(`[PIPELINE]    📋 Campaña ID: ${campaignId}`);
         
-        // 17. Respuesta final con todos los resultados
+        // 18. Respuesta final con todos los resultados
         console.log('[API] Preparando respuesta final para el frontend...');
         const responseData = {
           success: true,
@@ -226,6 +417,244 @@ app.post('/api/execute-attack', async (req, res) => {
         res.status(500).json(errorResponse);
     }
 }); // <-- Cierre correcto de la función y la ruta
+
+// Nuevo endpoint para lanzamiento en bloque
+app.post('/api/execute-attack-batch', async (req, res) => {
+    console.log('[BATCH API] Endpoint /api/execute-attack-batch alcanzado.');
+    console.log('[BATCH API] Body completo recibido:', JSON.stringify(req.body, null, 2));
+    
+    try {
+        // 1. Validar datos recibidos
+        const { opportunities, userId, strategyId } = req.body;
+        
+        if (!opportunities || !Array.isArray(opportunities) || opportunities.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Se requiere un array de oportunidades válido" 
+            });
+        }
+        
+        if (!userId || !strategyId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "userId y strategyId son requeridos" 
+            });
+        }
+        
+        console.log(`[BATCH API] Procesando ${opportunities.length} oportunidades con Promise.all...`);
+        
+        // 2. Función auxiliar para procesar una oportunidad individual
+        const processOpportunity = async (opportunity, index) => {
+            const opportunityId = opportunity.id;
+            console.log(`[BATCH ${index + 1}/${opportunities.length}] Iniciando procesamiento para: ${opportunity.targetProfile?.name}`);
+            
+            try {
+                const db = admin.firestore();
+                const opportunityRef = db.doc(`clients/${userId}/battle_plans/${strategyId}/opportunities/${opportunityId}`);
+                
+                // Actualizar estado a "procesando"
+                await opportunityRef.update({
+                    status: 'PROCESANDO_CAMPAÑA',
+                    batch_processing_started: new Date().toISOString()
+                });
+                
+                // --- PIPELINE DE IA (igual que en execute-attack individual) ---
+                
+                // PIPELINE 1/4: Analista
+                console.log(`[BATCH ${index + 1}] PIPELINE 1/4: Iniciando Analista...`);
+                const analysisResult = await analyzeSignal(opportunity.signalText);
+                console.log(`[BATCH ${index + 1}] PIPELINE 1/4: Analista completado.`);
+                
+                await opportunityRef.update({
+                    'ai_pipeline_results.analysisResult': analysisResult
+                });
+                
+                // PIPELINE 2/4: Estratega
+                console.log(`[BATCH ${index + 1}] PIPELINE 2/4: Iniciando Estratega...`);
+                const strategyResult = await defineStrategy(analysisResult, opportunity.targetProfile);
+                console.log(`[BATCH ${index + 1}] PIPELINE 2/4: Estratega completado.`);
+                
+                await opportunityRef.update({
+                    'ai_pipeline_results.strategyResult': strategyResult
+                });
+                
+                // PIPELINE 3/4: Copywriter (3 variantes de texto)
+                console.log(`[BATCH ${index + 1}] PIPELINE 3/4: Iniciando Copywriter...`);
+                const copyResult = await generateCampaignAI(strategyResult, opportunity.targetProfile);
+                console.log(`[BATCH ${index + 1}] PIPELINE 3/4: Copywriter completado - ${copyResult.ad_variants?.length || 0} variantes generadas.`);
+                
+                // Validación crítica: Asegurar que tenemos exactamente 3 variantes
+                if (!copyResult.ad_variants || copyResult.ad_variants.length !== 3) {
+                    console.warn(`[BATCH ${index + 1}] ⚠️ ADVERTENCIA: El Copywriter no generó exactamente 3 variantes`);
+                }
+                
+                await opportunityRef.update({
+                    'ai_pipeline_results.copyResult': copyResult
+                });
+                
+                // PIPELINE 4/4: Director de Arte (1 imagen maestra para las 3 variantes)
+                console.log(`[BATCH ${index + 1}] PIPELINE 4/4: Iniciando Director de Arte (Imagen Maestra)...`);
+                const imagePromptResult = await createImagePrompt(strategyResult, copyResult);
+                console.log(`[BATCH ${index + 1}] PIPELINE 4/4: ✅ Director de Arte completado - Imagen maestra definida.`);
+                
+                await opportunityRef.update({
+                    'ai_pipeline_results.imagePromptResult': imagePromptResult
+                });
+                
+                // Crear campaña final
+                const finalCampaignData = {
+                    strategyId: strategyId,
+                    opportunityId: opportunityId,
+                    target_audience: `${opportunity.targetProfile.jobTitle} en ${opportunity.targetProfile.companyName}`,
+                    business_name: opportunity.targetProfile.companyName,
+                    pain_point: analysisResult.pain_point,
+                    brand_mentioned: analysisResult.brand_mentioned,
+                    sentiment: analysisResult.sentiment,
+                    strategy_angle: strategyResult.angle,
+                    key_message: strategyResult.key_message,
+                    ad_variants: copyResult.ad_variants, // Array con exactamente 3 variantes de texto
+                    image_prompt: imagePromptResult.image_prompt, // Prompt para 1 imagen maestra
+                    generated_image_url: '', // Se actualizará con 1 URL de imagen que complementa las 3 variantes
+                    created_at: new Date().toISOString(),
+                    campaign_type: 'surgical_attack_batch',
+                    status: 'generating',
+                    name: `Campaña para ${opportunity.targetProfile.companyName}`,
+                    original_signal: opportunity.signalText,
+                    target_profile: opportunity.targetProfile,
+                    batch_processed: true
+                };
+                
+                // 🎯 ARQUITECTURA ATÓMICA: Crear documento PRIMERO para obtener ID
+                console.log(`[BATCH ${index + 1}] ARQUITECTURA ATÓMICA - Creando documento en Firestore...`);
+                const campaignCollectionRef = db.collection(`clients/${userId}/campaigns`);
+                const campaignDocRef = await campaignCollectionRef.add(finalCampaignData);
+                const campaignId = campaignDocRef.id;
+                
+                console.log(`[BATCH ${index + 1}] ✅ Campaign ID obtenido: ${campaignId}`);
+                
+                // 🎯 ARQUITECTURA ATÓMICA: Generar imagen usando el campaignId
+                console.log(`[BATCH ${index + 1}] ARQUITECTURA ATÓMICA - Generando imagen con ID: ${campaignId}`);
+                const imageResult = await generateImageWithVertexAI(
+                    imagePromptResult.image_prompt,
+                    userId,
+                    campaignId // 🎯 ID que determinará la carpeta exacta en Storage
+                );
+                const generated_image_url = imageResult.imageUrl || '';
+                
+                // 🎯 ARQUITECTURA ATÓMICA: Actualizar documento con URL final
+                console.log(`[BATCH ${index + 1}] ARQUITECTURA ATÓMICA - Actualizando con URL: ${generated_image_url}`);
+                await campaignDocRef.update({
+                    generated_image_url: generated_image_url,
+                    status: 'completed'
+                });
+                console.log(`[BATCH ${index + 1}] ✅ Arquitectura atómica completada - Documento y Storage sincronizados`);
+                
+                // 🎯 VALIDACIÓN ATÓMICA: Verificar consistencia
+                const validationResult = await validateAtomicConsistency(userId, campaignId);
+                if (!validationResult.isConsistent) {
+                  console.warn(`[BATCH ${index + 1}] ⚠️ Inconsistencia atómica detectada:`, validationResult);
+                }
+                
+                // Actualizar estado final de la oportunidad
+                await opportunityRef.update({
+                    status: 'CAMPAÑA_ACTIVA_🚀',
+                    campaignId: campaignId,
+                    generated_image_url: generated_image_url,
+                    batch_processing_completed: new Date().toISOString()
+                });
+                
+                console.log(`[BATCH ${index + 1}/${opportunities.length}] ✅ COMPLETADO: ${opportunity.targetProfile?.name} - Campaña ID: ${campaignId}`);
+                
+                // Retornar datos de la campaña para Promise.all
+                return {
+                    success: true,
+                    opportunityId: opportunityId,
+                    campaignId: campaignId,
+                    targetName: opportunity.targetProfile?.name,
+                    companyName: opportunity.targetProfile?.companyName,
+                    generated_image_url: generated_image_url,
+                    ad_variants_count: copyResult.ad_variants?.length || 0,
+                    ad_variants: copyResult.ad_variants, // 🎯 INCLUIR LAS VARIANTES COMPLETAS
+                    pain_point: analysisResult.pain_point,
+                    strategy_angle: strategyResult.angle,
+                    key_message: strategyResult.key_message,
+                    image_prompt: imagePromptResult.image_prompt,
+                    status: 'completed'
+                };
+                
+            } catch (error) {
+                console.error(`[BATCH ${index + 1}] ❌ ERROR procesando ${opportunity.targetProfile?.name}:`, error);
+                
+                // Actualizar estado de error en la oportunidad
+                try {
+                    const db = admin.firestore();
+                    const opportunityRef = db.doc(`clients/${userId}/battle_plans/${strategyId}/opportunities/${opportunityId}`);
+                    await opportunityRef.update({
+                        status: 'ERROR_CAMPAÑA',
+                        error_message: error.message,
+                        batch_processing_error: new Date().toISOString()
+                    });
+                } catch (updateError) {
+                    console.error(`[BATCH ${index + 1}] Error actualizando estado de error:`, updateError);
+                }
+                
+                // Retornar datos del error para Promise.all
+                return {
+                    success: false,
+                    opportunityId: opportunityId,
+                    targetName: opportunity.targetProfile?.name,
+                    companyName: opportunity.targetProfile?.companyName,
+                    error: error.message,
+                    status: 'error'
+                };
+            }
+        };
+        
+        // 3. Procesar todas las oportunidades con Promise.all (SÍNCRONO)
+        console.log('[BATCH API] Ejecutando Promise.all para procesar todas las oportunidades...');
+        const processingPromises = opportunities.map((opportunity, index) => 
+            processOpportunity(opportunity, index)
+        );
+        
+        // Esperar a que todas las promesas se resuelvan
+        const results = await Promise.all(processingPromises);
+        
+        // 4. Analizar resultados
+        const successfulCampaigns = results.filter(result => result.success);
+        const failedCampaigns = results.filter(result => !result.success);
+        
+        console.log(`[BATCH API] ✅ Procesamiento completado: ${successfulCampaigns.length} exitosas, ${failedCampaigns.length} fallidas`);
+        
+        // 5. Responder con resultados completos
+        res.status(200).json({
+            success: true,
+            message: `Batch processing completado`,
+            summary: {
+                total: opportunities.length,
+                successful: successfulCampaigns.length,
+                failed: failedCampaigns.length
+            },
+            results: results,
+            successful_campaigns: successfulCampaigns,
+            failed_campaigns: failedCampaigns,
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log('[BATCH API] Respuesta enviada con resultados completos');
+        
+    } catch (error) {
+        console.error("[BATCH API] ERROR CRÍTICO en /api/execute-attack-batch:", error);
+        // Solo enviamos respuesta si aún no se ha enviado
+        if (!res.headersSent) {
+            res.status(500).json({ 
+                success: false,
+                error: "Error interno al ejecutar el lote de ataques.",
+                details: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+});
 
 // Multer para manejo de archivos
 const multer = require('multer');
@@ -325,11 +754,13 @@ app.post('/api/vertexai/generate-image', upload.single('init_image'), async (req
       const imageMime = req.file.mimetype || 'image/png';
       const imageBase64String = imageBuffer.toString('base64');
       // Llamar a Vertex AI con prompt + imagen
-      imageBase64 = await generateImageWithVertexAI(prompt, imageBase64String, imageMime);
+      const imageResult1 = await generateImageWithVertexAI(prompt, imageBase64String, imageMime);
+      imageBase64 = imageResult1.base64 || imageResult1;
     } else {
       // Escenarios text-to-image
       console.log('[IA] Generando imagen solo con prompt usando Vertex AI');
-      imageBase64 = await generateImageWithVertexAI(prompt);
+      const imageResult2 = await generateImageWithVertexAI(prompt);
+      imageBase64 = imageResult2.base64 || imageResult2;
     }
     if (!imageBase64) {
       console.error('[IA] No se recibió imagen de Vertex AI');

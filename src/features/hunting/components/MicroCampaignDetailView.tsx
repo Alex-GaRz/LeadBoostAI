@@ -3,15 +3,17 @@ import AdPreview from "../../../components/Dashboard/AdPreview";
 
 interface MicroCampaignDetailViewProps {
   campaignResult: any;
+  userBusinessName: string;
 }
 
-const MicroCampaignDetailView: React.FC<MicroCampaignDetailViewProps> = ({ campaignResult }) => {
+const MicroCampaignDetailView: React.FC<MicroCampaignDetailViewProps> = ({ campaignResult, userBusinessName }) => {
   
   // --- INICIO DEL ADAPTADOR INTELIGENTE ---
 
   // 1. Construir el objeto `campaignData` que AdPreview espera.
+  // CORRECCIÓN DEL BUG: Usar userBusinessName (anunciante) en lugar del nombre del prospecto
   const campaignDataForPreview = {
-    business_name: campaignResult?.business_name || "Tu Empresa",
+    business_name: userBusinessName || "Tu Empresa",
     generated_image_url: campaignResult?.generated_image_url || ""
   };
 

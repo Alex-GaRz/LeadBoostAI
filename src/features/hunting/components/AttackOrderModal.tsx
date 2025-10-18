@@ -10,9 +10,10 @@ interface AttackOrderModalProps {
   opportunity: any;
   strategyId: string;
   onClose: () => void;
+  userBusinessName: string;
 }
 
-const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, strategyId, onClose }) => {
+const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, strategyId, onClose, userBusinessName }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,12 @@ const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, strate
       const opportunityWithUserId = { ...opportunity, userId: user?.uid };
       const response = await axios.post("/api/execute-attack", { opportunity: opportunityWithUserId, strategyId });
       if (response.data.success) {
-        navigate("/micro-campaign-detail", { state: { campaignResult: response.data.campaignResult } });
+        navigate("/micro-campaign-detail", { 
+          state: { 
+            campaignResult: response.data.campaignResult,
+            userBusinessName: userBusinessName 
+          } 
+        });
         onClose();
       } else {
         setError(response.data.error || "Error desconocido");
@@ -61,13 +67,13 @@ const AttackOrderModal: React.FC<AttackOrderModalProps> = ({ opportunity, strate
         <div>
           <h3 className="text-label font-semibold mb-2">Acción a Ejecutar</h3>
           <Card className="bg-primary/10 p-3 rounded text-primary">
-            Se lanzará una micro-campaña personalizada a este objetivo.
+            Se generarán campañas personalizadas para este objetivo.
           </Card>
         </div>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" size="md" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" size="md" onClick={handleLaunch} disabled={isLoading}>
-            {isLoading ? 'Lanzando...' : 'Lanzar Micro-Campaña Ahora'}
+            {isLoading ? 'Lanzando...' : 'Generar Campañas Ahora'}
           </Button>
         </div>
         {error && (

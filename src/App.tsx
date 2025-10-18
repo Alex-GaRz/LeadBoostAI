@@ -2,7 +2,6 @@
 // Nuevos componentes de la sección hunting
 import DashboardCampaignPage from './components/Dashboard/DashboardCampaignPage';
 import CreateCampaignForm from './components/Dashboard/CreateCampaignForm';
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
@@ -18,6 +17,7 @@ import CreateMissionPage from './pages/CreateMissionPage';
 import MissionDetailPage from './pages/MissionDetailPage';
 import GeneratedCampaignsPage from './pages/GeneratedCampaignsPage';
 import MicroCampaignDetailPage from './pages/MicroCampaignDetailPage';
+import BatchResultsPage from './pages/BatchResultsPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -75,6 +75,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MissionDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hunting/:strategyId/results"
+            element={
+              <ProtectedRoute>
+                <BatchResultsPage />
               </ProtectedRoute>
             }
           />

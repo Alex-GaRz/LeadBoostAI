@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Card from '../components/Dashboard/Card';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { useAuth } from '../hooks/useAuth';
 
@@ -21,17 +21,27 @@ interface Campaign {
 const GeneratedCampaignsPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedStrategyId, setExpandedStrategyId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  // Leer el filtro de estrategia de la URL
+  const strategyFilter = searchParams.get('strategy_id');
+
   useEffect(() => {
     if (!user) return;
     setIsLoading(true);
+    
     const strategiesRef = collection(db, `clients/${user.uid}/battle_plans`);
     const campaignsRef = collection(db, `clients/${user.uid}/campaigns`);
+
+    // Configurar la consulta de campañas con filtro condicional
+    const campaignsQuery = strategyFilter 
+      ? query(campaignsRef, where('strategyId', '==', strategyFilter))
+      : campaignsRef;
 
     const unsubStrategies = onSnapshot(strategiesRef, (snapshot) => {
       setStrategies(
@@ -45,7 +55,8 @@ const GeneratedCampaignsPage: React.FC = () => {
         })
       );
     });
-    const unsubCampaigns = onSnapshot(campaignsRef, (snapshot) => {
+
+    const unsubCampaigns = onSnapshot(campaignsQuery, (snapshot) => {
       setCampaigns(
         snapshot.docs.map(doc => {
           const data = doc.data();
@@ -59,22 +70,56 @@ const GeneratedCampaignsPage: React.FC = () => {
       );
       setIsLoading(false);
     });
+
+    // Auto-expandir estrategia si viene filtrada por URL
+    if (strategyFilter) {
+      setExpandedStrategyId(strategyFilter);
+    }
+
     return () => {
       unsubStrategies();
       unsubCampaigns();
     };
-  }, [user]);
+  }, [user, strategyFilter]);
 
   const groupedStrategies = useMemo(() => {
-    return strategies.map(strategy => ({
+    let filteredStrategies = strategies;
+    
+    // Si hay filtro de URL, mostrar solo esa estrategia
+    if (strategyFilter) {
+      filteredStrategies = strategies.filter(s => s.id === strategyFilter);
+    }
+    
+    return filteredStrategies.map(strategy => ({
       ...strategy,
       generatedCampaigns: campaigns.filter(c => c.strategyId === strategy.id)
     }));
-  }, [strategies, campaigns]);
+  }, [strategies, campaigns, strategyFilter]);
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-heading-2 font-bold mb-6 text-text">Panel de Campañas Generadas</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-heading-2 font-bold text-text">
+          {strategyFilter ? 'Campañas de la Estrategia' : 'Panel de Campañas Generadas'}
+        </h1>
+        {strategyFilter && (
+          <button 
+            onClick={() => navigate('/generated-campaigns')}
+            className="text-sm text-accent hover:text-primary transition-colors flex items-center gap-1"
+          >
+            ← Ver todas las estrategias
+          </button>
+        )}
+      </div>
+      
+      {strategyFilter && (
+        <Card className="mb-4 p-4 bg-accent/10 border-accent/20">
+          <p className="text-sm text-accent">
+            📍 Mostrando campañas de una estrategia específica
+          </p>
+        </Card>
+      )}
+      
       <Card className="mb-6 p-4 flex items-center gap-2">
         <input
           type="text"

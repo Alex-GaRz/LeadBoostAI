@@ -30,8 +30,18 @@ interface AdPreviewProps {
 }
 
 const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, variant, businessName }) => {
+		// 🔍 DEBUG: Logging para verificar qué datos recibe AdPreview
+		console.log('DEBUG AdPreview - iaData recibido:', iaData);
+		console.log('DEBUG AdPreview - campaignData recibido:', campaignData);
+		console.log('DEBUG AdPreview - variant:', variant);
+		console.log('DEBUG AdPreview - businessName:', businessName);
+
 		// Helper para obtener los datos de la variante
-		const getVar = (n: 1 | 2 | 3) => iaData?.["Anuncio generado por IA"]?.[`Variante ${n}`] || {};
+		const getVar = (n: 1 | 2 | 3) => {
+			const result = iaData?.["Anuncio generado por IA"]?.[`Variante ${n}`] || {};
+			console.log(`DEBUG AdPreview - getVar(${n}):`, result);
+			return result;
+		};
 
 		// Si se pasa variant, solo mostrar esa variante
 		const variantsToShow = variant ? [variant] : [1, 2, 3];
@@ -51,11 +61,21 @@ const AdPreview: React.FC<AdPreviewProps> = ({ platform, iaData, campaignData, v
 							<>
 								{variantsToShow.map((v) => {
 									const variante = getVar(v as 1 | 2 | 3);
+									console.log(`DEBUG AdPreview - Procesando variante ${v}:`, variante);
+									
 									const brand = businessName ? String(businessName) : 'Nombre de marca';
 										const patrocinado = 'Publicidad';
 										const textoPrincipal = variante['Texto principal'] || 'Sin texto principal';
 										const titulo = variante['Título del anuncio'] || 'Sin título';
 										const cta = variante['CTA'] || 'Más información';
+										
+										console.log(`DEBUG AdPreview - Variante ${v} datos extraídos:`, {
+											textoPrincipal,
+											titulo,
+											cta,
+											brand
+										});
+										
 										const imagenUrl = getImagenUrl(campaignData);
 										const descripcion = titulo;
 																// Reacciones y conteos fijos para demo

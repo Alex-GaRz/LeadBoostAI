@@ -111,24 +111,34 @@ async function generateCampaignAI(strategyResult, targetProfile, expectJson = tr
   const API_URL = 'https://api.openai.com/v1/chat/completions';
   if (!API_KEY) throw new Error('OPENAI_API_KEY no configurada');
 
-  const prompt = `Eres un copywriter de élite. Tu ángulo de ataque es "${strategyResult.angle}" y tu mensaje clave es "${strategyResult.key_message}". 
+  const prompt = `Eres un copywriter de élite especializado en campañas de alta conversión. Tu ángulo de ataque es "${strategyResult.angle}" y tu mensaje clave es "${strategyResult.key_message}". 
 
-Tu misión es escribir 3 variantes de anuncios dirigidos directamente a ${targetProfile.name || 'el prospecto'}, que es ${targetProfile.jobTitle} en ${targetProfile.companyName}. 
+Tu misión es escribir EXACTAMENTE 3 variantes de anuncios dirigidos directamente a ${targetProfile.name || 'el prospecto'}, que es ${targetProfile.jobTitle} en ${targetProfile.companyName}. 
 
-INSTRUCCIONES CRÍTICAS:
-1. Háblale en segunda persona ('tú') - dirígete directamente a él/ella
-2. NO uses su nombre en el texto del anuncio, pero úsalo como contexto para tu escritura
-3. Sé extremadamente conciso y potente
-4. Cada anuncio debe tener: título (máximo 8 palabras) y texto (máximo 40 palabras)
-5. Usa el ángulo y mensaje clave proporcionados como base estratégica
-6. Devuelve un objeto JSON con el array "ad_variants"
+INSTRUCCIONES CRÍTICAS - CUMPLE EXACTAMENTE:
+1. Genera EXACTAMENTE 3 variantes de anuncios (ni más, ni menos)
+2. Háblale en segunda persona ('tú') - dirígete directamente a él/ella
+3. NO uses su nombre en el texto del anuncio, pero úsalo como contexto para tu escritura
+4. Sé extremadamente conciso y potente
+5. Cada anuncio debe tener: título (máximo 8 palabras) y texto (máximo 40 palabras)
+6. Usa el ángulo y mensaje clave proporcionados como base estratégica
+7. Cada variante debe ser diferente pero mantener la consistencia estratégica
+8. Devuelve un objeto JSON con el array "ad_variants" conteniendo exactamente 3 elementos
 
-Formato de respuesta:
+FORMATO DE RESPUESTA OBLIGATORIO:
 {
   "ad_variants": [
     {
-      "title": "Título conciso del anuncio",
-      "text": "Texto persuasivo máximo 40 palabras que conecte directamente con el dolor y la solución, hablándole en segunda persona"
+      "title": "Título conciso del primer anuncio",
+      "text": "Texto persuasivo máximo 40 palabras que conecte directamente con el dolor y la solución"
+    },
+    {
+      "title": "Título conciso del segundo anuncio", 
+      "text": "Texto persuasivo máximo 40 palabras con enfoque diferente pero mismo ángulo estratégico"
+    },
+    {
+      "title": "Título conciso del tercer anuncio",
+      "text": "Texto persuasivo máximo 40 palabras con tercer enfoque complementario"
     }
   ]
 }`;
@@ -174,12 +184,42 @@ Formato de respuesta:
     }
   }
   
-  // Validación y estructura de respuesta
+  // Validación estricta para asegurar exactamente 3 variantes
+  let adVariants = copyResult.ad_variants || [];
+  
+  // Validar que tenemos exactamente 3 variantes
+  if (!Array.isArray(adVariants) || adVariants.length !== 3) {
+    console.warn('[Copywriter] ⚠️ La IA no devolvió exactamente 3 variantes. Cantidad recibida:', adVariants.length);
+    
+    // Si tenemos menos de 3, completar con variantes por defecto
+    while (adVariants.length < 3) {
+      const variantNumber = adVariants.length + 1;
+      adVariants.push({
+        title: `${strategyResult.angle} - Variante ${variantNumber}`,
+        text: `${strategyResult.key_message} Descubre cómo optimizar tu estrategia hoy mismo.`
+      });
+    }
+    
+    // Si tenemos más de 3, recortar a exactamente 3
+    if (adVariants.length > 3) {
+      adVariants = adVariants.slice(0, 3);
+    }
+    
+    console.log('[Copywriter] ✅ Corregido a exactamente 3 variantes:', adVariants.length);
+  }
+  
+  // Validar estructura de cada variante
+  adVariants = adVariants.map((variant, index) => ({
+    title: variant.title || `Variante ${index + 1}`,
+    text: variant.text || `${strategyResult.key_message} - Texto por defecto`
+  }));
+  
   const validatedResult = {
-    ad_variants: copyResult.ad_variants || []
+    ad_variants: adVariants
   };
   
-  console.log('[Copywriter] FIN generateCampaignAI');
+  console.log('[Copywriter] ✅ FIN generateCampaignAI - 3 variantes validadas');
+  console.log('[Copywriter] Variantes finales:', validatedResult.ad_variants.map((v, i) => `${i+1}. ${v.title}`));
   return validatedResult;
 }
 
@@ -197,29 +237,31 @@ async function createImagePrompt(strategyResult, copyResult) {
   const mainAd = copyResult.ad_variants?.[0] || { title: '', text: '' };
   console.log('[Director de Arte] Anuncio principal seleccionado:', mainAd);
   
-  const prompt = `Eres un director de arte experto en campañas publicitarias B2B. Tu misión es crear un prompt técnico y visual para una IA de imagen.
+  const prompt = `Eres un director de arte experto en campañas publicitarias B2B. Tu misión es crear UNA IMAGEN MAESTRA que funcione perfectamente con las 3 variantes de texto generadas.
 
 CONTEXTO DE LA CAMPAÑA:
 - Ángulo estratégico: ${strategyResult.angle}
 - Mensaje clave: ${strategyResult.key_message}
-- Título del anuncio: ${mainAd.title}
-- Texto del anuncio: ${mainAd.text}
+- Anuncio principal (referencia): ${mainAd.title} - ${mainAd.text}
+- Total de variantes de texto: 3 (esta imagen debe complementar todas)
 
-INSTRUCCIONES:
-1. Crea un prompt técnico para generar una imagen que complemente visualmente la estrategia y el mensaje
-2. La imagen debe ser profesional, moderna y apropiada para el ángulo estratégico elegido
-3. Incluye detalles específicos sobre composición, colores, estilo y elementos visuales
-4. Máximo 150 palabras en el prompt de imagen
-5. Devuelve un objeto JSON con el campo "image_prompt"
+INSTRUCCIONES PARA LA IMAGEN MAESTRA:
+1. Crea UN prompt técnico para generar UNA SOLA IMAGEN que sea versátil y funcione con las 3 variantes de texto
+2. La imagen debe ser conceptual y estratégica, no literal a un solo texto específico
+3. Debe ser profesional, moderna y apropiada para el ángulo estratégico elegido
+4. Incluye detalles específicos sobre composición, colores, estilo y elementos visuales
+5. Máximo 150 palabras en el prompt de imagen
+6. La imagen debe ser escalable y adaptable para diferentes formatos publicitarios
+7. Devuelve un objeto JSON con el campo "image_prompt"
 
-ESTILOS SEGÚN ÁNGULO:
-- "Lógica/ROI": Gráficos, datos, profesional, colores azules/grises
-- "Emocional/Alivio del Dolor": Personas, expresiones, colores cálidos
-- "Prueba Social": Equipos, logotipos, testimonios, colores corporativos
+ESTILOS OPTIMIZADOS SEGÚN ÁNGULO:
+- "Lógica/ROI": Gráficos conceptuales, dashboards, métricas visuales, colores azules/grises corporativos
+- "Emocional/Alivio del Dolor": Transformación visual, antes/después, expresiones de alivio, colores cálidos
+- "Prueba Social": Equipos colaborando, logos de clientes, testimonials visuales, colores corporativos confiables
 
 Formato de respuesta:
 {
-  "image_prompt": "Prompt técnico detallado para la generación de imagen..."
+  "image_prompt": "Prompt técnico detallado para generar la imagen maestra que complementará las 3 variantes de texto..."
 }`;
 
   console.log('[Director de Arte] Prompt generado para OpenAI:', prompt.substring(0, 200) + '...');
