@@ -14,6 +14,20 @@ const { SignalRepository } = require('../repositories/SignalRepository');
 const { RadarHealthMonitor } = require('./RadarHealthMonitor');
 const { LEADBOOST_RATE_LIMITS, isNearRateLimit } = require('../../config/twitter-rate-limits');
 
+// Importar implementación JavaScript del NormalizationService desde el archivo de integración
+const { OrchestratorNormalizationService } = require('../../core/OrchestratorNormalizationIntegration');
+
+// Importar NLPProcessor para enriquecimiento de señales con IA
+let NLPProcessor = null;
+try {
+  // Usar la versión JavaScript del NLPProcessor
+  const NLPProcessorClass = require('./processing/NLPProcessor');
+  NLPProcessor = NLPProcessorClass;
+  console.log('[Orchestrator] 🤖 NLPProcessor importado exitosamente');
+} catch (error) {
+  console.warn('[Orchestrator] ⚠️ NLPProcessor no disponible:', error.message);
+}
+
 class Orchestrator {
   static instance = null;
 
@@ -168,6 +182,46 @@ class Orchestrator {
     return this.healthMonitor.getMetrics();
   }
 
+  /**
+   * Obtiene estadísticas completas del Orchestrator incluyendo normalización.
+   */
+  getStats() {
+    const healthStats = this.healthMonitor.getStats();
+    const healthMetrics = this.healthMonitor.getMetrics();
+    
+    // Calcular estadísticas de normalización del historial
+    const completedExecutions = this.execHistory.filter(exec => exec.status === 'completed');
+    const totalSignalsNormalized = completedExecutions.reduce((sum, exec) => 
+      sum + (exec.signalsNormalized || 0), 0
+    );
+    const totalNormalizationErrors = completedExecutions.reduce((sum, exec) => 
+      sum + (exec.normalizationErrors || 0), 0
+    );
+    
+    return {
+      // Estadísticas generales
+      totalExecutions: this.execHistory.length,
+      completedExecutions: completedExecutions.length,
+      successRate: healthMetrics.successRate,
+      
+      // Estadísticas de normalización
+      totalSignalsProcessed: completedExecutions.reduce((sum, exec) => 
+        sum + (exec.signalsFound || 0), 0
+      ),
+      totalSignalsNormalized,
+      totalNormalizationErrors,
+      normalizationSuccessRate: totalSignalsNormalized > 0 ? 
+        ((totalSignalsNormalized / (totalSignalsNormalized + totalNormalizationErrors)) * 100).toFixed(1) + '%' : 'N/A',
+      
+      // Estadísticas de salud del sistema
+      systemHealth: healthStats.status,
+      lastUpdated: healthStats.lastUpdated,
+      
+      // Historial reciente
+      recentExecutions: this.execHistory.slice(-5)
+    };
+  }
+
   generateSystemReport() {
     const stats = this.getHealthStats();
     const metrics = this.getHealthMetrics();
@@ -245,8 +299,74 @@ Last Updated: ${new Date(stats.lastUpdated).toLocaleString()}
           }
         }
 
-        // Guardar señales en Firebase
-        const savePromises = twitterResults.map(signal => 
+        console.log(`[Orchestrator] 🐦 Twitter returned ${twitterResults.length} raw signals`);
+        
+        // === PASO DE NORMALIZACIÓN ===
+        console.log('[Orchestrator] 🧽 Starting normalization process...');
+        const normalizationService = new OrchestratorNormalizationService();
+        
+        let normalizedSignals = [];
+        let normalizationErrors = 0;
+        
+        for (const rawSignal of twitterResults) {
+          try {
+            const normalizedSignal = await normalizationService.normalizeSignal(rawSignal);
+            normalizedSignals.push(normalizedSignal);
+          } catch (normError) {
+            console.error(`[Orchestrator] ❌ Normalization error for signal ${rawSignal.id}:`, normError.message);
+            normalizationErrors++;
+            // Mantener señal original en caso de error de normalización
+            normalizedSignals.push(rawSignal);
+          }
+        }
+        
+        console.log(`[Orchestrator] ✅ Normalized ${normalizedSignals.length - normalizationErrors}/${twitterResults.length} signals successfully`);
+        if (normalizationErrors > 0) {
+          console.log(`[Orchestrator] ⚠️ ${normalizationErrors} signals failed normalization, kept original format`);
+        }
+
+        // === PASO DE ENRIQUECIMIENTO CON IA ===
+        console.log('[Orchestrator] 🤖 Starting NLP enrichment process...');
+        let enrichedSignals = [];
+        let enrichmentErrors = 0;
+        
+        if (NLPProcessor) {
+          try {
+            const nlpProcessor = NLPProcessor.getInstance();
+            
+            // Procesar señales en lotes para evitar rate limits de OpenAI
+            for (const normalizedSignal of normalizedSignals) {
+              try {
+                const enrichedSignal = await nlpProcessor.enrichSignal(normalizedSignal);
+                if (enrichedSignal) {
+                  enrichedSignals.push(enrichedSignal);
+                } else {
+                  console.warn(`[Orchestrator] ⚠️ Enrichment returned null for signal ${normalizedSignal.contentHash?.slice(0, 8)}`);
+                  enrichedSignals.push(normalizedSignal); // Mantener señal normalizada
+                }
+              } catch (enrichError) {
+                console.error(`[Orchestrator] ❌ Enrichment error for signal ${normalizedSignal.contentHash?.slice(0, 8)}:`, enrichError.message);
+                enrichmentErrors++;
+                enrichedSignals.push(normalizedSignal); // Mantener señal normalizada
+              }
+            }
+            
+            console.log(`[Orchestrator] ✅ Enriched ${enrichedSignals.length - enrichmentErrors}/${normalizedSignals.length} signals successfully`);
+            if (enrichmentErrors > 0) {
+              console.log(`[Orchestrator] ⚠️ ${enrichmentErrors} signals failed enrichment, kept normalized format`);
+            }
+          } catch (error) {
+            console.error(`[Orchestrator] ❌ NLPProcessor error:`, error.message);
+            enrichedSignals = normalizedSignals; // Fallback a señales normalizadas
+            enrichmentErrors = normalizedSignals.length;
+          }
+        } else {
+          console.warn(`[Orchestrator] ⚠️ NLPProcessor not available, skipping enrichment`);
+          enrichedSignals = normalizedSignals; // Usar señales normalizadas sin enriquecimiento
+        }
+
+        // Guardar señales enriquecidas en Firebase
+        const savePromises = enrichedSignals.map(signal => 
           this.signalRepository.saveSignal(signal)
         );
         
@@ -255,16 +375,24 @@ Last Updated: ${new Date(stats.lastUpdated).toLocaleString()}
         execution.status = 'completed';
         execution.endTime = new Date();
         execution.signalsFound = twitterResults.length;
+        execution.signalsNormalized = normalizedSignals.length - normalizationErrors;
+        execution.normalizationErrors = normalizationErrors;
+        execution.signalsEnriched = enrichedSignals.length - enrichmentErrors;
+        execution.enrichmentErrors = enrichmentErrors;
         execution.duration = Date.now() - startTime;
         
-        this.healthMonitor.endRun(twitterResults.length);
+        this.healthMonitor.endRun(enrichedSignals.length);
         
-        console.log(`[Orchestrator] ✅ Real ingestion completed: ${twitterResults.length} signals processed`);
+        console.log(`[Orchestrator] ✅ Real ingestion completed: ${enrichedSignals.length} signals processed (${enrichedSignals.length - enrichmentErrors} enriched)`);
         
         return {
           success: true,
           source,
-          signalsCollected: twitterResults.length,
+          signalsCollected: enrichedSignals.length,
+          signalsNormalized: normalizedSignals.length - normalizationErrors,
+          normalizationErrors,
+          signalsEnriched: enrichedSignals.length - enrichmentErrors,
+          enrichmentErrors,
           executionId: execution.id,
           duration: execution.duration,
           timestamp: new Date().toISOString()
@@ -285,15 +413,79 @@ Last Updated: ${new Date(stats.lastUpdated).toLocaleString()}
           });
           
           newsResults = fetchResult.signals;
-          console.log(`[Orchestrator] 📰 NewsAPI returned ${newsResults.length} signals`);
+          console.log(`[Orchestrator] 📰 NewsAPI returned ${newsResults.length} raw signals`);
           
         } catch (error) {
           console.log(`[Orchestrator] ❌ Error de NewsAPI:`, error.message);
           throw error;
         }
 
-        // Guardar señales en Firebase
-        const savePromises = newsResults.map(signal => 
+        // === PASO DE NORMALIZACIÓN ===
+        console.log('[Orchestrator] 🧽 Starting NewsAPI normalization process...');
+        const normalizationService = new OrchestratorNormalizationService();
+        
+        let normalizedNewsSignals = [];
+        let newsNormalizationErrors = 0;
+        
+        for (const rawSignal of newsResults) {
+          try {
+            const normalizedSignal = await normalizationService.normalizeSignal(rawSignal);
+            normalizedNewsSignals.push(normalizedSignal);
+          } catch (normError) {
+            console.error(`[Orchestrator] ❌ NewsAPI normalization error for signal ${rawSignal.id}:`, normError.message);
+            newsNormalizationErrors++;
+            // Mantener señal original en caso de error de normalización
+            normalizedNewsSignals.push(rawSignal);
+          }
+        }
+        
+        console.log(`[Orchestrator] ✅ Normalized ${normalizedNewsSignals.length - newsNormalizationErrors}/${newsResults.length} NewsAPI signals successfully`);
+        if (newsNormalizationErrors > 0) {
+          console.log(`[Orchestrator] ⚠️ ${newsNormalizationErrors} NewsAPI signals failed normalization, kept original format`);
+        }
+
+        // === PASO DE ENRIQUECIMIENTO CON IA ===
+        console.log('[Orchestrator] 🤖 Starting NewsAPI NLP enrichment process...');
+        let enrichedNewsSignals = [];
+        let newsEnrichmentErrors = 0;
+        
+        if (NLPProcessor) {
+          try {
+            const nlpProcessor = NLPProcessor.getInstance();
+            
+            // Procesar señales en lotes para evitar rate limits de OpenAI
+            for (const normalizedSignal of normalizedNewsSignals) {
+              try {
+                const enrichedSignal = await nlpProcessor.enrichSignal(normalizedSignal);
+                if (enrichedSignal) {
+                  enrichedNewsSignals.push(enrichedSignal);
+                } else {
+                  console.warn(`[Orchestrator] ⚠️ NewsAPI enrichment returned null for signal ${normalizedSignal.contentHash?.slice(0, 8)}`);
+                  enrichedNewsSignals.push(normalizedSignal); // Mantener señal normalizada
+                }
+              } catch (enrichError) {
+                console.error(`[Orchestrator] ❌ NewsAPI enrichment error for signal ${normalizedSignal.contentHash?.slice(0, 8)}:`, enrichError.message);
+                newsEnrichmentErrors++;
+                enrichedNewsSignals.push(normalizedSignal); // Mantener señal normalizada
+              }
+            }
+            
+            console.log(`[Orchestrator] ✅ Enriched ${enrichedNewsSignals.length - newsEnrichmentErrors}/${normalizedNewsSignals.length} NewsAPI signals successfully`);
+            if (newsEnrichmentErrors > 0) {
+              console.log(`[Orchestrator] ⚠️ ${newsEnrichmentErrors} NewsAPI signals failed enrichment, kept normalized format`);
+            }
+          } catch (error) {
+            console.error(`[Orchestrator] ❌ NewsAPI NLPProcessor error:`, error.message);
+            enrichedNewsSignals = normalizedNewsSignals; // Fallback a señales normalizadas
+            newsEnrichmentErrors = normalizedNewsSignals.length;
+          }
+        } else {
+          console.warn(`[Orchestrator] ⚠️ NLPProcessor not available for NewsAPI, skipping enrichment`);
+          enrichedNewsSignals = normalizedNewsSignals; // Usar señales normalizadas sin enriquecimiento
+        }
+
+        // Guardar señales enriquecidas en Firebase
+        const savePromises = enrichedNewsSignals.map(signal => 
           this.signalRepository.saveSignal(signal)
         );
         
@@ -302,16 +494,24 @@ Last Updated: ${new Date(stats.lastUpdated).toLocaleString()}
         execution.status = 'completed';
         execution.endTime = new Date();
         execution.signalsFound = newsResults.length;
+        execution.signalsNormalized = normalizedNewsSignals.length - newsNormalizationErrors;
+        execution.normalizationErrors = newsNormalizationErrors;
+        execution.signalsEnriched = enrichedNewsSignals.length - newsEnrichmentErrors;
+        execution.enrichmentErrors = newsEnrichmentErrors;
         execution.duration = Date.now() - startTime;
         
-        this.healthMonitor.endRun(newsResults.length);
+        this.healthMonitor.endRun(enrichedNewsSignals.length);
         
-        console.log(`[Orchestrator] ✅ News ingestion completed: ${newsResults.length} signals processed`);
+        console.log(`[Orchestrator] ✅ News ingestion completed: ${enrichedNewsSignals.length} signals processed (${enrichedNewsSignals.length - newsEnrichmentErrors} enriched)`);
         
         return {
           success: true,
           source: 'news_api',
-          signalsCollected: newsResults.length,
+          signalsCollected: enrichedNewsSignals.length,
+          signalsNormalized: normalizedNewsSignals.length - newsNormalizationErrors,
+          normalizationErrors: newsNormalizationErrors,
+          signalsEnriched: enrichedNewsSignals.length - newsEnrichmentErrors,
+          enrichmentErrors: newsEnrichmentErrors,
           executionId: execution.id,
           duration: execution.duration,
           timestamp: new Date().toISOString()

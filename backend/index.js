@@ -311,6 +311,85 @@ app.get('/api/radar/test-multi-source', async (req, res) => {
   }
 });
 
+// ===== FIREBASE DEBUG ENDPOINT =====
+app.get('/api/debug/firebase-status', async (req, res) => {
+  try {
+    const { SignalRepository } = require('./src/repositories/SignalRepository');
+    const signalRepo = new SignalRepository();
+    
+    // Test simple write
+    const testDoc = {
+      test: true,
+      timestamp: new Date(),
+      message: "Firebase connection test"
+    };
+    
+    const result = await signalRepo.saveSignal(testDoc);
+    
+    res.json({
+      success: true,
+      firebaseStatus: "CONNECTED",
+      testWrite: result,
+      collectionName: "universal_signals",
+      projectId: "leadboost-ai-1966c"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      firebaseStatus: "ERROR",
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// ===== PIPELINE DEBUG ENDPOINT =====
+app.post('/api/debug/pipeline-test', async (req, res) => {
+  try {
+    const { NLPProcessor } = require('./src/core/processing/NLPProcessor');
+    const { SignalRepository } = require('./src/repositories/SignalRepository');
+    
+    // Crear señal mock para testing
+    const mockSignal = {
+      cleanContent: "This is amazing artificial intelligence breakthrough technology",
+      source: "debug_test",
+      contentHash: "debug123",
+      timestamp: new Date(),
+      created_at: new Date(),
+      ingested_at: new Date()
+    };
+    
+    console.log('[DEBUG] 🔍 Testing complete pipeline...');
+    
+    // Paso 1: Test NLPProcessor
+    const nlpProcessor = NLPProcessor.getInstance();
+    const enrichedSignal = await nlpProcessor.enrichSignal(mockSignal);
+    
+    console.log('[DEBUG] 📊 Enriched signal:', JSON.stringify(enrichedSignal.analysis, null, 2));
+    
+    // Paso 2: Test SignalRepository
+    const signalRepo = new SignalRepository();
+    const saveResult = await signalRepo.saveSignal(enrichedSignal);
+    
+    res.json({
+      success: true,
+      pipelineTest: "COMPLETE",
+      mockSignal: mockSignal,
+      enrichedAnalysis: enrichedSignal.analysis,
+      saveResult: saveResult,
+      collectionName: "universal_signals"
+    });
+  } catch (error) {
+    console.error('[DEBUG] ❌ Pipeline test error:', error);
+    res.status(500).json({
+      success: false,
+      pipelineTest: "FAILED",
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 app.get('/', (req, res) => {
   res.send('Backend funcionando y seguro!');
 });
@@ -1073,8 +1152,295 @@ const radarScheduler = RadarScheduler.getInstance();
 //   console.error('[RADAR SYSTEM] ❌ Error iniciando sistema RADAR:', error);
 // });
 
+// ========================================================================
+// ENDPOINTS AVANZADOS - SISTEMA CON NORMALIZACIÓN
+// ========================================================================
+
+// Importar el integrador de normalización
+const { 
+  OrchestratorNormalizationService,
+  EnhancedOrchestratorWithNormalization 
+} = require('./core/OrchestratorNormalizationIntegration');
+
+/**
+ * Endpoint para probar el sistema completo con normalización automática.
+ * Demuestra el pipeline completo: Ingesta → Normalización → Almacenamiento
+ */
+app.get('/api/radar/test-enhanced-ingestion/:source', async (req, res) => {
+  console.log('\n🧪 TESTING ENHANCED SYSTEM WITH NORMALIZATION');
+  console.log('=' .repeat(70));
+  
+  try {
+    const { source } = req.params;
+    const { query = 'AI innovation' } = req.query;
+    
+    const startTime = Date.now();
+    
+    // Crear Orchestrator mejorado con normalización
+    const { Orchestrator } = require('./src/core/Orchestrator');
+    const orchestrator = Orchestrator.getInstance();
+    await orchestrator.initialize();
+    
+    const enhancedOrchestrator = new EnhancedOrchestratorWithNormalization(orchestrator);
+    
+    // Ejecutar ciclo completo con normalización
+    const normalizedSignals = await enhancedOrchestrator.runEnhancedIngestionCycle(source, query);
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // Obtener estadísticas completas
+    const stats = enhancedOrchestrator.getEnhancedStats();
+    
+    // Respuesta detallada
+    const response = {
+      success: true,
+      message: `Enhanced ingestion cycle completed successfully`,
+      execution: {
+        duration_ms: duration,
+        started_at: new Date(startTime).toISOString(),
+        completed_at: new Date(endTime).toISOString()
+      },
+      input: {
+        source,
+        query,
+        endpoint: `/api/radar/test-enhanced-ingestion/${source}`
+      },
+      results: {
+        total_signals: normalizedSignals.length,
+        normalized_signals: normalizedSignals.length,
+        sample_signals: normalizedSignals.slice(0, 2).map(signal => ({
+          id: signal.id,
+          source: signal.source,
+          original_content: signal.content_text?.substring(0, 100) + '...',
+          cleaned_content: signal.cleanContent?.substring(0, 100) + '...',
+          content_hash: signal.contentHash,
+          normalized_date: signal.normalizedDate,
+          metadata: {
+            length_change: `${signal.normalizationMetadata?.originalLength} → ${signal.normalizationMetadata?.cleanedLength}`,
+            has_url: signal.normalizationMetadata?.hasUrl,
+            is_retweet: signal.normalizationMetadata?.isRetweet,
+            mention_count: signal.normalizationMetadata?.mentionCount,
+            hashtag_count: signal.normalizationMetadata?.hashtagCount
+          }
+        }))
+      },
+      statistics: stats,
+      next_steps: [
+        'Review normalized signals quality',
+        'Check deduplication effectiveness', 
+        'Validate hash consistency',
+        'Monitor normalization performance'
+      ]
+    };
+    
+    console.log(`\n✅ Enhanced system test completed in ${duration}ms`);
+    console.log(`📊 Processed ${normalizedSignals.length} signals with normalization`);
+    
+    res.status(200).json(response);
+    
+  } catch (error) {
+    console.error('❌ Enhanced ingestion test failed:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Enhanced ingestion cycle failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Endpoint para comparar señales antes y después de normalización.
+ */
+app.get('/api/radar/compare-normalization/:source', async (req, res) => {
+  console.log('\n🔄 COMPARING RAW vs NORMALIZED SIGNALS');
+  console.log('=' .repeat(60));
+  
+  try {
+    const { source } = req.params;
+    const { query = 'technology' } = req.query;
+    
+    // 1. Obtener señales sin normalizar
+    console.log('📡 Fetching raw signals...');
+    const { Orchestrator } = require('./src/core/Orchestrator');
+    const orchestrator = Orchestrator.getInstance();
+    await orchestrator.initialize();
+    
+    const rawSignals = await orchestrator.runIngestionCycle(source, query);
+    
+    // 2. Aplicar normalización
+    console.log('🧽 Applying normalization...');
+    const normalizationService = new OrchestratorNormalizationService();
+    const normalizedSignals = await normalizationService.normalizeSignalBatch(rawSignals);
+    
+    // 3. Preparar comparación detallada
+    const comparison = rawSignals.slice(0, 3).map((rawSignal, index) => {
+      const normalizedSignal = normalizedSignals[index];
+      
+      return {
+        signal_id: rawSignal.id,
+        source: rawSignal.source,
+        raw: {
+          content: rawSignal.content_text,
+          length: rawSignal.content_text?.length || 0,
+          created_at: rawSignal.created_at
+        },
+        normalized: {
+          clean_content: normalizedSignal.cleanContent,
+          length: normalizedSignal.cleanContent?.length || 0,
+          normalized_date: normalizedSignal.normalizedDate,
+          content_hash: normalizedSignal.contentHash,
+          metadata: normalizedSignal.normalizationMetadata
+        },
+        improvements: {
+          html_removed: (rawSignal.content_text?.includes('<') || rawSignal.content_text?.includes('&')) ? 'Yes' : 'No',
+          whitespace_normalized: rawSignal.content_text?.match(/\s{2,}/) ? 'Yes' : 'No',
+          length_reduction: `${rawSignal.content_text?.length || 0} → ${normalizedSignal.cleanContent?.length || 0} chars`,
+          hash_generated: normalizedSignal.contentHash ? 'Yes' : 'No'
+        }
+      };
+    });
+    
+    const stats = normalizationService.getStats();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Normalization comparison completed',
+      comparison: {
+        total_signals: rawSignals.length,
+        sample_comparisons: comparison,
+        processing_stats: stats
+      },
+      recommendations: [
+        'Review HTML cleaning effectiveness',
+        'Validate date normalization accuracy',
+        'Check hash uniqueness',
+        'Monitor content quality improvements'
+      ]
+    });
+    
+    console.log(`✅ Normalization comparison completed for ${rawSignals.length} signals`);
+    
+  } catch (error) {
+    console.error('❌ Normalization comparison failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ========================================================================
+// ENDPOINT DE VALIDACIÓN - ORCHESTRATOR CON NORMALIZACIÓN INTEGRADA
+// ========================================================================
+
+/**
+ * Endpoint para validar la integración del NormalizationService en el Orchestrator.
+ * Demuestra el pipeline completo: Ingesta → Normalización → Almacenamiento.
+ */
+app.get('/api/radar/test-orchestrator-normalization/:source', async (req, res) => {
+  console.log('\n🧪 TESTING ORCHESTRATOR WITH INTEGRATED NORMALIZATION');
+  console.log('=' .repeat(70));
+  
+  try {
+    const { source } = req.params;
+    const { query = 'artificial intelligence' } = req.query;
+    
+    console.log(`📡 Source: ${source}`);
+    console.log(`🎯 Query: "${query}"`);
+    console.log(`⏰ Started at: ${new Date().toISOString()}`);
+    
+    const startTime = Date.now();
+    
+    // Usar Orchestrator con normalización integrada
+    const { Orchestrator } = require('./src/core/Orchestrator');
+    const orchestrator = Orchestrator.getInstance();
+    await orchestrator.initialize();
+    
+    // Ejecutar ciclo de ingesta con normalización automática
+    const result = await orchestrator.runIngestionCycle(source, query, {
+      maxResults: 1 // Prueba quirúrgica con 1 señal
+    });
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // Obtener estadísticas del último ciclo ejecutado
+    const stats = orchestrator.getStats();
+    const lastExecution = orchestrator.execHistory[orchestrator.execHistory.length - 1];
+    
+    console.log('\n📊 INTEGRATION RESULTS:');
+    console.log(`✅ Signals collected: ${result.signalsCollected}`);
+    console.log(`🧽 Signals normalized: ${result.signalsNormalized || 'N/A'}`);
+    console.log(`❌ Normalization errors: ${result.normalizationErrors || 0}`);
+    console.log(`⏱️ Total duration: ${duration}ms`);
+    
+    // Respuesta detallada
+    const response = {
+      success: true,
+      message: `Orchestrator with integrated normalization completed successfully`,
+      test: 'ORCHESTRATOR_NORMALIZATION_INTEGRATION',
+      execution: {
+        source,
+        query,
+        duration_ms: duration,
+        started_at: new Date(startTime).toISOString(),
+        completed_at: new Date(endTime).toISOString()
+      },
+      results: {
+        signals_collected: result.signalsCollected,
+        signals_normalized: result.signalsNormalized || 0,
+        normalization_errors: result.normalizationErrors || 0,
+        normalization_success_rate: result.signalsNormalized ? 
+          `${((result.signalsNormalized / result.signalsCollected) * 100).toFixed(1)}%` : 'N/A'
+      },
+      orchestrator_stats: {
+        total_executions: stats.totalExecutions,
+        success_rate: stats.successRate,
+        last_execution: lastExecution ? {
+          id: lastExecution.id,
+          status: lastExecution.status,
+          signals_found: lastExecution.signalsFound,
+          signals_normalized: lastExecution.signalsNormalized,
+          normalization_errors: lastExecution.normalizationErrors,
+          duration: lastExecution.duration
+        } : null
+      },
+      validation: {
+        normalization_integrated: true,
+        pipeline_flow: 'Fetch → Normalize → Save',
+        firestore_compatible: true,
+        error_handling: 'Robust with fallbacks'
+      }
+    };
+    
+    console.log(`\n✅ Integration test completed successfully in ${duration}ms`);
+    
+    res.status(200).json(response);
+    
+  } catch (error) {
+    console.error('❌ Orchestrator normalization integration test failed:', error);
+    
+    res.status(500).json({
+      success: false,
+      test: 'ORCHESTRATOR_NORMALIZATION_INTEGRATION',
+      error: error.message,
+      message: 'Integration test failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ========================================================================
+// SCHEDULER Y SISTEMA RADAR AUTOMÁTICO
+// ========================================================================
+
 console.log('[RADAR SYSTEM] ⏸️ Scheduler desactivado - Control manual habilitado');
 console.log('[RADAR SYSTEM] 🔧 Para activar: usar /api/radar/initialize o radarScheduler.start()');
+console.log('[RADAR SYSTEM] 🧽 NormalizationService: INTEGRADO');
 
 // Iniciar servidor Express
 app.listen(PORT, () => {
@@ -1082,5 +1448,6 @@ app.listen(PORT, () => {
   console.log('📡 Sistema RADAR: ACTIVO');
   console.log('🔄 Scheduler: EJECUTANDO');
   console.log('🏥 Health Monitor: MONITOREANDO');
+  console.log('🧽 Normalization Service: INTEGRADO');
   console.log('=' .repeat(50));
 });

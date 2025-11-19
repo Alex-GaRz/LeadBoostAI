@@ -453,4 +453,83 @@ router.get('/trigger-test', async (req, res) => {
   }
 });
 
+/**
+ * ===============================================================================
+ * 🧠 ENDPOINTS DE INTELIGENCIA DE MERCADO (ACTIVIDAD 2.5)
+ * ===============================================================================
+ */
+
+// Importar controlador de señales enriquecidas
+let SignalController = null;
+try {
+  const { SignalController: SignalControllerClass } = require('../src/controllers/SignalController');
+  SignalController = SignalControllerClass;
+  console.log('[RadarRoutes] 🎯 SignalController imported successfully');
+} catch (error) {
+  console.warn('[RadarRoutes] ⚠️ SignalController not available:', error.message);
+}
+
+/**
+ * GET /api/radar/signals
+ * Obtiene señales enriquecidas con filtrado avanzado y paginación.
+ * 
+ * Query Parameters:
+ * - limit: Número de resultados por página (default: 20, max: 100)
+ * - lastId: ID del último documento para paginación
+ * - source: Filtro por fuente (twitter, news_api)
+ * - sentiment: Filtro por sentimiento (positive, negative, neutral)
+ * - intent: Filtro por intención (commercial, informational, complaint, support, spam)
+ * - startDate: Fecha de inicio (ISO string)
+ * - endDate: Fecha de fin (ISO string)
+ */
+router.get('/signals', async (req, res) => {
+  if (!SignalController) {
+    return res.status(503).json({
+      success: false,
+      error: 'SignalController not available. Please check TypeScript compilation.'
+    });
+  }
+
+  try {
+    const controller = new SignalController();
+    await controller.getSignals(req, res);
+  } catch (error) {
+    console.error('[SIGNALS-API] ❌ Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error in signals endpoint'
+    });
+  }
+});
+
+/**
+ * GET /api/radar/dashboard-metrics
+ * Obtiene métricas del dashboard "El Pulso del Imperio".
+ * 
+ * Respuesta incluye:
+ * - Total de señales procesadas (24h)
+ * - Distribución de sentimientos
+ * - Top intenciones detectadas
+ * - Estado del sistema
+ */
+router.get('/dashboard-metrics', async (req, res) => {
+  if (!SignalController) {
+    return res.status(503).json({
+      success: false,
+      error: 'SignalController not available. Please check TypeScript compilation.'
+    });
+  }
+
+  try {
+    const controller = new SignalController();
+    await controller.getDashboardMetrics(req, res);
+  } catch (error) {
+    console.error('[DASHBOARD-METRICS] ❌ Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error in dashboard metrics endpoint'
+    });
+  }
+});
+
 module.exports = router;

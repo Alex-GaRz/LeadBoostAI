@@ -62,11 +62,15 @@ class SignalRepository {
     // Extraer ID original de la fuente (si existe en raw_metadata)
     const originalId = this.extractOriginalId(signal);
     
+    // Asegurar fecha válida para el ID
+    const dateForId = signal.created_at || signal.timestamp || new Date();
+    const dateString = dateForId instanceof Date ? dateForId.toISOString() : new Date(dateForId).toISOString();
+    
     // Crear string único basado en fuente, URL original y timestamp
     const uniqueString = [
-      signal.source,
-      signal.original_url,
-      originalId || signal.created_at.toISOString(),
+      signal.source || 'unknown_source',
+      signal.original_url || signal.url || 'no_url',
+      originalId || dateString,
     ].join('|');
 
     // Generar hash MD5 determinista
@@ -132,12 +136,18 @@ class SignalRepository {
    * @returns {Object} Objeto compatible con Firestore
    */
   toFirestoreFormat(signal) {
+    // Asegurar fechas válidas con valores por defecto
+    const now = new Date();
+    const ingestedAt = signal.ingested_at || signal.timestamp || now;
+    const createdAt = signal.created_at || signal.timestamp || now;
+    const lastAnalyzedAt = signal.last_analyzed_at;
+
     return {
       ...signal,
-      ingested_at: admin.firestore.Timestamp.fromDate(signal.ingested_at),
-      created_at: admin.firestore.Timestamp.fromDate(signal.created_at),
-      last_analyzed_at: signal.last_analyzed_at 
-        ? admin.firestore.Timestamp.fromDate(signal.last_analyzed_at)
+      ingested_at: admin.firestore.Timestamp.fromDate(new Date(ingestedAt)),
+      created_at: admin.firestore.Timestamp.fromDate(new Date(createdAt)),
+      last_analyzed_at: lastAnalyzedAt 
+        ? admin.firestore.Timestamp.fromDate(new Date(lastAnalyzedAt))
         : null,
       
       // Agregar metadata de persistencia
@@ -194,13 +204,18 @@ class SignalRepository {
       // Convertir a formato Firestore
       const firestoreData = this.toFirestoreFormat(signal);
 
+      console.log(`[SignalRepository] 🔄 Attempting to save signal to collection: ${this.COLLECTION_NAME}`);
+      console.log(`[SignalRepository] 📄 Document ID: ${documentId}`);
+      console.log(`[SignalRepository] 📊 Data preview:`, JSON.stringify(firestoreData, null, 2).slice(0, 500) + '...');
+
       // Guardar o actualizar con merge: true
       await this.db
         .collection(this.COLLECTION_NAME)
         .doc(documentId)
         .set(firestoreData, { merge: true });
 
-      console.log(`[SignalRepository] ${wasUpdated ? 'Updated' : 'Created'} signal: ${documentId}`);
+      console.log(`[SignalRepository] ✅ ${wasUpdated ? 'Updated' : 'Created'} signal: ${documentId}`);
+      console.log(`[SignalRepository] 🔗 Check Firebase Console: Collection '${this.COLLECTION_NAME}' -> Document '${documentId}'`);
 
       return {
         success: true,
@@ -522,6 +537,219 @@ class SignalRepository {
           timestamp: new Date()
         }
       };
+    }
+  }
+
+  /**
+   * Consulta señales con filtrado avanzado y paginación cursor-based.
+   * Implementa filtros por sentiment, intent, source y rango de fechas.
+   * 
+   * @param {Object} options - Opciones de consulta
+   * @param {number} [options.limit=20] - Límite de resultados por página
+   * @param {string} [options.lastId] - ID del último documento para paginación
+   * @param {string} [options.source] - Filtro por fuente (twitter, news_api, etc.)
+   * @param {string} [options.sentiment] - Filtro por sentimiento (positive, negative, neutral)
+   * @param {string} [options.intent] - Filtro por intención (commercial, informational, etc.)
+   * @param {Date} [options.startDate] - Fecha de inicio para filtrado
+   * @param {Date} [options.endDate] - Fecha de fin para filtrado
+   * @returns {Promise<{signals: Array, lastId: string|null}>} Resultados paginados
+   */
+  async querySignals(options = {}) {
+    try {
+      const {
+        limit = 20,
+        lastId = null,
+        source = null,
+        sentiment = null,
+        intent = null,
+        startDate = null,
+        endDate = null
+      } = options;
+
+      console.log(`[SignalRepository] 🔍 Querying signals with options:`, { 
+        limit, lastId: lastId?.slice(0, 8) + '...', source, sentiment, intent 
+      });
+
+      // Iniciar query base con ordenamiento
+      let query = this.db
+        .collection(this.COLLECTION_NAME)
+        .orderBy('created_at', 'desc');
+
+      // Aplicar filtros condicionales
+      if (source) {
+        query = query.where('source', '==', source);
+      }
+
+      if (sentiment) {
+        query = query.where('analysis.sentimentLabel', '==', sentiment);
+      }
+
+      if (intent) {
+        query = query.where('analysis.intent', '==', intent);
+      }
+
+      // Filtros de fecha (requieren índices compuestos en producción)
+      if (startDate) {
+        query = query.where('created_at', '>=', admin.firestore.Timestamp.fromDate(startDate));
+      }
+
+      if (endDate) {
+        query = query.where('created_at', '<=', admin.firestore.Timestamp.fromDate(endDate));
+      }
+
+      // Implementar paginación cursor-based
+      if (lastId) {
+        try {
+          const lastDocSnap = await this.db
+            .collection(this.COLLECTION_NAME)
+            .doc(lastId)
+            .get();
+
+          if (lastDocSnap.exists) {
+            query = query.startAfter(lastDocSnap);
+          } else {
+            console.warn(`[SignalRepository] ⚠️ lastId ${lastId} no existe, ignorando paginación`);
+          }
+        } catch (error) {
+          console.error(`[SignalRepository] ❌ Error obteniendo lastId ${lastId}:`, error.message);
+          // Continuar sin paginación si hay error
+        }
+      }
+
+      // Aplicar límite
+      query = query.limit(limit);
+
+      // Ejecutar query
+      const snapshot = await query.get();
+      
+      if (snapshot.empty) {
+        console.log('[SignalRepository] 📭 No signals found matching criteria');
+        return {
+          signals: [],
+          lastId: null
+        };
+      }
+
+      // Procesar resultados
+      const signals = [];
+      let newLastId = null;
+
+      snapshot.forEach(doc => {
+        const signalData = this.fromFirestoreFormat(doc);
+        if (signalData) {
+          signals.push(signalData);
+        }
+        newLastId = doc.id; // El último ID será el del último documento
+      });
+
+      console.log(`[SignalRepository] ✅ Found ${signals.length} signals, lastId: ${newLastId?.slice(0, 8)}...`);
+
+      return {
+        signals,
+        lastId: newLastId
+      };
+
+    } catch (error) {
+      console.error('[SignalRepository] ❌ Error in querySignals:', error);
+      
+      return {
+        success: false,
+        error: error.message,
+        metadata: {
+          operation: 'querySignals',
+          timestamp: new Date(),
+          options
+        }
+      };
+    }
+  }
+
+  /**
+   * Obtiene métricas rápidas del dashboard analizando señales recientes.
+   * Calcula estadísticas en memoria para evitar queries costosas.
+   * 
+   * @param {number} [sampleSize=100] - Cantidad de señales recientes a analizar
+   * @returns {Promise<Object>} Métricas calculadas del dashboard
+   */
+  async getDashboardMetrics(sampleSize = 100) {
+    try {
+      console.log(`[SignalRepository] 📊 Calculating dashboard metrics from last ${sampleSize} signals`);
+
+      // Obtener señales recientes (últimas 24h si es posible)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      const snapshot = await this.db
+        .collection(this.COLLECTION_NAME)
+        .where('created_at', '>=', admin.firestore.Timestamp.fromDate(twentyFourHoursAgo))
+        .orderBy('created_at', 'desc')
+        .limit(sampleSize)
+        .get();
+
+      if (snapshot.empty) {
+        console.warn('[SignalRepository] ⚠️ No recent signals found for metrics');
+        return {
+          totalProcessed: 0,
+          sentimentBreakdown: { positive: 0, negative: 0, neutral: 0 },
+          topIntents: {},
+          period: '24h',
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      // Calcular métricas en memoria
+      const metrics = {
+        totalProcessed: 0,
+        sentimentBreakdown: { positive: 0, negative: 0, neutral: 0 },
+        topIntents: {},
+        sources: {},
+        period: '24h',
+        timestamp: new Date().toISOString()
+      };
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        metrics.totalProcessed++;
+
+        // Análisis de sentimiento
+        if (data.analysis?.sentimentLabel) {
+          const sentiment = data.analysis.sentimentLabel;
+          if (metrics.sentimentBreakdown[sentiment] !== undefined) {
+            metrics.sentimentBreakdown[sentiment]++;
+          }
+        }
+
+        // Análisis de intenciones
+        if (data.analysis?.intent) {
+          const intent = data.analysis.intent;
+          metrics.topIntents[intent] = (metrics.topIntents[intent] || 0) + 1;
+        }
+
+        // Análisis de fuentes
+        if (data.source) {
+          metrics.sources[data.source] = (metrics.sources[data.source] || 0) + 1;
+        }
+      });
+
+      // Convertir conteos a porcentajes para sentiment
+      if (metrics.totalProcessed > 0) {
+        Object.keys(metrics.sentimentBreakdown).forEach(key => {
+          const percentage = Math.round((metrics.sentimentBreakdown[key] / metrics.totalProcessed) * 100);
+          metrics.sentimentBreakdown[key + 'Percentage'] = percentage;
+        });
+      }
+
+      console.log(`[SignalRepository] ✅ Dashboard metrics calculated:`, {
+        totalProcessed: metrics.totalProcessed,
+        topSentiment: Object.keys(metrics.sentimentBreakdown).reduce((a, b) => 
+          metrics.sentimentBreakdown[a] > metrics.sentimentBreakdown[b] ? a : b
+        )
+      });
+
+      return metrics;
+
+    } catch (error) {
+      console.error('[SignalRepository] ❌ Error calculating dashboard metrics:', error);
+      throw new Error(`Error calculating metrics: ${error.message}`);
     }
   }
 }
