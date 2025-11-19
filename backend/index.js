@@ -21,6 +21,9 @@ require('dotenv').config();
 // Importar rutas del sistema RADAR
 const radarRoutes = require('./routes/radar.routes');
 
+// Importar rutas del Bloque 3: ANALISTA INTELLIGENCE
+const analystRoutes = require('./routes/analyst.routes');
+
 // Importar RadarScheduler para automatización (versión JavaScript)
 const RadarScheduler = require('./src/core/Scheduler');
 
@@ -39,6 +42,9 @@ app.use(express.json());
 
 // Registrar rutas del sistema RADAR bajo el prefijo /api/radar
 app.use('/api/radar', radarRoutes);
+
+// Registrar rutas del Bloque 3: ANALISTA bajo el prefijo /api/analyst
+app.use('/api/analyst', analystRoutes);
 
 // 🧪 ENDPOINT DE PRUEBA QUIRÚRGICA DIRECTO (por si las rutas fallan)
 app.get('/api/radar/trigger-test-direct', async (req, res) => {
@@ -502,9 +508,9 @@ app.post('/api/create-test-opportunities', async (req, res) => {
 });
 
 
-
-const { generateCampaignAI, analyzeSignal, defineStrategy, createImagePrompt } = require('./openai');
-const { generateImageWithVertexAI } = require('./vertexai');
+// Legacy OpenAI and VertexAI imports commented out (files removed in cleanup)
+// const { generateCampaignAI, analyzeSignal, defineStrategy, createImagePrompt } = require('./openai');
+// const { generateImageWithVertexAI } = require('./vertexai');
 
 /**
  * 🎯 ARQUITECTURA ATÓMICA: Función de validación
@@ -601,24 +607,30 @@ app.post('/api/execute-attack', async (req, res) => {
         }
         // 3. Analizar la señal usando IA
         console.log('[PIPELINE 1/4] Iniciando Analista...');
-        const analysisResult = await analyzeSignal(opportunity.signalText);
-        console.log('[PIPELINE 1/4] Analista completado. Resultado:', analysisResult);
+        // TODO: Reintegrar con nuevo NLPProcessor del Bloque 2
+        // const analysisResult = await analyzeSignal(opportunity.signalText);
+        const analysisResult = { analysis: 'disabled', status: 'disabled' }; // Temporal
+        console.log('[PIPELINE 1/4] ⚠️ Analista temporalmente deshabilitado');
         // 4. Guardar el resultado del análisis
         await opportunityRef.update({
           'ai_pipeline_results.analysisResult': analysisResult
         });
         // 5. Ejecutar la etapa Estratega
         console.log('[PIPELINE 2/4] Iniciando Estratega...');
-        const strategyResult = await defineStrategy(analysisResult, opportunity.targetProfile);
-        console.log('[PIPELINE 2/4] Estratega completado. Resultado:', strategyResult);
+        // TODO: Reintegrar con nuevo NLPProcessor del Bloque 2
+        // const strategyResult = await defineStrategy(analysisResult, opportunity.targetProfile);
+        const strategyResult = { strategy: 'disabled', status: 'disabled' }; // Temporal
+        console.log('[PIPELINE 2/4] ⚠️ Estratega temporalmente deshabilitado');
         // 6. Guardar el resultado de la estrategia
         await opportunityRef.update({
           'ai_pipeline_results.strategyResult': strategyResult
         });
         // 7. Ejecutar la etapa Copywriter (genera exactamente 3 variantes de texto)
         console.log('[PIPELINE 3/4] Iniciando Copywriter...');
-        const copyResult = await generateCampaignAI(strategyResult, opportunity.targetProfile);
-        console.log('[PIPELINE 3/4] ✅ Copywriter completado - Variantes generadas:', copyResult.ad_variants?.length || 0);
+        // TODO: Reintegrar con nuevo EmbeddingService del Bloque 2
+        // const copyResult = await generateCampaignAI(strategyResult, opportunity.targetProfile);
+        const copyResult = { ad_variants: [], status: 'disabled' }; // Temporal
+        console.log('[PIPELINE 3/4] ⚠️ Copywriter temporalmente deshabilitado - Variantes generadas:', copyResult.ad_variants?.length || 0);
         
         // Validación crítica: Asegurar que tenemos exactamente 3 variantes
         if (!copyResult.ad_variants || copyResult.ad_variants.length !== 3) {
@@ -631,9 +643,10 @@ app.post('/api/execute-attack', async (req, res) => {
         
         // 9. Ejecutar la etapa Director de Arte (genera 1 imagen maestra para las 3 variantes)
         console.log('[PIPELINE 4/4] Iniciando Director de Arte (Imagen Maestra)...');
-        const imagePromptResult = await createImagePrompt(strategyResult, copyResult);
-        console.log('[PIPELINE 4/4] ✅ Director de Arte completado - Imagen maestra definida para complementar las 3 variantes');
-        console.log('[API] Resultado del Director de Arte:', imagePromptResult);
+        // TODO: Reintegrar con nuevo EmbeddingService del Bloque 2
+        // const imagePromptResult = await createImagePrompt(strategyResult, copyResult);
+        const imagePromptResult = { prompt: 'disabled', status: 'disabled' }; // Temporal
+        console.log('[PIPELINE 4/4] ⚠️ Director de Arte temporalmente deshabilitado');
         
         // 10. Guardar el prompt de imagen
         await opportunityRef.update({
@@ -821,8 +834,10 @@ app.post('/api/execute-attack-batch', async (req, res) => {
                 
                 // PIPELINE 1/4: Analista
                 console.log(`[BATCH ${index + 1}] PIPELINE 1/4: Iniciando Analista...`);
-                const analysisResult = await analyzeSignal(opportunity.signalText);
-                console.log(`[BATCH ${index + 1}] PIPELINE 1/4: Analista completado.`);
+                // TODO: Reintegrar con nuevo NLPProcessor del Bloque 2
+                // const analysisResult = await analyzeSignal(opportunity.signalText);
+                const analysisResult = { analysis: 'disabled', status: 'disabled' }; // Temporal
+                console.log(`[BATCH ${index + 1}] PIPELINE 1/4: ⚠️ Analista temporalmente deshabilitado`);
                 
                 await opportunityRef.update({
                     'ai_pipeline_results.analysisResult': analysisResult
@@ -830,8 +845,10 @@ app.post('/api/execute-attack-batch', async (req, res) => {
                 
                 // PIPELINE 2/4: Estratega
                 console.log(`[BATCH ${index + 1}] PIPELINE 2/4: Iniciando Estratega...`);
-                const strategyResult = await defineStrategy(analysisResult, opportunity.targetProfile);
-                console.log(`[BATCH ${index + 1}] PIPELINE 2/4: Estratega completado.`);
+                // TODO: Reintegrar con nuevo NLPProcessor del Bloque 2
+                // const strategyResult = await defineStrategy(analysisResult, opportunity.targetProfile);
+                const strategyResult = { strategy: 'disabled', status: 'disabled' }; // Temporal
+                console.log(`[BATCH ${index + 1}] PIPELINE 2/4: ⚠️ Estratega temporalmente deshabilitado`);
                 
                 await opportunityRef.update({
                     'ai_pipeline_results.strategyResult': strategyResult
@@ -839,8 +856,10 @@ app.post('/api/execute-attack-batch', async (req, res) => {
                 
                 // PIPELINE 3/4: Copywriter (3 variantes de texto)
                 console.log(`[BATCH ${index + 1}] PIPELINE 3/4: Iniciando Copywriter...`);
-                const copyResult = await generateCampaignAI(strategyResult, opportunity.targetProfile);
-                console.log(`[BATCH ${index + 1}] PIPELINE 3/4: Copywriter completado - ${copyResult.ad_variants?.length || 0} variantes generadas.`);
+                // TODO: Reintegrar con nuevo EmbeddingService del Bloque 2
+                // const copyResult = await generateCampaignAI(strategyResult, opportunity.targetProfile);
+                const copyResult = { ad_variants: [], status: 'disabled' }; // Temporal
+                console.log(`[BATCH ${index + 1}] PIPELINE 3/4: ⚠️ Copywriter temporalmente deshabilitado - ${copyResult.ad_variants?.length || 0} variantes generadas.`);
                 
                 // Validación crítica: Asegurar que tenemos exactamente 3 variantes
                 if (!copyResult.ad_variants || copyResult.ad_variants.length !== 3) {
@@ -853,8 +872,10 @@ app.post('/api/execute-attack-batch', async (req, res) => {
                 
                 // PIPELINE 4/4: Director de Arte (1 imagen maestra para las 3 variantes)
                 console.log(`[BATCH ${index + 1}] PIPELINE 4/4: Iniciando Director de Arte (Imagen Maestra)...`);
-                const imagePromptResult = await createImagePrompt(strategyResult, copyResult);
-                console.log(`[BATCH ${index + 1}] PIPELINE 4/4: ✅ Director de Arte completado - Imagen maestra definida.`);
+                // TODO: Reintegrar con nuevo EmbeddingService del Bloque 2
+                // const imagePromptResult = await createImagePrompt(strategyResult, copyResult);
+                const imagePromptResult = { prompt: 'disabled', status: 'disabled' }; // Temporal
+                console.log(`[BATCH ${index + 1}] PIPELINE 4/4: ⚠️ Director de Arte temporalmente deshabilitado`);
                 
                 await opportunityRef.update({
                     'ai_pipeline_results.imagePromptResult': imagePromptResult
