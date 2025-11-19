@@ -18,6 +18,12 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Importar rutas del sistema RADAR
+const radarRoutes = require('./routes/radar.routes');
+
+// Importar RadarScheduler para automatización (versión JavaScript)
+const RadarScheduler = require('./src/core/Scheduler');
+
 // Inicializar Firebase Admin con credenciales de servicio
 const admin = require('firebase-admin');
 const serviceAccount = require('./serviceAccountKey.json');
@@ -30,6 +36,280 @@ admin.initializeApp({
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Registrar rutas del sistema RADAR bajo el prefijo /api/radar
+app.use('/api/radar', radarRoutes);
+
+// 🧪 ENDPOINT DE PRUEBA QUIRÚRGICA DIRECTO (por si las rutas fallan)
+app.get('/api/radar/trigger-test-direct', async (req, res) => {
+  try {
+    console.log('[TRIGGER-TEST-DIRECT] 🚀 Iniciando disparo único...');
+    
+    const { Orchestrator } = require('./src/core/Orchestrator');
+    const orchestrator = Orchestrator.getInstance();
+    await orchestrator.initialize();
+    
+    console.log('[TRIGGER-TEST-DIRECT] 🧪 MODO PRUEBAS: Solo 1 tweet');
+    
+    const result = await orchestrator.runIngestionCycle('twitter', 'javascript programming', {
+      maxResults: 1
+    });
+    
+    res.json({
+      success: true,
+      test: 'DISPARO_ÚNICO_DIRECTO',
+      message: 'Prueba quirúrgica ejecutada (1 tweet máximo)',
+      result: result,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[TRIGGER-TEST-DIRECT] ❌ Error:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      test: 'DISPARO_ÚNICO_DIRECTO',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 🧪 ENDPOINT DE PRUEBA QUIRÚRGICA NEWSAPI
+app.get('/api/newsapi/test-single', async (req, res) => {
+  try {
+    console.log('[NEWSAPI-TEST] 🚀 Iniciando prueba quirúrgica de NewsAPI...');
+    
+    // Importar NewsApiConnector
+    const { NewsApiConnector } = require('./src/core/connectors/NewsApiConnector');
+    
+    // Crear instancia del conector
+    const newsConnector = new NewsApiConnector();
+    
+    console.log('[NEWSAPI-TEST] 🧪 MODO PRUEBAS: Solo 1 artículo');
+    
+    // Query por defecto o personalizada
+    const query = req.query.q || 'artificial intelligence';
+    
+    // Realizar búsqueda con máximo 1 resultado
+    const result = await newsConnector.fetchSignals({
+      query: query,
+      maxResults: 1
+    });
+    
+    console.log('[NEWSAPI-TEST] ✅ Resultados obtenidos:', result.signals.length);
+    
+    res.json({
+      success: true,
+      test: 'NEWSAPI_QUIRÚRGICO',
+      message: `Prueba de NewsAPI ejecutada (1 artículo máximo para "${query}")`,
+      query: query,
+      totalFound: result.totalFound,
+      processed: result.processed,
+      failed: result.failed,
+      signals: result.signals,
+      durationMs: result.durationMs,
+      connector_info: newsConnector.getConfigInfo(),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[NEWSAPI-TEST] ❌ Error:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      test: 'NEWSAPI_QUIRÚRGICO',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 🧪 ENDPOINT DE HEALTH CHECK NEWSAPI
+app.get('/api/newsapi/health', async (req, res) => {
+  try {
+    console.log('[NEWSAPI-HEALTH] 🔍 Verificando salud de NewsAPI...');
+    
+    const { NewsApiConnector } = require('./src/core/connectors/NewsApiConnector');
+    const newsConnector = new NewsApiConnector();
+    
+    const health = await newsConnector.healthCheck();
+    
+    res.json({
+      success: true,
+      test: 'NEWSAPI_HEALTH_CHECK',
+      health: health,
+      connector_info: newsConnector.getConfigInfo(),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[NEWSAPI-HEALTH] ❌ Error:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      test: 'NEWSAPI_HEALTH_CHECK',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 🧪 ENDPOINT DE PRUEBA QUIRÚRGICA - NewsAPI (1 artículo)
+app.get('/api/radar/test-news-single', async (req, res) => {
+  try {
+    console.log('[TEST-NEWS-SINGLE] 🧪 Iniciando prueba de NewsAPI...');
+    
+    const { NewsApiConnector } = require('./src/core/connectors/NewsApiConnector');
+    const connector = new NewsApiConnector();
+    
+    console.log('[TEST-NEWS-SINGLE] 📰 MODO PRUEBAS: Solo 1 artículo');
+    
+    const query = req.query.query || 'artificial intelligence';
+    const result = await connector.fetchSignals({
+      query: query,
+      maxResults: 1
+    });
+    
+    res.json({
+      success: true,
+      test: 'NEWS_API_SINGLE',
+      message: 'Prueba quirúrgica NewsAPI ejecutada (1 artículo máximo)',
+      result: result,
+      query: query,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[TEST-NEWS-SINGLE] ❌ Error:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      test: 'NEWS_API_SINGLE',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 🧪 ENDPOINT DE PRUEBA TEMPORAL - NEWS_API con Orchestrator
+app.post('/api/radar/trigger-test-news', async (req, res) => {
+  try {
+    console.log('[TRIGGER-TEST-NEWS] 📰 Iniciando prueba temporal NewsAPI...');
+    
+    const { Orchestrator } = require('./src/core/Orchestrator');
+    const orchestrator = Orchestrator.getInstance();
+    await orchestrator.initialize();
+    
+    console.log('[TRIGGER-TEST-NEWS] 🎯 Query: "stock market crash OR recession"');
+    console.log('[TRIGGER-TEST-NEWS] 🧪 MODO PRUEBAS: Solo 1 artículo');
+    
+    const result = await orchestrator.runIngestionCycle('news_api', 'stock market crash OR recession', {
+      maxResults: 1
+    });
+    
+    console.log('[TRIGGER-TEST-NEWS] ✅ Prueba completada:', result.success);
+    
+    res.json({
+      success: true,
+      test: 'NEWS_API_ORCHESTRATOR_TEST',
+      message: 'Prueba temporal NewsAPI ejecutada exitosamente',
+      orchestratorResult: result,
+      query: 'stock market crash OR recession',
+      source: 'news_api',
+      maxResults: 1,
+      timestamp: new Date().toISOString(),
+      metrics: {
+        signalsCollected: result.signalsCollected || 0,
+        duration: result.duration || 0,
+        executionId: result.executionId
+      }
+    });
+    
+  } catch (error) {
+    console.error('[TRIGGER-TEST-NEWS] ❌ Error en prueba temporal:', error.message);
+    console.error('[TRIGGER-TEST-NEWS] Stack:', error.stack);
+    
+    res.status(500).json({
+      success: false,
+      test: 'NEWS_API_ORCHESTRATOR_TEST',
+      error: error.message,
+      query: 'stock market crash OR recession',
+      source: 'news_api',
+      timestamp: new Date().toISOString(),
+      details: {
+        errorType: error.type || 'UNKNOWN_ERROR',
+        errorDetails: error.details || 'No additional details available'
+      }
+    });
+  }
+});
+
+// 🧪 ENDPOINT DE PRUEBA MULTI-SOURCE 
+app.get('/api/radar/test-multi-source', async (req, res) => {
+  try {
+    const query = req.query.query || 'artificial intelligence';
+    const sources = req.query.sources ? req.query.sources.split(',') : ['twitter', 'news_api'];
+    const maxResults = parseInt(req.query.maxResults) || 1;
+
+    console.log(`[TEST-MULTI-SOURCE] 🔄 Iniciando prueba multi-fuente...`);
+    console.log(`[TEST-MULTI-SOURCE] Query: ${query}, Sources: ${sources.join(',')}, MaxResults: ${maxResults}`);
+    
+    const { Orchestrator } = require('./src/core/Orchestrator');
+    const orchestrator = Orchestrator.getInstance();
+    await orchestrator.initialize();
+    
+    const results = [];
+    
+    // Ejecutar ingesta para cada fuente
+    for (const source of sources) {
+      try {
+        console.log(`[TEST-MULTI-SOURCE] 🎯 Testing source: ${source}`);
+        
+        const result = await orchestrator.runIngestionCycle(source, query, {
+          maxResults: maxResults
+        });
+        
+        results.push({
+          source,
+          success: result.success,
+          signalsCollected: result.signalsCollected,
+          duration: result.duration
+        });
+        
+      } catch (error) {
+        console.error(`[TEST-MULTI-SOURCE] ❌ Error with ${source}:`, error.message);
+        results.push({
+          source,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      test: 'MULTI_SOURCE_INGESTION',
+      message: 'Prueba multi-fuente completada',
+      query: query,
+      sources: sources,
+      maxResults: maxResults,
+      results: results,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[TEST-MULTI-SOURCE] ❌ Error general:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      test: 'MULTI_SOURCE_INGESTION',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 app.get('/', (req, res) => {
   res.send('Backend funcionando y seguro!');
@@ -776,6 +1056,31 @@ app.post('/api/vertexai/generate-image', upload.single('init_image'), async (req
 });
 
 const PORT = process.env.PORT || 4000;
+
+// ===============================================================================
+// 🧠 INICIALIZACIÓN DEL SISTEMA NERVIOSO RADAR
+// ===============================================================================
+console.log('[RADAR SYSTEM] 🚀 Iniciando sistema nervioso RADAR...');
+
+// Inicializar y arrancar el RadarScheduler automáticamente
+const radarScheduler = RadarScheduler.getInstance();
+
+// Desactivado por seguridad de costos API
+// radarScheduler.start().then(() => {
+//   console.log('[RADAR SYSTEM] ⚡ Sistema nervioso RADAR activado exitosamente');
+//   console.log('[RADAR SYSTEM] 🎯 Tareas programadas ejecutándose automáticamente');
+// }).catch((error) => {
+//   console.error('[RADAR SYSTEM] ❌ Error iniciando sistema RADAR:', error);
+// });
+
+console.log('[RADAR SYSTEM] ⏸️ Scheduler desactivado - Control manual habilitado');
+console.log('[RADAR SYSTEM] 🔧 Para activar: usar /api/radar/initialize o radarScheduler.start()');
+
+// Iniciar servidor Express
 app.listen(PORT, () => {
-  console.log(`Servidor backend escuchando en el puerto ${PORT}`);
+  console.log(`🌐 Servidor backend escuchando en el puerto ${PORT}`);
+  console.log('📡 Sistema RADAR: ACTIVO');
+  console.log('🔄 Scheduler: EJECUTANDO');
+  console.log('🏥 Health Monitor: MONITOREANDO');
+  console.log('=' .repeat(50));
 });
