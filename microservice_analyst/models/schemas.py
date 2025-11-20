@@ -87,3 +87,36 @@ class ActionProposal(BaseModel):
                 }
             }
         }
+
+# --- NUEVOS ENUMS PARA GOBERNANZA ---
+class GovernanceStatus(str, Enum):
+    APPROVED = "APPROVED"           # Pasa todas las reglas
+    REJECTED = "REJECTED"           # Viola regla crítica (ej: stock 0)
+    HITL_REQUIRED = "HITL_REQUIRED" # Viola regla suave (ej: margen bajo)
+
+# --- MODELO DE PROPUESTA EXTENDIDO ---
+class ActionProposal(BaseModel):
+    """
+    Modelo generado por Bloque 5, ahora enriquecido por Bloque 6.
+    """
+    action_type: str # Usar Enum ActionType si está disponible
+    priority: str    # Usar Enum PriorityLevel si está disponible
+    reasoning: str
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Campos de Gobernanza (Bloque 6)
+    governance_status: Optional[GovernanceStatus] = Field(
+        default=None, 
+        description="Estado asignado por el Governance Engine"
+    )
+    block_reason: Optional[str] = Field(
+        default=None, 
+        description="Explicación técnica del bloqueo o alerta"
+    )
+    governance_metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Datos del ERP usados para la decisión (stock real, margen, etc.)"
+    )
+
+    class Config:
+        use_enum_values = True
