@@ -1,10 +1,14 @@
 from fastapi import FastAPI
 from models.schemas import SignalInput
 from services.analyst_service import AnalystService
+from api.routes.advisor import router as advisor_router
 import uvicorn
 
 app = FastAPI(title="LeadBoostAI Analyst Engine")
 service = AnalystService()
+
+# Incluir rutas del Advisor (Bloque 5)
+app.include_router(advisor_router)
 
 @app.get("/")
 def health():

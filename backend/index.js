@@ -24,6 +24,9 @@ const radarRoutes = require('./routes/radar.routes');
 // Importar rutas del Bloque 3: ANALISTA INTELLIGENCE
 const analystRoutes = require('./routes/analyst.routes');
 
+// Importar rutas del Bloque 5: AI STRATEGY PROXY
+const aiRoutes = require('./routes/ai.routes');
+
 // Importar RadarScheduler para automatización (versión JavaScript)
 const RadarScheduler = require('./src/core/Scheduler');
 
@@ -45,6 +48,9 @@ app.use('/api/radar', radarRoutes);
 
 // Registrar rutas del Bloque 3: ANALISTA bajo el prefijo /api/analyst
 app.use('/api/analyst', analystRoutes);
+
+// Registrar rutas del Bloque 5: AI PROXY bajo el prefijo /api/ai
+app.use('/api/ai', aiRoutes);
 
 // 🧪 ENDPOINT DE PRUEBA QUIRÚRGICA DIRECTO (por si las rutas fallan)
 app.get('/api/radar/trigger-test-direct', async (req, res) => {

@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Credentials and secrets
+*.json
+!package*.json
+!tsconfig*.json
+serviceAccountKey.json
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
