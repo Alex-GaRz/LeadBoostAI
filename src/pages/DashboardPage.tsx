@@ -5,12 +5,14 @@ import MetricCard from '../components/Dashboard/MetricCard';
 import RecentOpportunityItem from '../components/Dashboard/RecentOpportunityItem';
 import TopStrategyItem from '../components/Dashboard/TopStrategyItem';
 import { Link } from 'react-router-dom';
+// 👇 NUEVA IMPORTACIÓN (Asegúrate de haber creado el componente RadarConnection como vimos antes)
+import RadarConnection from '../components/Dashboard/RadarConnection';
 
 const DashboardPage: React.FC = () => {
   useAuth();
-  const [hasData] = React.useState(false); // Cambia manualmente para probar ambos estados
+  const [hasData] = React.useState(false); // Tu lógica original de estado
 
-  // Datos de ejemplo para estado poblado
+  // --- TUS DATOS ORIGINALES (RECUPERADOS) ---
   const metrics = hasData
     ? [
         { title: 'Oportunidades Encontradas (Últ. 7 días)', value: 47, comparisonText: '+12% vs. semana anterior', comparisonColor: 'text-green-500' },
@@ -42,8 +44,14 @@ const DashboardPage: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* El Pulso del Imperio */}
-        <section className="mb-8">
+        
+        {/* 🔌 INTEGRACIÓN QUIRÚRGICA: NEURAL LINK 
+            Esto conecta con Python sin romper tu UI existente. */}
+        <RadarConnection />
+        {/* -------------------------------------------------- */}
+
+        {/* El Pulso del Imperio (TU CÓDIGO ORIGINAL) */}
+        <section className="mb-8 mt-6">
           <div className="mb-4 text-gray-700 font-semibold">El Pulso del Imperio</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {metrics.map((m, idx) => (
@@ -52,7 +60,7 @@ const DashboardPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Inteligencia Activa */}
+        {/* Inteligencia Activa (TU CÓDIGO ORIGINAL) */}
         <section className="mb-8">
           <h2 className="text-lg font-bold text-gray-900 mb-1">Inteligencia Activa</h2>
           <div className="text-gray-600 mb-4 text-sm">Oportunidades más recientes detectadas por el radar</div>
@@ -76,7 +84,7 @@ const DashboardPage: React.FC = () => {
           )}
         </section>
 
-        {/* Análisis Estratégico */}
+        {/* Análisis Estratégico (TU CÓDIGO ORIGINAL) */}
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-1">Análisis Estratégico</h2>
           <div className="text-gray-600 mb-4 text-sm">Ranking de tus estrategias más rentables</div>
