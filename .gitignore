@@ -27,6 +27,7 @@ dist-ssr
 # Ignorar archivos de configuración y secretos
 leadboost-ai-1966c-4819e22dad6b.json
 backend\serviceAccountKey.json
+microservice_analyst\serviceAccountKey.json
 
 #Ignorar archivos markdown
 *.md
