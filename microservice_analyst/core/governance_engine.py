@@ -1,43 +1,48 @@
 from typing import Dict, Any
 import logging
 import datetime
-# Importamos el publisher que creaste
 from .audit_publisher import AuditPublisher
+# IMPORTANTE: Importar el conector
+from .enterprise_interface import RemoteEnterpriseConnector
 
 logger = logging.getLogger("GovernanceEngine")
 
 class GovernanceEngine:
     def __init__(self):
-        # Inicializamos el auditor que habla con el Bloque 10
         self.auditor = AuditPublisher()
         
-        # Políticas "Hardcoded" para simulación Enterprise
-        # En el futuro esto vendrá de una base de datos de reglas
+        # --- CONEXIÓN AL ERP (BLOQUE 11) ---
+        self.erp = RemoteEnterpriseConnector() 
+        
         self.policies = {
             "max_budget": 5000,
             "min_stock": 10,
+            "min_margin": 0.15, # 15% margen mínimo
             "prohibited_keywords": ["scam", "fraud", "crisis", "panic", "leak"]
         }
 
     def evaluate_proposal(self, proposal_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Evalúa una propuesta (diccionario) y reporta el veredicto a Memoria (Bloque 10).
-        """
         checks = []
         approved = True
         rejection_reason = None
-
-        # 1. Extracción segura de datos (usando .get para evitar KeyErrors)
-        # Si viene un objeto complejo, intentamos convertirlo a dict, si no, usamos el dict directo
-        data = proposal_data if isinstance(proposal_data, dict) else proposal_data.__dict__
         
-        budget = data.get("budget", 0)
-        keywords = data.get("keywords", [])
-        strategy_name = data.get("strategy_name", "UNKNOWN_STRATEGY")
+        # 1. Extracción de Datos (Compatible con Pydantic y Dict)
+        # Si es objeto Pydantic, lo convertimos a dict
+        raw_data = proposal_data if isinstance(proposal_data, dict) else proposal_data.model_dump()
+        
+        # IMPORTANTE: Los datos vienen dentro de 'parameters' según tu schema
+        params = raw_data.get("parameters", {})
+        
+        sku = params.get("sku")
+        budget = float(params.get("budget", 0))
+        keywords = params.get("keywords", [])
+        strategy_name = raw_data.get("reasoning", "Unknown Strategy") # Usamos reasoning como nombre temporal
+
+        logger.info(f"🔍 Evaluando propuesta para SKU: {sku} | Budget: {budget}")
 
         # 2. Validación de Reglas
-        
-        # REGLA A: Límite de Presupuesto
+
+        # --- REGLA 1: Límite de Presupuesto ---
         if budget > self.policies["max_budget"]:
             approved = False
             rejection_reason = f"Budget {budget} exceeds limit of {self.policies['max_budget']}"
@@ -45,33 +50,51 @@ class GovernanceEngine:
         else:
             checks.append({"check": "budget_policy", "passed": True})
 
-        # REGLA B: Brand Safety (Palabras prohibidas)
-        for kw in keywords:
-            # Normalizamos a minúsculas para comparar
-            if isinstance(kw, str) and kw.lower() in self.policies["prohibited_keywords"]:
+        # --- REGLA 2: Brand Safety ---
+        if keywords:
+            for kw in keywords:
+                if kw.lower() in self.policies["prohibited_keywords"]:
+                    approved = False
+                    rejection_reason = f"Keyword '{kw}' is prohibited"
+                    checks.append({"check": "brand_safety", "passed": False})
+                    break
+
+        # --- REGLA 3: INVENTARIO REAL (Consulta al ERP) ---
+        # Solo verificamos stock si la acción es de Marketing y tenemos SKU
+        if sku and approved: # Fail-fast: si ya falló presupuesto, no molestamos al ERP
+            product_info = self.erp.get_product_data(sku)
+            stock = product_info.get("stock_quantity", 0)
+            
+            if stock < self.policies["min_stock"]:
                 approved = False
-                rejection_reason = f"Keyword '{kw}' is prohibited by policy"
-                checks.append({"check": "brand_safety", "passed": False, "detail": kw})
-                break
+                rejection_reason = f"CRÍTICO: Stock insuficiente ({stock} u.) para campaña. Mínimo requerido: {self.policies['min_stock']}"
+                checks.append({
+                    "check": "inventory_validation", 
+                    "passed": False, 
+                    "detail": f"Stock: {stock}"
+                })
+            else:
+                checks.append({
+                    "check": "inventory_validation", 
+                    "passed": True, 
+                    "detail": f"Stock: {stock}"
+                })
 
         # 3. Construcción del Resultado
-        result = {
-            "approved": approved,
-            "rejection_reason": rejection_reason,
-            "policy_checks": checks,
-            "timestamp": str(datetime.datetime.now())
-        }
+        result = raw_data.copy() # Copiamos la entrada para devolverla enriquecida
+        result["governance_status"] = "APPROVED" if approved else "REJECTED"
+        result["block_reason"] = rejection_reason
+        result["policy_checks"] = checks
+        result["timestamp"] = str(datetime.datetime.now())
 
-        # 4. --- INTEGRACIÓN CRÍTICA CON MEMORIA (B10) ---
-        # Aquí es donde el "Chivato" le cuenta al cerebro lo que pasó
+        # 4. Reportar al 'Chivato' (Bloque 10)
         try:
-            logger.info(f"📢 Reportando decisión de gobernanza para: {strategy_name}")
             self.auditor.log_governance_decision(
                 strategy_name=strategy_name,
-                context={"trigger": "automated_evaluation_b6"},
-                governance_result=result
+                context={"trigger": "automated_evaluation_b6", "sku": sku},
+                governance_result={"approved": approved, "checks": checks}
             )
         except Exception as e:
-            logger.error(f"⚠️ Error no bloqueante al reportar a memoria: {e}")
+            logger.error(f"⚠️ Error reportando a B10: {e}")
 
         return result

@@ -1,62 +1,52 @@
 import logging
-from typing import Dict, Any
-from interfaces.handler_interface import IActionHandler, ActionType
+from typing import Dict
+from models.schemas import ActionType, ActionRequest, ExecutionResult, ActionStatus
+from interfaces.handler_interface import IActionHandler
 from handlers.marketing_handler import MarketingHandler
-from .execution_logger import ExecutionLogger
+from .execution_logger import ExecutionLogger # Cliente B10
 
 logger = logging.getLogger("ActionDispatcher")
 
 class ActionDispatcher:
     def __init__(self):
         self._handlers: Dict[ActionType, IActionHandler] = {}
-        self._register_default_handlers()
-        # Instanciamos el logger de memoria
-        self.execution_logger = ExecutionLogger()
+        self._register_default_handlers() # La llamada al método
+        self.execution_logger = ExecutionLogger() # Inicialización B10
 
+    # LOS MÉTODOS ESTÁN CORRECTAMENTE DENTRO DE LA CLASE
     def _register_default_handlers(self):
+        """Mapea los tipos de acción a sus ejecutores."""
         self.register_handler(ActionType.MARKETING_CAMPAIGN, MarketingHandler())
 
     def register_handler(self, action_type: ActionType, handler: IActionHandler):
         self._handlers[action_type] = handler
 
-    def dispatch(self, action: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Recibe una orden, busca el handler adecuado, ejecuta y REPORTA.
-        """
-        action_type_str = action.get("type")
-        payload = action.get("payload", {})
+    async def dispatch(self, action: ActionRequest) -> ExecutionResult:
+        """Busca handler, ejecuta y registra la trazabilidad."""
+        logger.info(f"⚡ Dispatching: {action.action_type.value}")
+
+        handler = self._handlers.get(action.action_type)
         
-        logger.info(f"🚀 Dispatching action: {action_type_str}")
-
-        try:
-            # 1. Mapear string a Enum
-            action_enum = ActionType(action_type_str)
-        except ValueError:
-            err = f"Unknown action type: {action_type_str}"
-            logger.error(err)
-            return {"status": "error", "message": err}
-
-        handler = self._handlers.get(action_enum)
         if not handler:
-            return {"status": "error", "message": "No handler registered"}
-
-        # 2. Ejecutar Acción Real
-        result = handler.execute(payload)
-        
-        # 3. Reportar a Memoria (B10)
-        success = result.get("status") == "success"
-        
-        try:
-            self.execution_logger.log_execution_attempt(
-                action_type=action_type_str,
-                execution_details={
-                    "handler": str(type(handler).__name__),
-                    "platform_response": result,
-                    "payload_hash": str(hash(str(payload)))
-                },
-                success=success
+            return ExecutionResult(
+                action_id=action.action_id,
+                status=ActionStatus.FAILED,
+                error_message=f"No handler registered for {action.action_type.value}"
             )
-        except Exception as e:
-            logger.error(f"⚠️ Error reportando a memoria: {e}")
 
-        return result
+        # Ejecución asíncrona
+        try:
+            result = await handler.execute(action) # Await es necesario aquí
+            
+            # --- TRAZABILIDAD CRÍTICA (Bloque 10) ---
+            self.execution_logger.log_execution_result(result)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Execution crash: {e}")
+            return ExecutionResult(
+                action_id=action.action_id,
+                status=ActionStatus.FAILED,
+                error_message=str(e)
+            )

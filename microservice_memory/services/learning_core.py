@@ -64,7 +64,7 @@ class LearningCore:
         return [
             {
                 "trace_id": r.trace_id,
-                "timestamp": r.timestamp,
+                "timestamp": r.timestamp.isoformat() if r.timestamp else None,
                 "action": r.action_type,
                 "status": r.status, # AQUÍ VEREMOS 'BLOCKED_BY_GOVERNANCE'
                 "score": r.outcome_metric
