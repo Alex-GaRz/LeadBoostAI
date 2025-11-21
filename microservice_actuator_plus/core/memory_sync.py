@@ -1,41 +1,41 @@
-import json
-import os
 import logging
-from models.schemas import StandardPerformanceMetric
+from core.memory_client import MemoryClient
 
-# Configuración de persistencia simulada
-MEMORY_FILE = "decision_memory_log.json"
-logger = logging.getLogger("MemorySync")
+logger = logging.getLogger("MemorySyncService")
 
 class MemorySyncService:
     """
-    Puente entre el Actuador+ y el Cerebro de Memoria (Bloque 10).
-    En producción, esto sería una llamada gRPC o escritura en Kafka.
+    Servicio de Alto Nivel que desacopla la lógica de negocio (Actuator)
+    de la lógica de transporte (MemoryClient).
     """
     
-    def append_to_log(self, metric: StandardPerformanceMetric):
-        try:
-            entry = metric.model_dump(mode='json')
-            
-            # Leemos historial existente
-            history = []
-            if os.path.exists(MEMORY_FILE):
-                with open(MEMORY_FILE, 'r') as f:
-                    try:
-                        history = json.load(f)
-                    except json.JSONDecodeError:
-                        history = []
-            
-            # Agregamos nueva entrada
-            history.append(entry)
-            
-            # Escribimos (Simulación de base de datos ACID)
-            with open(MEMORY_FILE, 'w') as f:
-                json.dump(history, f, indent=2)
-                
-            logger.info(f"✅ [B10 MEMORY] Feedback almacenado para ExecutionID: {metric.execution_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Error sincronizando con memoria: {str(e)}")
-            return False
+    def __init__(self):
+        # Instanciamos el cliente Enterprise
+        self.client = MemoryClient()
+
+    def sync_decision_outcome(self, platform: str, data: dict, normalized_metrics: dict):
+        """
+        Orquesta el envío de datos normalizados al cerebro central.
+        """
+        logger.info(f"🔄 Iniciando sincronización para {platform}...")
+
+        # 1. Extraer métrica clave (normalización simple)
+        outcome_value = normalized_metrics.get('roi', 0) / 10.0 
+        if outcome_value > 1.0: outcome_value = 1.0
+        
+        # 2. Preparar datos de ejecución
+        execution_snapshot = {
+            "platform": platform,
+            "raw_id": data.get('id', 'unknown'),
+            "timestamp": data.get('timestamp', 'now')
+        }
+
+        # 3. Delegar al cliente
+        success = self.client.send_cycle_result(
+            action_type=f"MARKETING_CAMPAIGN_{platform.upper()}",
+            execution_data=execution_snapshot,
+            outcome_metric=outcome_value,
+            outcome_details=normalized_metrics
+        )
+
+        return success

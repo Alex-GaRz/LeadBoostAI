@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
-from models.schemas import WebhookPayload, StandardPerformanceMetric
+from typing import Dict, Any
 
-class IMetricNormalizer(ABC):
-    """Interfaz Strategy para normalizar métricas de distintas fuentes."""
-    
+class INormalizationStrategy(ABC):
+    """
+    Interfaz que deben cumplir todas las estrategias de normalización.
+    Obliga a transformar datos crudos en métricas estándar.
+    """
     @abstractmethod
-    def normalize(self, payload: WebhookPayload) -> StandardPerformanceMetric:
+    def normalize(self, raw_data: Dict[str, Any]) -> Dict[str, float]:
         pass

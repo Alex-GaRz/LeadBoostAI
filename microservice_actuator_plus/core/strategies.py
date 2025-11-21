@@ -1,72 +1,37 @@
-from interfaces.normalization_interface import IMetricNormalizer
-from models.schemas import WebhookPayload, StandardPerformanceMetric
-import logging
+from typing import Dict, Any
+from interfaces.normalization_interface import INormalizationStrategy
 
-logger = logging.getLogger(__name__)
+class MetaAdsNormalizer(INormalizationStrategy):
+    def normalize(self, raw_data: Dict[str, Any]) -> Dict[str, float]:
+        # Meta suele dar céntimos, convertimos a unidades estándar
+        spend = raw_data.get("spend", 0.0)
+        clicks = raw_data.get("clicks", 0)
+        conversions = raw_data.get("conversions", 0)
+        
+        return {
+            "cost": float(spend),
+            "clicks": int(clicks),
+            "conversions": int(conversions),
+            "roi": (float(conversions) * 100) / (float(spend) + 0.01) # Evitar div/0
+        }
 
-class MetaAdsNormalizer(IMetricNormalizer):
-    def normalize(self, payload: WebhookPayload) -> StandardPerformanceMetric:
-        data = payload.data
+class GoogleAdsNormalizer(INormalizationStrategy):
+    def normalize(self, raw_data: Dict[str, Any]) -> Dict[str, float]:
+        # Google a veces usa micros (x1,000,000), aquí asumimos estándar para simplificar
+        cost = raw_data.get("cost_micros", 0) / 1000000 if "cost_micros" in raw_data else raw_data.get("cost", 0)
         
-        # Lógica específica de Meta: Calcular ROAS o CTR
-        spend = data.get("spend", 1.0) # Evitar división por cero
-        revenue = data.get("conversion_value", 0.0)
-        clicks = data.get("clicks", 0)
-        impressions = data.get("impressions", 1)
-        
-        # Cálculo de métricas
-        roas = revenue / spend if spend > 0 else 0.0
-        ctr = clicks / impressions if impressions > 0 else 0.0
-        
-        # Normalización: Para este sistema, definimos el Performance Score basado en ROAS
-        # (Esto podría ser más complejo en v2 con modelos de ML)
-        performance_score = roas 
+        return {
+            "cost": float(cost),
+            "clicks": int(raw_data.get("clicks", 0)),
+            "conversions": int(raw_data.get("conversions", 0)),
+            "roi": 0.0 # Pendiente lógica compleja
+        }
 
-        return StandardPerformanceMetric(
-            execution_id=payload.execution_id,
-            timestamp=payload.timestamp,
-            source=payload.source,
-            performance_score=performance_score,
-            key_metrics={
-                "roas": roas,
-                "ctr": ctr,
-                "cpc": spend / clicks if clicks > 0 else 0.0
-            },
-            raw_data_snapshot=data
-        )
-
-class GoogleAdsNormalizer(IMetricNormalizer):
-    def normalize(self, payload: WebhookPayload) -> StandardPerformanceMetric:
-        data = payload.data
-        
-        # Google usa terminología diferente (cost, conversions)
-        cost = data.get("cost_micros", 1000000) / 1000000
-        conversions_value = data.get("conversions_value", 0.0)
-        interactions = data.get("interactions", 0)
-        
-        roas = conversions_value / cost if cost > 0 else 0.0
-        
-        return StandardPerformanceMetric(
-            execution_id=payload.execution_id,
-            timestamp=payload.timestamp,
-            source=payload.source,
-            performance_score=roas, # Estandarizamos al mismo concepto que Meta
-            key_metrics={
-                "roas": roas,
-                "interactions": float(interactions),
-                "cost": cost
-            },
-            raw_data_snapshot=data
-        )
-
-# Estrategia Default/Mock
-class MockNormalizer(IMetricNormalizer):
-    def normalize(self, payload: WebhookPayload) -> StandardPerformanceMetric:
-        return StandardPerformanceMetric(
-            execution_id=payload.execution_id,
-            timestamp=payload.timestamp,
-            source=payload.source,
-            performance_score=payload.data.get("simulated_score", 0.5),
-            key_metrics=payload.data.get("metrics", {}),
-            raw_data_snapshot=payload.data
-        )
+class MockNormalizer(INormalizationStrategy):
+    def normalize(self, raw_data: Dict[str, Any]) -> Dict[str, float]:
+        return {
+            "cost": float(raw_data.get("spend", 0)),
+            "clicks": int(raw_data.get("clicks", 0)),
+            "conversions": int(raw_data.get("conversions", 0)),
+            "roi": 1.5 # Valor simulado
+        }

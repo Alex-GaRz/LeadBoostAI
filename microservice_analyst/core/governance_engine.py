@@ -1,92 +1,77 @@
-from typing import List, Tuple, Optional
-from .enterprise_interface import IEnterpriseConnector, MockEnterpriseConnector
-from models.schemas import ActionProposal, GovernanceStatus
+from typing import Dict, Any
+import logging
+import datetime
+# Importamos el publisher que creaste
+from .audit_publisher import AuditPublisher
 
-class GovernanceRule:
-    """Clase base para reglas de validación."""
-    def validate(self, proposal: ActionProposal, connector: IEnterpriseConnector) -> Tuple[bool, Optional[str], Optional[str]]:
-        """
-        Retorna: (Passed?, GovernanceStatus, Reason)
-        """
-        raise NotImplementedError
-
-# --- REGLAS CONCRETAS ---
-
-class InventoryRule(GovernanceRule):
-    def validate(self, proposal: ActionProposal, connector: IEnterpriseConnector):
-        # Solo aplica si la acción implica venta o promoción de producto
-        sku = proposal.parameters.get("target_product_sku")
-        if not sku:
-            return True, None, None
-
-        data = connector.get_product_data(sku)
-        stock = data.get("stock_quantity", 0)
-        
-        # Inyectamos metadata operativa para trazabilidad
-        proposal.governance_metadata["inventory_check"] = {"stock": stock, "sku": sku}
-
-        if stock < 10:
-            return False, GovernanceStatus.REJECTED, f"Critical Low Stock ({stock} units) for SKU {sku}"
-        
-        return True, None, None
-
-class MarginRule(GovernanceRule):
-    def validate(self, proposal: ActionProposal, connector: IEnterpriseConnector):
-        sku = proposal.parameters.get("target_product_sku")
-        if not sku:
-            return True, None, None
-
-        data = connector.get_product_data(sku)
-        margin = data.get("margin_percent", 0.0)
-        
-        proposal.governance_metadata["financial_check"] = {"margin": margin}
-
-        if margin < 15.0:
-            return False, GovernanceStatus.HITL_REQUIRED, f"Low Margin ({margin}%) requires Manager Approval"
-        
-        return True, None, None
-
-class BudgetRule(GovernanceRule):
-    def validate(self, proposal: ActionProposal, connector: IEnterpriseConnector):
-        cost = proposal.parameters.get("estimated_cost", 0.0)
-        if cost <= 0:
-            return True, None, None
-
-        has_budget = connector.check_budget_availability("marketing", cost)
-        
-        if not has_budget:
-            return False, GovernanceStatus.HITL_REQUIRED, f"Cost (${cost}) exceeds auto-approval limit"
-        
-        return True, None, None
-
-# --- MOTOR PRINCIPAL ---
+logger = logging.getLogger("GovernanceEngine")
 
 class GovernanceEngine:
     def __init__(self):
-        self.connector = MockEnterpriseConnector()
-        self.rules: List[GovernanceRule] = [
-            InventoryRule(),
-            MarginRule(),
-            BudgetRule()
-        ]
-
-    def evaluate_proposal(self, proposal: ActionProposal) -> ActionProposal:
-        """
-        Ejecuta la cadena de reglas. La primera que falle determina el estado.
-        Si ninguna falla, se APRUEBA.
-        """
-        # Reset state
-        proposal.governance_metadata = {}
+        # Inicializamos el auditor que habla con el Bloque 10
+        self.auditor = AuditPublisher()
         
-        for rule in self.rules:
-            passed, status, reason = rule.validate(proposal, self.connector)
-            
-            if not passed:
-                proposal.governance_status = status
-                proposal.block_reason = reason
-                return proposal
+        # Políticas "Hardcoded" para simulación Enterprise
+        # En el futuro esto vendrá de una base de datos de reglas
+        self.policies = {
+            "max_budget": 5000,
+            "min_stock": 10,
+            "prohibited_keywords": ["scam", "fraud", "crisis", "panic", "leak"]
+        }
 
-        # Si pasa todas las reglas
-        proposal.governance_status = GovernanceStatus.APPROVED
-        proposal.block_reason = "All governance checks passed"
-        return proposal
+    def evaluate_proposal(self, proposal_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Evalúa una propuesta (diccionario) y reporta el veredicto a Memoria (Bloque 10).
+        """
+        checks = []
+        approved = True
+        rejection_reason = None
+
+        # 1. Extracción segura de datos (usando .get para evitar KeyErrors)
+        # Si viene un objeto complejo, intentamos convertirlo a dict, si no, usamos el dict directo
+        data = proposal_data if isinstance(proposal_data, dict) else proposal_data.__dict__
+        
+        budget = data.get("budget", 0)
+        keywords = data.get("keywords", [])
+        strategy_name = data.get("strategy_name", "UNKNOWN_STRATEGY")
+
+        # 2. Validación de Reglas
+        
+        # REGLA A: Límite de Presupuesto
+        if budget > self.policies["max_budget"]:
+            approved = False
+            rejection_reason = f"Budget {budget} exceeds limit of {self.policies['max_budget']}"
+            checks.append({"check": "budget_policy", "passed": False})
+        else:
+            checks.append({"check": "budget_policy", "passed": True})
+
+        # REGLA B: Brand Safety (Palabras prohibidas)
+        for kw in keywords:
+            # Normalizamos a minúsculas para comparar
+            if isinstance(kw, str) and kw.lower() in self.policies["prohibited_keywords"]:
+                approved = False
+                rejection_reason = f"Keyword '{kw}' is prohibited by policy"
+                checks.append({"check": "brand_safety", "passed": False, "detail": kw})
+                break
+
+        # 3. Construcción del Resultado
+        result = {
+            "approved": approved,
+            "rejection_reason": rejection_reason,
+            "policy_checks": checks,
+            "timestamp": str(datetime.datetime.now())
+        }
+
+        # 4. --- INTEGRACIÓN CRÍTICA CON MEMORIA (B10) ---
+        # Aquí es donde el "Chivato" le cuenta al cerebro lo que pasó
+        try:
+            logger.info(f"📢 Reportando decisión de gobernanza para: {strategy_name}")
+            self.auditor.log_governance_decision(
+                strategy_name=strategy_name,
+                context={"trigger": "automated_evaluation_b6"},
+                governance_result=result
+            )
+        except Exception as e:
+            logger.error(f"⚠️ Error no bloqueante al reportar a memoria: {e}")
+
+        return result
