@@ -3,8 +3,8 @@ import json
 import logging
 from typing import List, Dict, Any
 from openai import OpenAI
-from microservice_analyst.models.schemas import ActionProposal, DebateEntry, ActionType, UrgencyLevel, MarketSignal
-from microservice_analyst.core import config  # Ajuste aquí
+from models.schemas import ActionProposal, DebateEntry, ActionType, UrgencyLevel, MarketSignal
+from core import config  # Ajuste aquí
 
 # Configuración de Logging
 logging.basicConfig(level=logging.INFO)
@@ -169,3 +169,5 @@ class StrategyEngine:
                 urgency=UrgencyLevel.HIGH,
                 debate_transcript=debate_log
             )
+
+strategy_engine = StrategyEngine()

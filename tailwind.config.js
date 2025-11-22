@@ -1,25 +1,44 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    // Path obligatorio para Tremor
+    './node_modules/@tremor/**/*.{js,ts,jsx,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
-        primary: '#2563eb', // Azul acción principal
-        secondary: '#e5e7eb', // Gris claro
-        accent: '#1a237e', // Azul oscuro/acento
-        success: '#22c55e', // Verde éxito
-        warning: '#facc15', // Amarillo warning
-        error: '#ef4444', // Rojo error
-        info: '#38bdf8', // Azul info
-        background: '#f7f8fa', // Fondo general
-        card: '#fff', // Fondo tarjetas
-        border: '#e5e7eb', // Bordes
-        text: '#1f2937', // Texto principal
-        'text-muted': '#6b7280', // Texto secundario
-        'text-label': '#4b5563', // Etiquetas
-        'badge-active': '#22c55e', // Verde badge activo
-        'badge-paused': '#facc15', // Amarillo badge pausa
-        'badge-completed': '#2563eb', // Azul badge completada
+        // Colores Tremor mapeados a modo oscuro absoluto
+        tremor: {
+          brand: {
+            faint: '#0B1221', 
+            muted: '#172033',
+            subtle: '#1e293b',
+            DEFAULT: '#3b82f6',  // Azul Eléctrico Base
+            emphasis: '#1d4ed8',
+            inverted: '#ffffff',
+          },
+          background: {
+            muted: '#09090b',    // Fondo Secundario
+            subtle: '#18181b',   // Fondo Tarjetas
+            DEFAULT: '#050505',  // Fondo Principal (Casi negro)
+            emphasis: '#27272a',
+          },
+          border: {
+            DEFAULT: '#27272a',  // Bordes sutiles
+          },
+          ring: {
+            DEFAULT: '#27272a',
+          },
+          content: {
+            subtle: '#71717a',   // Texto terciario
+            DEFAULT: '#a1a1aa',  // Texto secundario
+            emphasis: '#e4e4e7', // Texto primario
+            strong: '#ffffff',   // Títulos
+            inverted: '#000000',
+          },
+        },
       },
       fontFamily: {
         sans: [

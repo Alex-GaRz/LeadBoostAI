@@ -3,14 +3,31 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
 
-# --- Enums ---
+# --- ENUMS (Vocabulario Común) ---
+class Severity(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+class CriticalAlert(BaseModel):
+    id: str
+    type: str
+    severity: Severity
+    message: str
+    timestamp: str
+
 class ActionType(str, Enum):
+    # Acciones Standard
     CREATE_CAMPAIGN = "CREATE_CAMPAIGN"
     PAUSE_CAMPAIGN = "PAUSE_CAMPAIGN"
     INCREASE_BUDGET = "INCREASE_BUDGET"
     DECREASE_BUDGET = "DECREASE_BUDGET"
     NOTIFY_HUMAN = "NOTIFY_HUMAN"
     DO_NOTHING = "DO_NOTHING"
+    # Acciones Legacy (Compatibilidad)
+    MARKETING_CAMPAIGN = "MARKETING_CAMPAIGN"
+    PRICING_ADJUSTMENT = "PRICING_ADJUSTMENT"
 
 class UrgencyLevel(str, Enum):
     LOW = "LOW"
@@ -18,51 +35,63 @@ class UrgencyLevel(str, Enum):
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
-# --- Sub-Modelos ---
+class GovernanceStatus(str, Enum):
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    HITL_REQUIRED = "HITL_REQUIRED"
 
-class DebateEntry(BaseModel):
-    """Captura una intervención en el debate interno de los agentes"""
-    agent_role: str  # 'CMO', 'CFO', 'CEO'
-    content: str     # El argumento o razonamiento
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-# --- Modelos Principales ---
+# --- MODELOS DE SEÑALES (INPUT) ---
 
 class MarketSignal(BaseModel):
-    """Representación de la señal cruda que llega al analista"""
+    """Modelo principal de señal de mercado"""
     source: str
     content: str
-    sentiment_score: float
-    timestamp: datetime
+    sentiment_score: float = 0.0
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = {}
+    # Campos opcionales para flexibilidad
+    id: Optional[str] = None
+
+# ALIAS DE COMPATIBILIDAD (CRÍTICO)
+# Esto arregla el error "SignalInput not defined" en main.py
+SignalInput = MarketSignal 
+
+# --- MODELOS DE ANÁLISIS (CORE BLOQUE 4) ---
+
+class AnomalyResult(BaseModel):
+    """Resultado del Z-Score Engine. ESTO FALTABA."""
+    is_anomaly: bool
+    severity: Severity
+    score: float
+    details: str = ""
+    value: float = 0.0
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class AnalysisRequest(BaseModel):
-    """Payload para solicitar un análisis estratégico"""
     signal: MarketSignal
-    context_data: Dict[str, Any] = {} # Datos extra (presupuesto actual, competidores, etc.)
+    context_data: Dict[str, Any] = {} 
+
+# --- MODELOS DE ESTRATEGIA (OUTPUT BLOQUE 5/6) ---
+
+class DebateEntry(BaseModel):
+    agent_role: str 
+    content: str     
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class ActionProposal(BaseModel):
-    """Decisión final estructurada del CEO"""
+    """Propuesta final de acción"""
     action_type: ActionType
-    reasoning: str = Field(..., description="Justificación sintetizada final")
-    parameters: Dict[str, Any] = Field(default={}, description="Parámetros técnicos para el Actuator (budget, copy, targeting)")
-    confidence_score: float = Field(..., ge=0.0, le=1.0)
-    urgency: UrgencyLevel
+    reasoning: str = Field(..., description="Justificación estratégica")
+    parameters: Dict[str, Any] = Field(default={})
+    confidence_score: float = Field(default=0.5, ge=0.0, le=1.0)
+    urgency: UrgencyLevel = UrgencyLevel.MEDIUM
     
-    # NUEVO CAMPO: Transcript del debate para transparencia en UI
+    # Trazabilidad y Gobernanza
+    proposal_id: Optional[str] = None
+    governance_status: Optional[GovernanceStatus] = None
+    block_reason: Optional[str] = None
+    governance_metadata: Dict[str, Any] = {}
     debate_transcript: List[DebateEntry] = []
-
+    
     class Config:
-        json_schema_extra = {
-            "example": {
-                "action_type": "CREATE_CAMPAIGN",
-                "reasoning": "Aunque el CMO sugirió duplicar presupuesto, el CFO advirtió sobre flujo de caja. Optamos por una campaña de prueba con presupuesto moderado.",
-                "parameters": {"budget_limit": 500, "platform": "facebook"},
-                "confidence_score": 0.85,
-                "urgency": "HIGH",
-                "debate_transcript": [
-                    {"agent_role": "CMO", "content": "¡Vamos con todo! Hay viralidad."},
-                    {"agent_role": "CFO", "content": "Riesgoso. No tenemos margen."},
-                    {"agent_role": "CEO", "content": "Aprobado test A/B limitado."}
-                ]
-            }
-        }
+        from_attributes = True
