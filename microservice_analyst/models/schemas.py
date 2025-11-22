@@ -1,122 +1,68 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
 
-class Severity(str, Enum):
+# --- Enums ---
+class ActionType(str, Enum):
+    CREATE_CAMPAIGN = "CREATE_CAMPAIGN"
+    PAUSE_CAMPAIGN = "PAUSE_CAMPAIGN"
+    INCREASE_BUDGET = "INCREASE_BUDGET"
+    DECREASE_BUDGET = "DECREASE_BUDGET"
+    NOTIFY_HUMAN = "NOTIFY_HUMAN"
+    DO_NOTHING = "DO_NOTHING"
+
+class UrgencyLevel(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
-# --- ENUMS ESTRATÉGICOS ---
-class ActionType(str, Enum):
-    MARKETING_CAMPAIGN = "MARKETING_CAMPAIGN"  # Generar anuncios/contenido
-    PRICING_ADJUST = "PRICING_ADJUST"          # Ajustar precios dinámicos
-    INVENTORY_CHECK = "INVENTORY_CHECK"        # Alertas de stock/logística
-    MANUAL_REVIEW = "MANUAL_REVIEW"            # Escalado a humano
+# --- Sub-Modelos ---
 
-class PriorityLevel(str, Enum):
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
+class DebateEntry(BaseModel):
+    """Captura una intervención en el debate interno de los agentes"""
+    agent_role: str  # 'CMO', 'CFO', 'CEO'
+    content: str     # El argumento o razonamiento
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-class SignalInput(BaseModel):
-    id: str
+# --- Modelos Principales ---
+
+class MarketSignal(BaseModel):
+    """Representación de la señal cruda que llega al analista"""
     source: str
-    timestamp: datetime
     content: str
-    analysis: Dict[str, Any] = Field(default_factory=dict)
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-class AnomalyResult(BaseModel):
-    is_anomaly: bool
-    score: float
-    severity: Severity
-    details: str
-
-class CriticalAlert(BaseModel):
-    signal_id: str
+    sentiment_score: float
     timestamp: datetime
-    type: str
-    severity: Severity
-    anomaly_score: float
-    trust_score: float
-    context_data: Dict[str, Any]
-    status: str = "NEW"
 
-# --- INPUT: Lo que recibimos del Bloque 4 ---
-# (Asegurarse de que esto coincida con lo que emite el B4)
-class CriticalAlert(BaseModel):
-    alert_id: str
-    timestamp: str
-    metric: str
-    current_value: float
-    threshold: float
-    severity: str
-    context: Optional[Dict[str, Any]] = None
+class AnalysisRequest(BaseModel):
+    """Payload para solicitar un análisis estratégico"""
+    signal: MarketSignal
+    context_data: Dict[str, Any] = {} # Datos extra (presupuesto actual, competidores, etc.)
 
-# --- OUTPUT: La decisión del Consejero ---
 class ActionProposal(BaseModel):
-    action_type: ActionType = Field(
-        ..., 
-        description="El tipo de acción correctiva o de aprovechamiento seleccionada."
-    )
-    priority: PriorityLevel = Field(
-        ..., 
-        description="Nivel de urgencia basado en la magnitud de la anomalía."
-    )
-    reasoning: str = Field(
-        ..., 
-        description="Explicación estratégica breve de por qué se eligió esta acción."
-    )
-    suggested_params: Dict[str, Any] = Field(
-        ..., 
-        description="Parámetros específicos para la ejecución (ej: presupuesto, canales, % descuento)."
-    )
+    """Decisión final estructurada del CEO"""
+    action_type: ActionType
+    reasoning: str = Field(..., description="Justificación sintetizada final")
+    parameters: Dict[str, Any] = Field(default={}, description="Parámetros técnicos para el Actuator (budget, copy, targeting)")
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
+    urgency: UrgencyLevel
     
+    # NUEVO CAMPO: Transcript del debate para transparencia en UI
+    debate_transcript: List[DebateEntry] = []
+
     class Config:
         json_schema_extra = {
             "example": {
-                "action_type": "MARKETING_CAMPAIGN",
-                "priority": "HIGH",
-                "reasoning": "Se detectó un pico de interés del 300% en 'Zapatillas', se debe capitalizar inmediatamente.",
-                "suggested_params": {
-                    "budget": 500,
-                    "channels": ["instagram", "email"],
-                    "ad_focus": "urgency"
-                }
+                "action_type": "CREATE_CAMPAIGN",
+                "reasoning": "Aunque el CMO sugirió duplicar presupuesto, el CFO advirtió sobre flujo de caja. Optamos por una campaña de prueba con presupuesto moderado.",
+                "parameters": {"budget_limit": 500, "platform": "facebook"},
+                "confidence_score": 0.85,
+                "urgency": "HIGH",
+                "debate_transcript": [
+                    {"agent_role": "CMO", "content": "¡Vamos con todo! Hay viralidad."},
+                    {"agent_role": "CFO", "content": "Riesgoso. No tenemos margen."},
+                    {"agent_role": "CEO", "content": "Aprobado test A/B limitado."}
+                ]
             }
         }
-
-# --- NUEVOS ENUMS PARA GOBERNANZA ---
-class GovernanceStatus(str, Enum):
-    APPROVED = "APPROVED"           # Pasa todas las reglas
-    REJECTED = "REJECTED"           # Viola regla crítica (ej: stock 0)
-    HITL_REQUIRED = "HITL_REQUIRED" # Viola regla suave (ej: margen bajo)
-
-# --- MODELO DE PROPUESTA EXTENDIDO ---
-class ActionProposal(BaseModel):
-    """
-    Modelo generado por Bloque 5, ahora enriquecido por Bloque 6.
-    """
-    action_type: str # Usar Enum ActionType si está disponible
-    priority: str    # Usar Enum PriorityLevel si está disponible
-    reasoning: str
-    parameters: Dict[str, Any] = Field(default_factory=dict)
-    
-    # Campos de Gobernanza (Bloque 6)
-    governance_status: Optional[GovernanceStatus] = Field(
-        default=None, 
-        description="Estado asignado por el Governance Engine"
-    )
-    block_reason: Optional[str] = Field(
-        default=None, 
-        description="Explicación técnica del bloqueo o alerta"
-    )
-    governance_metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Datos del ERP usados para la decisión (stock real, margen, etc.)"
-    )
-
-    class Config:
-        use_enum_values = True
