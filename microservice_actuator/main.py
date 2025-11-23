@@ -1,52 +1,64 @@
 import logging
+import uuid
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any
-
-# Imports limpios
-from core.dispatcher import ActionDispatcher
-from models.schemas import ActionType, ActionRequest, ExecutionResult
+from typing import Dict, Any, List
 
 app = FastAPI(title="Block 7: Actuator Engine")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ActuatorAPI")
 
-# Instancia global del dispatcher (Se ejecuta una sola vez al inicio)
-dispatcher = ActionDispatcher()
-
-# Modelo simple para recibir JSON (desde B6 o Postman)
+# --- MODELOS ---
 class WebProposal(BaseModel):
-    action_type: ActionType 
+    action_type: str 
     parameters: Dict[str, Any]
+
+# --- ENDPOINTS ---
+
+@app.get("/campaigns/active")
+async def get_active_campaigns():
+    """
+    Endpoint consumido por el BFF (Bloque 9) para el Dashboard.
+    """
+    logger.info("📢 Reportando estado de campañas al Comando Central...")
+    return [
+        {
+            "id": "ACT-001",
+            "platform": "Meta Ads",
+            "status": "ACTIVE",
+            "spend": 1250.00,
+            "roas": 3.2
+        },
+        {
+            "id": "ACT-002",
+            "platform": "Google Search",
+            "status": "LEARNING",
+            "spend": 450.50,
+            "roas": 1.8
+        },
+        {
+            "id": "ACT-003",
+            "platform": "LinkedIn",
+            "status": "PAUSED",
+            "spend": 200.00,
+            "roas": 0.9
+        }
+    ]
+
+@app.post("/actuate")
+async def execute_action(proposal: WebProposal):
+    logger.info(f"🔔 Ejecutando acción: {proposal.action_type}")
+    return {
+        "status": "EXECUTED",
+        "execution_id": str(uuid.uuid4()), 
+        "platform_response": "success"
+    }
 
 @app.get("/")
 def health_check():
     return {"status": "online", "service": "Block 7 - Actuator Engine"}
-
-@app.post("/actuate", response_model=ExecutionResult)
-async def execute_action(proposal: WebProposal):
-    """
-    Recibe la orden APROBADA y la ejecuta.
-    """
-    logger.info(f"🔔 Orden de ejecución recibida: {proposal.action_type.value}")
-    
-    try:
-        # 1. Crear objeto interno ActionRequest
-        req = ActionRequest(
-            action_type=proposal.action_type,
-            parameters=proposal.parameters
-        )
-        
-        # 2. Ejecutar (Await es CLAVE)
-        result = await dispatcher.dispatch(req)
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Execution Failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8002)

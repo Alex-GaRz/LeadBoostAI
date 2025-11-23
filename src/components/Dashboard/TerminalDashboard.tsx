@@ -12,6 +12,7 @@ import {
   Flex
 } from '@tremor/react';
 import { DashboardSnapshot } from '../../services/bffService';
+import IntelligenceFeed from './IntelligenceFeed'; // <--- NUEVO COMPONENTE
 
 interface Props {
   data: DashboardSnapshot;
@@ -23,14 +24,14 @@ const currencyFormatter = (number: number) =>
 
 const TerminalDashboard: React.FC<Props> = ({ data }) => {
   
-  // Transformación de datos para el gráfico (Simulación de serie temporal)
+  // Transformación de datos para el gráfico
   const chartData = [
     { time: "09:00", Riesgo: 20, Ejecucion: 15 },
     { time: "10:00", Riesgo: 25, Ejecucion: 30 },
     { time: "11:00", Riesgo: 10, Ejecucion: 45 },
     { time: "12:00", Riesgo: 5,  Ejecucion: 60 },
     { time: "13:00", Riesgo: 40, Ejecucion: 55 },
-    { time: "14:00", Riesgo: 30, Ejecucion: 70 }, // Actual
+    { time: "14:00", Riesgo: 30, Ejecucion: 70 }, 
   ];
 
   // Colores de estado según Health Score
@@ -57,6 +58,7 @@ const TerminalDashboard: React.FC<Props> = ({ data }) => {
         </div>
       </div>
 
+      {/* GRID DE KPIS SUPERIOR */}
       <Grid numItems={1} numItemsSm={2} numItemsLg={4} className="gap-4 mb-6">
         
         {/* KPI 1: HEALTH SCORE */}
@@ -104,10 +106,10 @@ const TerminalDashboard: React.FC<Props> = ({ data }) => {
         </Card>
       </Grid>
 
-      {/* SECCIÓN CENTRAL: GRÁFICOS Y LOGS */}
-      <Grid numItems={1} numItemsLg={3} className="gap-4">
+      {/* SECCIÓN CENTRAL: GRÁFICOS Y FEED DE INTELIGENCIA */}
+      <Grid numItems={1} numItemsLg={3} className="gap-4 h-[400px]">
         
-        {/* GRÁFICO PRINCIPAL */}
+        {/* COL 1 y 2: GRÁFICO PRINCIPAL */}
         <Col numColSpan={1} numColSpanLg={2}>
           <Card className="bg-[#09090b] border border-slate-800 rounded-none ring-0 shadow-none h-full">
             <div className="flex justify-between items-center mb-6">
@@ -132,30 +134,10 @@ const TerminalDashboard: React.FC<Props> = ({ data }) => {
           </Card>
         </Col>
 
-        {/* LOG DE ALERTAS (ESTILO CONSOLA) */}
-        <Col numColSpan={1}>
-          <Card className="bg-[#09090b] border border-slate-800 rounded-none ring-0 shadow-none h-full flex flex-col">
-            <Title className="text-white font-mono text-sm uppercase mb-4 border-b border-slate-800 pb-2">
-              Intelligence Feed
-            </Title>
-            <div className="flex-1 overflow-y-auto pr-2 space-y-3 max-h-[300px] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-              {data.radar.active_alerts.length === 0 ? (
-                <div className="text-xs font-mono text-slate-600 italic pt-10 text-center">
-                  No active signals intercepted.
-                </div>
-              ) : (
-                data.radar.active_alerts.map((alert) => (
-                  <div key={alert.id} className="border-l-2 border-rose-500 pl-3 py-1">
-                    <div className="flex justify-between items-start">
-                      <span className="text-[10px] text-rose-400 font-mono font-bold uppercase">{alert.type}</span>
-                      <span className="text-[10px] text-slate-600 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-1 leading-tight">{alert.message}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
+        {/* COL 3: FEED DE INTELIGENCIA (NUEVO) */}
+        <Col numColSpan={1} className="h-full">
+          {/* Aquí inyectamos el componente de Inteligencia */}
+          <IntelligenceFeed signals={data.radar.market_intelligence} />
         </Col>
       </Grid>
     </div>

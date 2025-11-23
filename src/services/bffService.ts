@@ -9,6 +9,7 @@ export interface DashboardSnapshot {
     user: string;
     mode: string;
     status: string;
+    sources_active: string[];
   };
   radar: {
     health_score: number;
@@ -17,6 +18,14 @@ export interface DashboardSnapshot {
       type: string;
       severity: string;
       message: string;
+      timestamp: string;
+    }>;
+    // NUEVA SECCIÓN: INTELIGENCIA DE MERCADO
+    market_intelligence: Array<{
+      id: string;
+      source: string; // 'reddit' | 'google_trends'
+      topic: string;
+      sentiment: 'negative' | 'neutral' | 'positive';
       timestamp: string;
     }>;
   };
@@ -55,7 +64,7 @@ export const fetchDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // <--- AQUÍ VA LA LLAVE DE SEGURIDAD
+        'Authorization': `Bearer ${token}`
       }
     });
 
