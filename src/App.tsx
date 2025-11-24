@@ -1,42 +1,43 @@
-
-// Nuevos componentes de la sección hunting
-import DashboardCampaignPage from './components/Dashboard/DashboardCampaignPage';
-import CreateCampaignForm from './components/Dashboard/CreateCampaignForm';
+// src/App.tsx
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Header from './components/Header';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
+
+// Infraestructura Core
+import GlobalErrorBoundary from './components/Layout/GlobalErrorBoundary';
+import EnterpriseLayout from './components/Layout/EnterpriseLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 
-// Nuevos componentes de la sección hunting
-import MissionListPage from './pages/MissionListPage';
-import CreateMissionPage from './pages/CreateMissionPage';
-import MissionDetailPage from './pages/MissionDetailPage';
-import GeneratedCampaignsPage from './pages/GeneratedCampaignsPage';
-import MicroCampaignDetailPage from './pages/MicroCampaignDetailPage';
-import BatchResultsPage from './pages/BatchResultsPage';
+// Componentes Públicos
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import Header from './components/Header'; // Usado solo en rutas públicas/legacy wrappers si es necesario
+
+// Componentes del User Journey (Fase 2)
+import DashboardPage from './pages/DashboardPage'; // Pantalla 1: Centro de Mando
+import StrategyRoom from './pages/placeholders/StrategyRoom'; // Pantalla 2: Estrategia
+import EngineRoom from './pages/placeholders/EngineRoom'; // Pantalla 3: Ejecución
 
 function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-gray-500 font-mono text-sm animate-pulse">INITIALIZING SECURE SYSTEMS...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <Router>
-      <div className="App">
+    <GlobalErrorBoundary>
+      <Router>
         <Routes>
+          {/* Rutas Públicas */}
           <Route path="/" element={<><Header /><HomePage /></>} />
           <Route 
             path="/login" 
@@ -46,102 +47,62 @@ function App() {
             path="/register" 
             element={user ? <Navigate to="/dashboard" replace /> : (<RegisterPage />)} 
           />
+
+          {/* ZONA ENTERPRISE - PROTEGIDA 
+            Implementa el User Journey definido en 'MEJORAS MVP PLAN 1.pdf'
+            Todas estas rutas están envueltas en el EnterpriseLayout
+          */}
+          
+          {/* Pantalla 1: Centro de Mando */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <EnterpriseLayout>
+                  <DashboardPage />
+                </EnterpriseLayout>
               </ProtectedRoute>
             }
           />
+
+          {/* Pantalla 2: Sala de Estrategia */}
           <Route
-            path="/hunting"
+            path="/strategy"
             element={
               <ProtectedRoute>
-                <MissionListPage />
+                <EnterpriseLayout>
+                  <StrategyRoom />
+                </EnterpriseLayout>
               </ProtectedRoute>
             }
           />
+
+          {/* Pantalla 3: Sala de Máquinas */}
           <Route
-            path="/hunting/new"
+            path="/execution"
             element={
               <ProtectedRoute>
-                <CreateMissionPage />
+                <EnterpriseLayout>
+                  <EngineRoom />
+                </EnterpriseLayout>
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/hunting/:missionId"
-            element={
-              <ProtectedRoute>
-                <MissionDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/hunting/:strategyId/results"
-            element={
-              <ProtectedRoute>
-                <BatchResultsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/campaign/:campaignId"
-            element={
-              <ProtectedRoute>
-                <DashboardCampaignPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/campaign/edit/:campaignId"
-            element={
-              <ProtectedRoute>
-                <Header forceDashboard />
-                <div className="flex flex-col items-center w-full">
-                  <div className="flex justify-center w-full">
-                    <CreateCampaignForm />
-                  </div>
-                </div>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/crear-campana"
-            element={
-              <ProtectedRoute>
-                <Header forceDashboard />
-                <div className="flex justify-center w-full">
-                  <CreateCampaignForm />
-                </div>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/generated-campaigns"
-            element={
-              <ProtectedRoute>
-                <GeneratedCampaignsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/micro-campaign-detail"
-            element={
-              <ProtectedRoute>
-                <MicroCampaignDetailPage />
-              </ProtectedRoute>
-            }
-          />
+
+          {/* Rutas de Soporte (Mantenidas por compatibilidad temporal si son necesarias) */}
           <Route
             path="/post-register"
             element={<Header />}
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+
+          {/* Redirección por defecto: 404 te lleva al Dashboard si estás logueado, o al Home */}
+          <Route 
+            path="*" 
+            element={<Navigate to={user ? "/dashboard" : "/"} replace />} 
+          />
         </Routes>
-      </div>
-    </Router>
+      </Router>
+    </GlobalErrorBoundary>
   );
 }
 
