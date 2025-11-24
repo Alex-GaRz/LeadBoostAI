@@ -1,5 +1,8 @@
 
 from fastapi import APIRouter, HTTPException
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.memory_client import MemoryClient
 from models.global_context_models import OptimizationContext
 from models.optimization_result_models import GlobalRecommendation

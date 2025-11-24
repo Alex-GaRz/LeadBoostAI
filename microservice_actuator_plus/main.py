@@ -61,8 +61,8 @@ async def receive_feedback(payload: WebhookPayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    # Correr en puerto 8001 (Diferente al B10 que está en 8010)
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Correr en puerto 8008 (Diferente al B10 que está en 8010)
+    uvicorn.run(app, host="0.0.0.0", port=8008)
 
 @app.get("/health")
 def health_check():
@@ -70,4 +70,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8008)

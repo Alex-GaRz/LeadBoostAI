@@ -17,20 +17,25 @@ class ScoutNormalizer:
         """
         Mapea un post de Reddit a UniversalSignal.
         """
-        content = f"{raw_post['title']} \n {raw_post['body']}"
+        content = f"{raw_post['title']} \n {raw_post.get('body', '')}"
         
+        created_utc = raw_post.get('created_utc')
+        if created_utc is not None:
+            timestamp = datetime.fromtimestamp(created_utc, tz=timezone.utc).isoformat()
+        else:
+            timestamp = datetime.now(timezone.utc).isoformat()
         return {
             "source": "reddit",
-            "source_id": raw_post['id'],
-            "timestamp": datetime.fromtimestamp(raw_post['created_utc'], tz=timezone.utc).isoformat(),
+            "source_id": raw_post.get('id', ''),
+            "timestamp": timestamp,
             "content": content,
-            "url": raw_post['url'],
+            "url": raw_post.get('url', ''),
             "type": "pain_point_detection", # Clasificación preliminar
             "scout_metadata": {
-                "subreddit": raw_post['subreddit'],
-                "score": raw_post['score'],
-                "upvote_ratio": raw_post['upvote_ratio'],
-                "num_comments": raw_post['num_comments'],
+                "subreddit": raw_post.get('subreddit', ''),
+                "score": raw_post.get('score', 0),
+                "upvote_ratio": raw_post.get('upvote_ratio', 0),
+                "num_comments": raw_post.get('num_comments', 0),
                 "pain_keywords_matched": raw_post.get('matched_keywords', [])
             },
             # Campos requeridos por Bloque 2/Firestore

@@ -5,8 +5,10 @@ import uvicorn
 # --- IMPORTS DIRECTOS (Sin try-except para detectar errores reales) ---
 from models.schemas import MarketSignal
 from services.analyst_service import AnalystService
+
 from api.routes.advisor import router as advisor_router
 from api.routes.governance import router as governance_router
+from api.routes.search import router as search_router
 
 app = FastAPI(title="LeadBoostAI Analyst Engine (Block 4)")
 
@@ -18,8 +20,10 @@ except Exception as e:
     service = None
 
 # Incluir rutas de sub-módulos
+
 app.include_router(advisor_router)
 app.include_router(governance_router)
+app.include_router(search_router)
 
 # --- ENDPOINTS ---
 
