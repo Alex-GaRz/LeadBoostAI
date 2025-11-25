@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from models.schemas import CriticalAlert, ActionProposal
-from services.strategy_engine import strategy_engine
+from microservice_analyst.models.schemas import CriticalAlert, ActionProposal
+from microservice_analyst.services.strategy_engine import strategy_engine
 
 # Router para todas las rutas del Advisor
 router = APIRouter(prefix="/api/advisor", tags=["Advisor"])

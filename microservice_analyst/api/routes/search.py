@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from services.analyst_service import AnalystService
+from microservice_analyst.services.analyst_service import AnalystService
 
 router = APIRouter(prefix="/api/analyst", tags=["Analyst"])
 service = AnalystService()

@@ -1,8 +1,8 @@
 from datetime import datetime
-from core.db_adapter import DBAdapter
-from core.engine import ZScoreEngine
-from core.trust import TrustScorer
-from models.schemas import SignalInput, CriticalAlert
+from microservice_analyst.core.db_adapter import DBAdapter
+from microservice_analyst.core.engine import ZScoreEngine
+from microservice_analyst.core.trust import TrustScorer
+from microservice_analyst.models.schemas import SignalInput, CriticalAlert
 
 class AnalystService:
     def __init__(self):

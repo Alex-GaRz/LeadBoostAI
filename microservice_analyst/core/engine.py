@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from models.schemas import AnomalyResult, Severity
+from microservice_analyst.models.schemas import AnomalyResult, Severity
 
 class ZScoreEngine:
     def __init__(self, threshold: float = 3.0):

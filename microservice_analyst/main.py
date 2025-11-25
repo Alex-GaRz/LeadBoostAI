@@ -3,12 +3,12 @@ from datetime import datetime
 import uvicorn
 
 # --- IMPORTS DIRECTOS (Sin try-except para detectar errores reales) ---
-from models.schemas import MarketSignal
-from services.analyst_service import AnalystService
+from microservice_analyst.models.schemas import MarketSignal
+from microservice_analyst.services.analyst_service import AnalystService
 
-from api.routes.advisor import router as advisor_router
-from api.routes.governance import router as governance_router
-from api.routes.search import router as search_router
+from microservice_analyst.api.routes.advisor import router as advisor_router
+from microservice_analyst.api.routes.governance import router as governance_router
+from microservice_analyst.api.routes.search import router as search_router
 
 app = FastAPI(title="LeadBoostAI Analyst Engine (Block 4)")
 

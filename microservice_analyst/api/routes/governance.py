@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
-from models.schemas import ActionProposal
-from core.governance_engine import GovernanceEngine
+from microservice_analyst.models.schemas import ActionProposal
+from microservice_analyst.core.governance_engine import GovernanceEngine
 
 router = APIRouter(prefix="/api/governance", tags=["governance"])
 

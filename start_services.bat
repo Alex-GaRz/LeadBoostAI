@@ -3,7 +3,7 @@ REM Backend Node.js
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\backend && npm start"
 
 REM Microservicio Analyst (Python)
-start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_analyst && call .\venv\Scripts\activate && python main.py"
+start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI && call microservice_analyst\venv\Scripts\activate && python -m microservice_analyst.main"
 
 REM Microservicio Enterprise (Python)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_enterprise && call .\venv\Scripts\activate && python main.py"

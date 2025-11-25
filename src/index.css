@@ -1,3 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 1. TIPOGRAFÍA GLOBAL */
+body {
+  background-color: #020202; /* Negro absoluto */
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace; /* Look de Terminal */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 2. UTILIDADES DE SCROLLBAR INVISIBLE (Pero funcional) */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Scrollbar fina para cuando sea estrictamente necesaria */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #0a0a0a;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+/* 3. EFECTOS CYBERPUNK / NEÓN */
+@layer components {
+  /* Efecto de "Resplandor" para bordes activos */
+  .glow-border-blue {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  
+  /* Efecto CRT (Monitor Viejo) - Sutil */
+  .crt-flicker {
+    animation: flicker 0.15s infinite;
+    pointer-events: none;
+  }
+  
+  /* Botón Táctico */
+  .btn-tactical {
+    @apply px-4 py-2 bg-blue-600/10 border border-blue-500/30 text-blue-400 
+           hover:bg-blue-600 hover:text-white hover:border-blue-500 hover:shadow-[0_0_15px_rgba(37,99,235,0.5)]
+           transition-all duration-200 font-bold tracking-widest uppercase text-xs;
+  }
+}
+
+/* Animaciones de sistema */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker 30s linear infinite;
+}
+
+@keyframes progress {
+  0% { width: 0%; opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { width: 100%; opacity: 1; }
+}
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
+}

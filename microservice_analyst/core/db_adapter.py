@@ -16,13 +16,18 @@ class DBAdapter:
     
     BASE_URL = "https://firestore.googleapis.com/v1"
     
-    def __init__(self, key_path="serviceAccountKey.json"):
+    def __init__(self, key_path=None):
         self.simulation_mode = False
         self.project_id = None
         self.creds = None
-        
+
         print("🔌 [DBAdapter] Inicializando...")
-        
+
+        # Buscar el archivo en la carpeta del microservicio
+        if key_path is None:
+            key_path = os.path.join(os.path.dirname(__file__), "..", "serviceAccountKey.json")
+            key_path = os.path.abspath(key_path)
+
         if not os.path.exists(key_path):
             print(f"⚠️ [DBAdapter] No se encontró {key_path}. Forzando MODO SIMULACIÓN.")
             self.simulation_mode = True

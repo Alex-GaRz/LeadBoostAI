@@ -6,7 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 // IMPORTANTE: Importamos la NUEVA página real, no el placeholder 'StrategyRoom'
 import StrategyPage from './pages/StrategyPage'; 
 // Mantenemos EngineRoom como placeholder porque la Fase 3 (Ejecución) aún no toca esa pantalla
-import EngineRoom from './pages/placeholders/EngineRoom'; 
+import ExecutionPage from './pages/ExecutionPage';
 
 import EnterpriseLayout from './components/Layout/EnterpriseLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -49,13 +49,13 @@ const App: React.FC = () => {
             } 
           />
 
-          {/* 3. Sala de Máquinas (B7/B8) - Aún en construcción (Placeholder) */}
+          {/* 3. Sala de Máquinas (B7/B8) - AHORA REAL */}
           <Route 
             path="/execution" 
             element={
               <ProtectedRoute>
                 <EnterpriseLayout>
-                  <EngineRoom />
+                  <ExecutionPage />
                 </EnterpriseLayout>
               </ProtectedRoute>
             } 
