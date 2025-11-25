@@ -3,6 +3,7 @@ pytrends>=4.9.0
 firebase-admin>=6.4.0
 pandas>=2.2.0
 python-dotenv>=1.0.1
-schedule>=1.2.1
+# schedule eliminada a favor de APScheduler para manejo de procesos en background robusto
+APScheduler>=3.10.4
 requests>=2.31.0
 numpy>=1.26.4

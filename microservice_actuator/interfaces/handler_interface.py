@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from models.schemas import ActionRequest, ExecutionResult
+from microservice_actuator.models.schemas import ActionRequest, ExecutionResult
 
 class IActionHandler(ABC):
     """Interfaz para todos los ejecutores de acciones (Handlers)."""

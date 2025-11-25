@@ -1,29 +1,30 @@
 import os
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from openai import OpenAI
-from models.schemas import ActionProposal, DebateEntry, ActionType, UrgencyLevel, MarketSignal
-from core import config  # Ajuste aquí
-
+from microservice_analyst.models.schemas import ActionProposal, DebateEntry, ActionType, UrgencyLevel, MarketSignal
 # Configuración de Logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("StrategyEngine")
 
 class StrategyEngine:
     """
     Motor de Decisión 'La Mesa Redonda'.
-    Simula un debate entre CMO, CFO y CEO para tomar decisiones robustas.
+    Implementa Chain of Thought (CoT) multi-perspectiva.
     """
 
     def __init__(self):
-        # Inicializar cliente OpenAI
-        # Se asume que OPENAI_API_KEY está en variables de entorno
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = "gpt-4-turbo-preview" # O gpt-4o según disponibilidad/costo
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            logger.warning("⚠️ OPENAI_API_KEY no encontrada. El motor funcionará en modo degradado.")
+        
+        self.client = OpenAI(api_key=self.api_key)
+        self.model = "gpt-4-turbo-preview" 
 
     def _call_agent(self, system_prompt: str, user_content: str, json_mode: bool = False) -> str:
-        """Helper para llamar a OpenAI con manejo de errores básico"""
+        if not self.api_key:
+            return ""
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -37,137 +38,109 @@ class StrategyEngine:
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error calling OpenAI Agent: {e}")
-            # Fallback básico en caso de error de API
             return ""
 
-    async def generate_strategy_chain(self, signal: MarketSignal, context: Dict[str, Any]) -> ActionProposal:
+    async def generate_strategy(self, signal: MarketSignal, context: Dict[str, Any]) -> ActionProposal:
         """
-        Ejecuta la cadena de pensamiento secuencial:
-        1. CMO (Expansión)
-        2. CFO (Contención)
-        3. CEO (Síntesis y Decisión JSON)
+        Ejecuta la Mesa Redonda Virtual.
         """
-        
-        logger.info(f"Iniciando Mesa Redonda para señal: {signal.source}")
+        logger.info(f"🧠 Iniciando proceso cognitivo para señal: {signal.source}")
         debate_log: List[DebateEntry] = []
         
-        # Preparar contexto stringificado para los prompts
+        # Contexto base enriquecido
         context_str = f"""
-        SEÑAL DETECTADA:
+        [DATOS DE ENTRADA]
         Fuente: {signal.source}
-        Contenido: "{signal.content}"
-        Sentimiento: {signal.sentiment_score}
+        Señal Cruda: "{signal.content}"
+        Score Sentimiento: {signal.sentiment_score}
         
-        CONTEXTO DE NEGOCIO:
-        {json.dumps(context, indent=2)}
+        [ESTADO DE LA EMPRESA]
+        Presupuesto Disponible: {context.get('budget_available', 'Unknown')}
+        Campañas Activas: {context.get('active_campaigns_count', 0)}
         """
 
-        # --- PASO 1: EL CMO (Chief Marketing Officer) ---
-        # Objetivo: Maximizar oportunidad, ignorar riesgos.
+        # --- PASO 1: AGENTE CRECIMIENTO (CMO) ---
+        cmo_prompt = """
+        ACTÚA COMO: CMO (Chief Marketing Officer) de clase mundial.
+        MENTALIDAD: Agresivo, Experimental, Growth Hacking.
+        OBJETIVO: Detectar cómo explotar esta señal para obtener leads YA.
         
-        cmo_system_prompt = """
-        Eres el CMO (Director de Marketing) agresivo y visionario de una startup de alto crecimiento.
-        Tu personalidad es: Audaz, enfocado en viralidad, growth-hacking y captura de mercado.
-        
-        Tu Misión:
-        Analiza la señal de mercado y propón una acción de marketing INMEDIATA y POTENTE.
-        No te preocupes por el presupuesto ni los riesgos legales ahora mismo, céntrate en el impacto y la atención.
-        
-        Salida requerida: Un párrafo breve y persuasivo con tu propuesta táctica.
+        TAREA:
+        Propón una "Micro-Campaña" táctica. Ignora los riesgos. Enfócate en la viralidad y conversión.
+        Define: Hook (Gancho), Oferta y Canal.
         """
-        
-        cmo_response = self._call_agent(cmo_system_prompt, context_str)
-        debate_log.append(DebateEntry(agent_role="CMO", content=cmo_response))
-        logger.info("CMO ha hablado.")
+        cmo_response = self._call_agent(cmo_prompt, context_str)
+        debate_log.append(DebateEntry(agent_role="CMO (Growth)", content=cmo_response))
 
-        # --- PASO 2: EL CFO (Chief Financial/Risk Officer) ---
-        # Objetivo: Encontrar fallas, proteger activos.
+        # --- PASO 2: AGENTE RIESGO (CFO) ---
+        cfo_prompt = """
+        ACTÚA COMO: CFO (Chief Financial Officer) y Oficial de Compliance.
+        MENTALIDAD: Conservador, Averso al riesgo, Protector del ROI.
+        OBJETIVO: Destruir la propuesta del CMO si es peligrosa o ineficiente.
         
-        cfo_system_prompt = """
-        Eres el CFO (Director Financiero) y Oficial de Riesgo conservador de la empresa.
-        Tu personalidad es: Cautelosa, analítica, escéptica y protectora del margen de ganancia.
-        
-        Tu Misión:
-        Revisa la señal de mercado y la propuesta loca del CMO.
-        Identifica INMEDIATAMENTE:
-        1. Riesgos financieros (costo excesivo, bajo ROI).
-        2. Riesgos de marca (polémica negativa).
-        3. Problemas operativos.
-        
-        Salida requerida: Un párrafo crítico y directo señalando por qué la idea del CMO podría fallar o ser peligrosa.
+        TAREA:
+        Analiza la propuesta del CMO.
+        1. ¿Es rentable?
+        2. ¿Daña la marca?
+        3. ¿Es legal/ético?
+        Si es viable, dalo por bueno. Si no, propón recortes drásticos.
         """
-        
-        cfo_input = f"{context_str}\n\nPROPUESTA DEL CMO:\n{cmo_response}"
-        cfo_response = self._call_agent(cfo_system_prompt, cfo_input)
-        debate_log.append(DebateEntry(agent_role="CFO", content=cfo_response))
-        logger.info("CFO ha hablado.")
+        cfo_input = f"{context_str}\n\n[PROPUESTA CMO]: {cmo_response}"
+        cfo_response = self._call_agent(cfo_prompt, cfo_input)
+        debate_log.append(DebateEntry(agent_role="CFO (Risk)", content=cfo_response))
 
-        # --- PASO 3: EL CEO (Chief Executive Officer) ---
-        # Objetivo: Síntesis y Output Estructurado.
+        # --- PASO 3: CEO (SÍNTESIS) ---
+        ceo_prompt = """
+        ACTÚA COMO: CEO de LeadBoostAI.
+        TAREA: Sintetizar el debate y emitir una ORDEN DE EJECUCIÓN estructurada.
         
-        ceo_system_prompt = """
-        Eres el CEO pragmático y decisivo de LeadBoostAI.
+        INPUTS:
+        - Oportunidad (CMO)
+        - Riesgos (CFO)
         
-        Tu Misión:
-        Tienes sobre la mesa una oportunidad de mercado, una propuesta agresiva del CMO y una advertencia del CFO.
-        Debes tomar la DECISIÓN FINAL.
+        DECISIÓN:
+        Balancea el riesgo/recompensa.
         
-       
-        - Si la oportunidad es enorme y el riesgo controlable, apoya al CMO pero pon límites (budget).
-        - Si el riesgo es existencial, haz caso al CFO y propón algo más seguro o no hacer nada.
-        - Busca el "Sweet Spot": Alto impacto, riesgo mitigado.
-        
-        IMPORTANTE: TU SALIDA DEBE SER ESTRICTAMENTE JSON VÁLIDO.
-        Este JSON será consumido por un sistema automático. No incluyas markdown ```json```.
-        
-        Esquema JSON esperado:
+        FORMATO DE SALIDA (JSON PURO):
         {
-            "action_type": "Uno de [CREATE_CAMPAIGN, PAUSE_CAMPAIGN, INCREASE_BUDGET, DECREASE_BUDGET, NOTIFY_HUMAN, DO_NOTHING]",
-            "reasoning": "Resumen de tu decisión final en 1 frase, citando por qué elegiste X sobre Y.",
+            "action_type": "CREATE_CAMPAIGN | MODIFY_BUDGET | DO_NOTHING",
+            "reasoning": "Explicación ejecutiva de 1 oración.",
             "parameters": {
-                "budget_limit": (numero o null),
-                "target_audience": (string o null),
-                "copy_angle": (string o null),
-                "platform": (string o null)
+                "budget_cap": float,
+                "target_audience": string,
+                "ad_tone": string,
+                "platform_focus": string
             },
-            "confidence_score": (float 0.0 a 1.0),
-            "urgency": "Uno de [LOW, MEDIUM, HIGH, CRITICAL]"
+            "confidence_score": float (0-1),
+            "urgency": "HIGH | MEDIUM | LOW"
         }
         """
+        ceo_input = f"{context_str}\n\n[DEBATE]\nCMO: {cmo_response}\nCFO: {cfo_response}"
         
-        ceo_input = f"{context_str}\n\nPROPUESTA CMO:\n{cmo_response}\n\nCRÍTICA CFO:\n{cfo_response}"
+        raw_decision = self._call_agent(ceo_prompt, ceo_input, json_mode=True)
         
-        raw_ceo_json = self._call_agent(ceo_system_prompt, ceo_input, json_mode=True)
-        logger.info("CEO ha decidido.")
+        # --- PARSING Y RETORNO ---
+        return self._parse_ceo_decision(raw_decision, debate_log)
 
-        # --- Parsing y Retorno ---
+    def _parse_ceo_decision(self, raw_json: str, transcript: List[DebateEntry]) -> ActionProposal:
         try:
-            # Limpieza por si OpenAI devuelve bloques de markdown
-            cleaned_json = raw_ceo_json.replace("```json", "").replace("```", "").strip()
-            decision_dict = json.loads(cleaned_json)
-            
-            # Construir el objeto final agregando el transcript
-            proposal = ActionProposal(
-                action_type=decision_dict.get("action_type", "NOTIFY_HUMAN"),
-                reasoning=decision_dict.get("reasoning", "Error en síntesis"),
-                parameters=decision_dict.get("parameters", {}),
-                confidence_score=decision_dict.get("confidence_score", 0.5),
-                urgency=decision_dict.get("urgency", "MEDIUM"),
-                debate_transcript=debate_log
+            data = json.loads(raw_json)
+            return ActionProposal(
+                action_type=data.get("action_type", "NOTIFY_HUMAN"),
+                reasoning=data.get("reasoning", "Decisión manual requerida"),
+                parameters=data.get("parameters", {}),
+                confidence_score=data.get("confidence_score", 0.0),
+                urgency=data.get("urgency", "MEDIUM"),
+                debate_transcript=transcript
             )
-            
-            return proposal
-
-        except json.JSONDecodeError:
-            logger.error(f"Fallo al parsear JSON del CEO: {raw_ceo_json}")
-            # Fallback seguro
+        except Exception:
             return ActionProposal(
                 action_type=ActionType.NOTIFY_HUMAN,
-                reasoning="El CEO no pudo estructurar una respuesta válida (Error JSON). Requiere intervención humana.",
+                reasoning="Fallo en síntesis neural (JSON Error)",
                 parameters={},
                 confidence_score=0.0,
                 urgency=UrgencyLevel.HIGH,
-                debate_transcript=debate_log
+                debate_transcript=transcript
             )
 
 strategy_engine = StrategyEngine()
