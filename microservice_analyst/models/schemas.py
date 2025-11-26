@@ -10,13 +10,6 @@ class Severity(str, Enum):
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
-class CriticalAlert(BaseModel):
-    id: str
-    type: str
-    severity: Severity
-    message: str
-    timestamp: str
-
 class ActionType(str, Enum):
     # Acciones Standard
     CREATE_CAMPAIGN = "CREATE_CAMPAIGN"
@@ -40,7 +33,7 @@ class GovernanceStatus(str, Enum):
     REJECTED = "REJECTED"
     HITL_REQUIRED = "HITL_REQUIRED"
 
-# --- MODELOS DE SEÑALES (INPUT) ---
+# --- MODELOS DE ENTRADA ---
 
 class MarketSignal(BaseModel):
     """Modelo principal de señal de mercado"""
@@ -49,39 +42,39 @@ class MarketSignal(BaseModel):
     sentiment_score: float = 0.0
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     metadata: Dict[str, Any] = {}
-    # Campos opcionales para flexibilidad
     id: Optional[str] = None
 
-# ALIAS DE COMPATIBILIDAD (CRÍTICO)
-# Esto arregla el error "SignalInput not defined" en main.py
+# Alias de compatibilidad
 SignalInput = MarketSignal 
-
-# --- MODELOS DE ANÁLISIS (CORE BLOQUE 4) ---
-
-class AnomalyResult(BaseModel):
-    """Resultado del Z-Score Engine. ESTO FALTABA."""
-    is_anomaly: bool
-    severity: Severity
-    score: float
-    details: str = ""
-    value: float = 0.0
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class AnalysisRequest(BaseModel):
     signal: MarketSignal
     context_data: Dict[str, Any] = {} 
 
-# --- MODELOS DE ESTRATEGIA (OUTPUT BLOQUE 5/6) ---
+# --- MODELOS DE ESTRATEGIA (OUTPUT) ---
+
+class CriticalAlert(BaseModel):
+    signal_id: str
+    timestamp: datetime
+    severity: Severity
+    message: str
+
+class AnomalyResult(BaseModel):
+    is_anomaly: bool
+    score: float
+    severity: Severity
+    details: str
 
 class DebateEntry(BaseModel):
+    """Entrada individual en el transcript del debate"""
     agent_role: str 
     content: str     
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class ActionProposal(BaseModel):
-    """Propuesta final de acción"""
+    """Propuesta final de acción lista para Gobernanza/Ejecución"""
     action_type: ActionType
-    reasoning: str = Field(..., description="Justificación estratégica")
+    reasoning: str = Field(..., description="Justificación estratégica resumida")
     parameters: Dict[str, Any] = Field(default={})
     confidence_score: float = Field(default=0.5, ge=0.0, le=1.0)
     urgency: UrgencyLevel = UrgencyLevel.MEDIUM
@@ -91,6 +84,8 @@ class ActionProposal(BaseModel):
     governance_status: Optional[GovernanceStatus] = None
     block_reason: Optional[str] = None
     governance_metadata: Dict[str, Any] = {}
+    
+    # EL CEREBRO: Transcript del debate para mostrar al usuario
     debate_transcript: List[DebateEntry] = []
     
     class Config:

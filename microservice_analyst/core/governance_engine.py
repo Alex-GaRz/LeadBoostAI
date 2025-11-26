@@ -1,109 +1,107 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 import logging
 import datetime
 from .audit_publisher import AuditPublisher
-# IMPORTANTE: Importar el conector
 from .enterprise_interface import RemoteEnterpriseConnector
+from microservice_analyst.models.schemas import GovernanceStatus
 
 logger = logging.getLogger("GovernanceEngine")
 
 class GovernanceEngine:
     def __init__(self):
         self.auditor = AuditPublisher()
-        
-        # --- CONEXIÓN AL ERP (BLOQUE 11) ---
         self.erp = RemoteEnterpriseConnector() 
         
+        # Políticas Configurables
         self.policies = {
-            "max_budget": 5000,
-            "min_stock": 10,
-            "min_margin": 0.15, # 15% margen mínimo
-            "prohibited_keywords": ["scam", "fraud", "crisis", "panic", "leak"]
+            "max_daily_budget": 5000.0,
+            "min_stock_level": 10,     # Unidades mínimas para activar campaña
+            "min_roas_threshold": 1.5, # ROAS mínimo aceptable para escalar
+            "prohibited_keywords": ["scam", "fraud", "crisis", "panic", "leak", "free money"]
         }
 
     def evaluate_proposal(self, proposal_data: Dict[str, Any]) -> Dict[str, Any]:
-        checks = []
-        approved = True
+        """
+        Evalúa una propuesta de acción contra reglas duras de negocio.
+        """
+        checks: List[Dict[str, Any]] = []
+        status = GovernanceStatus.APPROVED
         rejection_reason = None
         
-        # 1. Extracción de Datos (Compatible con Pydantic y Dict)
-        # Si es objeto Pydantic, lo convertimos a dict
+        # 1. Normalización de Datos
+        # Extraemos parámetros clave. Si viene de Pydantic, ya debería ser dict aquí, pero aseguramos.
         raw_data = proposal_data if isinstance(proposal_data, dict) else proposal_data.model_dump()
-        
-        # IMPORTANTE: Los datos vienen dentro de 'parameters' según tu schema
         params = raw_data.get("parameters", {})
+        context = raw_data.get("governance_metadata", {}) # Datos extra pasados por el StrategyEngine
         
         sku = params.get("sku")
-        budget = float(params.get("budget", 0))
+        budget = float(params.get("budget", 0.0))
         keywords = params.get("keywords", [])
-        strategy_name = raw_data.get("reasoning", "Unknown Strategy") # Usamos reasoning como nombre temporal
+        strategy_name = raw_data.get("reasoning", "Unknown Strategy")
 
-        logger.info(f"🔍 Evaluando propuesta para SKU: {sku} | Budget: {budget}")
+        logger.info(f"🛡️ GOBERNANZA: Evaluando '{strategy_name}' | Budget: ${budget} | SKU: {sku}")
 
-        # 2. Validación de Reglas
-
-        # --- REGLA 1: Límite de Presupuesto ---
-        if budget > self.policies["max_budget"]:
-            approved = False
-            rejection_reason = f"Budget {budget} exceeds limit of {self.policies['max_budget']}"
-            checks.append({"check": "budget_policy", "passed": False})
+        # --- REGLA 1: PREVISIÓN FINANCIERA (ROAS CHECK) ---
+        # Si el ROAS reciente es malo, limitamos severamente el presupuesto o pedimos HITL.
+        recent_roas = context.get("recent_roas", 2.0) # Default a 2.0 si no hay datos (optimista para arranque)
+        
+        if recent_roas < 1.0:
+            # Estamos perdiendo dinero: Rechazar aumentos de presupuesto automático
+            if budget > 100: # Permitir micro-tests, bloquear grandes gastos
+                status = GovernanceStatus.HITL_REQUIRED
+                rejection_reason = f"ROAS Crítico ({recent_roas}). Se requiere aprobación humana para presupuestos > $100."
+                checks.append({"check": "roas_financial_safety", "passed": False, "detail": f"ROAS {recent_roas}"})
+            else:
+                checks.append({"check": "roas_financial_safety", "passed": True, "detail": "Budget bajo permitido pese a bajo ROAS"})
+        elif recent_roas < self.policies["min_roas_threshold"]:
+            # ROAS mediocre: Alerta pero permite
+            checks.append({"check": "roas_financial_safety", "passed": True, "detail": f"ROAS {recent_roas} (Warning)"})
         else:
-            checks.append({"check": "budget_policy", "passed": True})
+             checks.append({"check": "roas_financial_safety", "passed": True, "detail": "ROAS Saludable"})
 
-        # --- REGLA 2: Brand Safety ---
-        if keywords:
+        # --- REGLA 2: LÍMITE PRESUPUESTARIO ---
+        if status == GovernanceStatus.APPROVED:
+            if budget > self.policies["max_daily_budget"]:
+                status = GovernanceStatus.HITL_REQUIRED # No rechazamos, pero pedimos firma humana
+                rejection_reason = f"Presupuesto ${budget} excede el límite automático de ${self.policies['max_daily_budget']}"
+                checks.append({"check": "budget_policy", "passed": False})
+            else:
+                checks.append({"check": "budget_policy", "passed": True})
+
+        # --- REGLA 3: BRAND SAFETY ---
+        if status == GovernanceStatus.APPROVED and keywords:
             for kw in keywords:
                 if kw.lower() in self.policies["prohibited_keywords"]:
-                    approved = False
-                    rejection_reason = f"Keyword '{kw}' is prohibited"
+                    status = GovernanceStatus.REJECTED
+                    rejection_reason = f"Palabra clave prohibida detectada: '{kw}'"
                     checks.append({"check": "brand_safety", "passed": False})
                     break
 
-        # --- REGLA 3: INVENTARIO REAL (Consulta al ERP) ---
-        # Solo verificamos stock si la acción es de Marketing y tenemos SKU
-        if sku and approved: # Fail-fast: si ya falló presupuesto, no molestamos al ERP
+        # --- REGLA 4: INVENTARIO FÍSICO (ERP) ---
+        # Solo relevante si hay un SKU asociado a la campaña
+        if sku and status != GovernanceStatus.REJECTED:
             product_info = self.erp.get_product_data(sku)
             stock = product_info.get("stock_quantity", 0)
             
-            if stock < self.policies["min_stock"]:
-                approved = False
-                rejection_reason = f"CRÍTICO: Stock insuficiente ({stock} u.) para campaña. Mínimo requerido: {self.policies['min_stock']}"
-                checks.append({
-                    "check": "inventory_validation", 
-                    "passed": False, 
-                    "detail": f"Stock: {stock}"
-                })
+            if stock < self.policies["min_stock_level"]:
+                status = GovernanceStatus.REJECTED
+                rejection_reason = f"Stock insuficiente ({stock} u.) para lanzar campaña. Mínimo requerido: {self.policies['min_stock_level']}"
+                checks.append({"check": "inventory_validation", "passed": False, "detail": f"Stock Real: {stock}"})
             else:
-                checks.append({
-                    "check": "inventory_validation", 
-                    "passed": True, 
-                    "detail": f"Stock: {stock}"
-                })
+                checks.append({"check": "inventory_validation", "passed": True, "detail": f"Stock OK: {stock}"})
 
         # 3. Construcción del Resultado
-        result = raw_data.copy() # Copiamos la entrada para devolverla enriquecida
-        result["governance_status"] = "APPROVED" if approved else "REJECTED"
+        result = raw_data.copy()
+        result["governance_status"] = status
         result["block_reason"] = rejection_reason
         result["policy_checks"] = checks
         result["timestamp"] = str(datetime.datetime.now())
 
-        # 4. Reportar al 'Chivato' (Bloque 10)
-        try:
-            self.auditor.log_governance_decision(
-                strategy_name=strategy_name,
-                context={"trigger": "automated_evaluation_b6", "sku": sku},
-                governance_result={"approved": approved, "checks": checks}
-            )
-        except Exception as e:
-            logger.error(f"⚠️ Error reportando a B10: {e}")
-
-        # 5. HOOK PARA LA DEMO (Reportar alerta visual)
-        if not approved and hasattr(self, 'report_callback'):
-            self.report_callback({
-                "id": f"GOV-BLOCK-{datetime.datetime.now().timestamp()}",
-                "type": "CAMPAIGN_BLOCKED",
-                "severity": "CRITICAL",
-                "message": f"🛡️ GOBERNANZA BLOQUEÓ ACCIÓN: {rejection_reason}",
-                "timestamp": str(datetime.datetime.now())
-            })   
+        # 4. Auditoría (Log inmutable)
+        self.auditor.log_governance_decision(
+            strategy_name=strategy_name,
+            context={"sku": sku, "roas_used": recent_roas, "budget": budget},
+            governance_result={"status": status, "checks": checks}
+        )
+        
         return result
