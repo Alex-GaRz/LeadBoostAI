@@ -1,73 +1,68 @@
-from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any
-import uvicorn
-import logging
 
-# Importaciones internas
-from core.normalizer import MetricsNormalizer
-from core.memory_sync import MemorySyncService
+# --- IMPORTS DEL MOTOR HÍBRIDO ---
+# Asumimos que ya creaste 'microservice_actuator_plus/core/ingestors.py'
+from core.ingestors import MetaRealIngestor, GoogleRealIngestor
 
-# Configuración de Logs
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("ActuatorPlus")
+app = FastAPI(title="Microservice Actuator Plus - Ingestion Engine")
 
-app = FastAPI(title="LeadBoostAI Block 8: Actuator+ (Feedback Loop Integration)")
-
-# Instancias Singleton de Servicios
-normalizer = MetricsNormalizer()
-memory_service = MemorySyncService()
-
-class WebhookPayload(BaseModel):
-    source: str
-    data: Dict[str, Any]
+# --- CONFIGURACIÓN CORS ---
+# Permitimos todo porque este servicio es interno o llamado por el BFF
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def health_check():
-    return {"status": "operational", "mode": "integrated_closed_loop"}
+    return {
+        "status": "online", 
+        "module": "Actuator Plus", 
+        "mode": "Hybrid (Real + Mock Fallback)"
+    }
 
-@app.post("/webhook/feedback")
-async def receive_feedback(payload: WebhookPayload):
+# --- ENDPOINT MAESTRO DE INGESTA (PHASE 1) ---
+@app.post("/ingest/trigger/{user_id}")
+async def trigger_manual_ingestion(user_id: str):
     """
-    Endpoint principal que recibe datos de plataformas externas (Meta/Google),
-    los normaliza y los envía al Cerebro Central (B10).
+    Este endpoint es llamado cuando queremos actualizar métricas.
+    Intenta conectar a Meta/Google reales. Si falla, usa el mock.
     """
+    print(f"🚀 [ACTUATOR] Iniciando secuencia de ingesta para User: {user_id}")
+    
+    results = {}
+    
+    # 1. EJECUCIÓN PIPELINE META ADS
     try:
-        logger.info(f"📥 Webhook recibido de: {payload.source}")
-        
-        # PASO 1: Normalización (Estandarizar el caos de las APIs externas)
-        normalized_metrics = normalizer.normalize(payload.source, payload.data)
-        logger.info(f"📊 Métricas Normalizadas: {normalized_metrics}")
-        
-        # PASO 2: Sincronización Neural (Enviar a Memoria)
-        # Aquí es donde ocurre la magia de la integración B8 -> B10
-        sync_success = memory_service.sync_decision_outcome(
-            platform=payload.source,
-            data=payload.data,
-            normalized_metrics=normalized_metrics
-        )
-        
-        status_msg = "Synced with Brain" if sync_success else "Saved to Fallback"
-        
-        return {
-            "status": "processed", 
-            "normalization": "success",
-            "memory_sync": status_msg,
-            "metrics": normalized_metrics
-        }
-
+        print("   ... Consultando Meta Graph API")
+        meta_ingestor = MetaRealIngestor(user_id)
+        results['meta'] = meta_ingestor.fetch_data()
     except Exception as e:
-        logger.error(f"🔥 Error procesando feedback: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ Error crítico en Meta Pipeline: {e}")
+        results['meta'] = {"status": "error", "details": str(e)}
 
-if __name__ == "__main__":
-    # Correr en puerto 8008 (Diferente al B10 que está en 8010)
-    uvicorn.run(app, host="0.0.0.0", port=8008)
-
-@app.get("/health")
-def health_check():
-    return {"status": "operational", "block": "8 - Actuator+"}
+    # 2. EJECUCIÓN PIPELINE GOOGLE ADS
+    try:
+        print("   ... Consultando Google Ads API")
+        google_ingestor = GoogleRealIngestor(user_id)
+        results['google'] = google_ingestor.fetch_data()
+    except Exception as e:
+        print(f"❌ Error crítico en Google Pipeline: {e}")
+        results['google'] = {"status": "error", "details": str(e)}
+    
+    # Aquí en el futuro guardaríamos 'results' en la base de datos de Analytics
+    
+    return {
+        "status": "ingestion_completed",
+        "timestamp": "now", 
+        "payload": results
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8008)
+    uvicorn.run("main:app", host="0.0.0.0", port=8008, reload=False)

@@ -1,12 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage'; // Si lo usas
+import RegisterPage from './pages/RegisterPage'; 
 import DashboardPage from './pages/DashboardPage';
-// IMPORTANTE: Importamos la NUEVA página real, no el placeholder 'StrategyRoom'
 import StrategyPage from './pages/StrategyPage'; 
-// Mantenemos EngineRoom como placeholder porque la Fase 3 (Ejecución) aún no toca esa pantalla
 import ExecutionPage from './pages/ExecutionPage';
+import OnboardingPage from './pages/OnboardingPage'; // <--- IMPORTANTE: La página que creamos antes
 
 import EnterpriseLayout from './components/Layout/EnterpriseLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,12 +19,13 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           
-          {/* Redirección raíz */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           
-          {/* RUTAS PROTEGIDAS DEL SISTEMA */}
+          {/* =========================================================
+              ZONA SEGURA - ENTERPRISE LAYOUT
+          ========================================================= */}
           
-          {/* 1. Centro de Mando (Dashboard B9) */}
+          {/* 1. CENTRO DE MANDO */}
           <Route 
             path="/dashboard" 
             element={
@@ -37,19 +37,19 @@ const App: React.FC = () => {
             } 
           />
 
-          {/* 2. Sala de Estrategia (B5/B6) - CONECTADO AHORA A LA PÁGINA REAL */}
+          {/* 2. ESTRATEGIA */}
           <Route 
             path="/strategy" 
             element={
               <ProtectedRoute>
                 <EnterpriseLayout>
-                  <StrategyPage /> {/* <--- AQUÍ ESTABA EL CAMBIO CLAVE */}
+                  <StrategyPage />
                 </EnterpriseLayout>
               </ProtectedRoute>
             } 
           />
 
-          {/* 3. Sala de Máquinas (B7/B8) - AHORA REAL */}
+          {/* 3. EJECUCIÓN (MÁQUINAS) */}
           <Route 
             path="/execution" 
             element={
@@ -61,7 +61,18 @@ const App: React.FC = () => {
             } 
           />
 
-          {/* Fallback para rutas desconocidas */}
+          {/* 4. DATA SOURCES (ONBOARDING) - NUEVO FASE 1 */}
+          <Route 
+            path="/onboarding" 
+            element={
+              <ProtectedRoute>
+                <EnterpriseLayout>
+                  <OnboardingPage />
+                </EnterpriseLayout>
+              </ProtectedRoute>
+            } 
+          />
+
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>

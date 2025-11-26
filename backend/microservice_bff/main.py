@@ -1,15 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# --- IMPORTS DE ROUTERS ---
+# Asegúrate de que existan dashboard.py y onboarding.py en la carpeta /routers
 from routers import dashboard
-# Si tienes el websocket listo, descomenta la siguiente línea:
+from routers import onboarding 
+
+# Si tienes el websocket manager configurado, descomenta:
 # from websocket_manager import manager
 
-app = FastAPI(title="LeadBoost BFF & API Gateway")
+app = FastAPI(title="LeadBoost BFF & API Gateway", version="Phase 1.0")
 
 # --- CONFIGURACIÓN CORS (CRÍTICO PARA REACT) ---
-# Esto permite que tu Frontend (localhost:5173) envíe peticiones aquí.
 origins = [
-    "http://localhost:5173",  # Vite Development
+    "http://localhost:5173",  # Vite Development (Tu puerto actual)
     "http://localhost:3000",  # React Standard
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000"
@@ -19,18 +23,24 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Permite GET, POST, OPTIONS, etc.
-    allow_headers=["*"], # Permite enviar el header 'Authorization'
+    allow_methods=["*"],  # Permite todos los métodos (GET, POST, etc)
+    allow_headers=["*"],  # Permite Auth Headers
 )
 
-# --- RUTAS ---
+# --- REGISTRO DE RUTAS ---
+# 1. Router del Dashboard (Legacy/Visualización)
 app.include_router(dashboard.router)
+
+# 2. Router de Onboarding (NUEVO - Fase 1)
+# Maneja la conexión segura de cuentas Meta/Google
+app.include_router(onboarding.router)
 
 @app.get("/")
 def health_check():
-    """Endpoint público para verificar que el servidor corre"""
+    """Health Check público"""
     return {
         "status": "online", 
         "system": "LeadBoost BFF Gateway",
-        "auth_mode": "Firebase Enterprise"
+        "phase": "1 - Data Foundation",
+        "services": ["Dashboard", "Onboarding Secure"]
     }
