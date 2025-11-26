@@ -97,4 +97,13 @@ class GovernanceEngine:
         except Exception as e:
             logger.error(f"⚠️ Error reportando a B10: {e}")
 
+        # 5. HOOK PARA LA DEMO (Reportar alerta visual)
+        if not approved and hasattr(self, 'report_callback'):
+            self.report_callback({
+                "id": f"GOV-BLOCK-{datetime.datetime.now().timestamp()}",
+                "type": "CAMPAIGN_BLOCKED",
+                "severity": "CRITICAL",
+                "message": f"🛡️ GOBERNANZA BLOQUEÓ ACCIÓN: {rejection_reason}",
+                "timestamp": str(datetime.datetime.now())
+            })   
         return result

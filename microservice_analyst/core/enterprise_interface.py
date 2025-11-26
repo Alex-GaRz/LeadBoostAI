@@ -1,50 +1,29 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Any
-import random
-import requests  # <--- NECESARIO
-from datetime import datetime
+import requests
+import logging
 
-class IEnterpriseConnector(ABC):
-    @abstractmethod
-    def get_product_data(self, sku: str) -> Dict[str, Any]:
-        pass
+logger = logging.getLogger("EnterpriseConnector")
 
-# --- OPCIÓN A: MOCK (Para pruebas unitarias sin B11) ---
-class MockEnterpriseConnector(IEnterpriseConnector):
-    def get_product_data(self, sku: str) -> Dict[str, Any]:
-        return {
-            "sku": sku, 
-            "stock_quantity": 100, 
-            "margin_percent": 0.30,
-            "is_active": True
-        }
-
-# --- OPCIÓN B: REAL (Para conectar con B11) ---
-class RemoteEnterpriseConnector(IEnterpriseConnector):
-    """
-    Conector que consulta al Microservicio Enterprise (Bloque 11).
-    """
-    def __init__(self, base_url="http://localhost:8011/enterprise"):
+class RemoteEnterpriseConnector:
+    def __init__(self, base_url="http://localhost:8011"):
         self.base_url = base_url
 
-    def get_product_data(self, sku: str) -> Dict[str, Any]:
+    def get_product_data(self, sku: str) -> dict:
+        """
+        Consulta el inventario real al Bloque 11 (ERP Simulator)
+        """
         try:
-            print(f"📡 Consultando ERP (B11) para SKU: {sku}...")
-            response = requests.get(f"{self.base_url}/inventory/{sku}", timeout=2)
-            
+            response = requests.get(f"{self.base_url}/enterprise/inventory/{sku}", timeout=2)
             if response.status_code == 200:
                 data = response.json()
-                # Mapeamos la respuesta del B11 al formato que espera el B6
+                # Normalizar respuesta para el Governance Engine
                 return {
-                    "sku": data["sku"],
-                    "stock_quantity": data["qty"],  # B11 devuelve 'qty', B6 usa 'stock_quantity'
-                    "margin_percent": data["margin"],
-                    "is_active": True
+                    "sku": data.get("sku"),
+                    "stock_quantity": data.get("qty", 0),
+                    "margin": data.get("margin", 0.0)
                 }
             else:
-                print(f"⚠️ SKU no encontrado en ERP: {sku}")
-                return {"stock_quantity": 0, "is_active": False}
-                
+                logger.warning(f"ERP devolvió status {response.status_code}")
+                return {"stock_quantity": 0} # Fail-safe: Asumir 0 si falla
         except Exception as e:
-            print(f"❌ Error de conexión con ERP: {e}")
-            return {"stock_quantity": 0, "is_active": False, "error": str(e)}
+            logger.error(f"Error conectando a ERP: {e}")
+            return {"stock_quantity": 0} # Fail-safe
