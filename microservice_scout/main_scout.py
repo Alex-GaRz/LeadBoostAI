@@ -1,144 +1,124 @@
 import time
 import os
 import sys
-import logging
-import warnings
-from datetime import datetime
+
+# Ajuste de path para importar módulos locales si es necesario
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from dotenv import load_dotenv
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
-
-# --- FIX 1: Forzar UTF-8 en Windows para soportar Emojis ---
-# Esto evita el "UnicodeEncodeError" en la consola
-if sys.platform.startswith('win'):
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except AttributeError:
-        # En versiones muy viejas de Python esto podría fallar, pero en 3.10+ funciona
-        pass
-
-# --- FIX 2: Silenciar advertencias ruidosas de librerías externas (Pandas/Pytrends) ---
-warnings.filterwarnings("ignore", category=FutureWarning)
-
 from core.db_adapter import DBAdapter
-from core.reddit_scout import RedditScout
 from core.trends_scout import TrendsScout
+from core.reddit_scout import RedditScout
 from core.scout_normalizer import ScoutNormalizer
 
-# Configuración de Logging Profesional con UTF-8 explícito
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - [%(name)s] - %(levelname)s - %(message)s',
-    handlers=[
-        # Guardar en archivo con codificación segura
-        logging.FileHandler("scout_service.log", encoding='utf-8'),
-        # Imprimir en consola usando el stdout reconfigurado
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger("ScoutOrchestrator")
-
-# Cargar entorno
+# Cargar variables de entorno
 load_dotenv()
 
-class ScoutService:
-    def __init__(self):
-        self.db = DBAdapter()
-        self.normalizer = ScoutNormalizer()
-        self.reddit_scout = RedditScout()
-        self.trends_scout = TrendsScout()
+# --- CONFIGURACIÓN DE OBJETIVOS (Se pueden mover a un JSON externo) ---
+TARGET_KEYWORDS = [
+    "crm software", "marketing automation", "chatbot ai", 
+    "lead generation", "salesforce pricing", "hubspot alternative",
+    "email marketing tools", "seo services", "business intelligence"
+]
 
-    def job_reddit_intelligence(self):
-        """
-        Ciclo de Inteligencia de Reddit (Opinión Pública y Pain Points)
-        Frecuencia: Alta (cada 60 min)
-        """
-        logger.info("🚀 [REDDIT] Iniciando escaneo de subreddits...")
-        try:
-            target_subreddits = ["marketing", "smallbusiness", "entrepreneur", "saas", "growthhacking"]
-            pain_keywords = ["hate", "expensive", "problem with", "alternative to", "sucks", "nightmare"]
-            
-            raw_pain_points = self.reddit_scout.hunt_pain_points(target_subreddits, pain_keywords)
-            
-            count = 0
-            for post in raw_pain_points:
-                signal = self.normalizer.normalize_reddit(post)
-                if self.db.save_signal(signal):
-                    count += 1
-            
-            logger.info(f"✅ [REDDIT] Ciclo finalizado. Nuevas señales: {count}")
-        except Exception as e:
-            logger.error(f"❌ [REDDIT] Error crítico en job: {str(e)}", exc_info=True)
+TARGET_SUBREDDITS = [
+    "marketing", "sales", "smallbusiness", "entrepreneur", 
+    "startups", "SaaS", "digitalmarketing", "growthhacking"
+]
 
-    def job_trends_intelligence(self):
-        """
-        Ciclo de Inteligencia de Mercado (Google Trends)
-        Frecuencia: Media (cada 4 horas)
-        """
-        logger.info("🚀 [TRENDS] Iniciando detección de picos de tendencia...")
-        try:
-            target_keywords = ["AI marketing", "Lead generation", "Automated ads", "CRM automation"]
-            
-            raw_spikes = self.trends_scout.detect_silent_spikes(target_keywords)
-            
-            count = 0
-            for spike in raw_spikes:
-                signal = self.normalizer.normalize_trends(spike)
-                if self.db.save_signal(signal):
-                    count += 1
-                    
-            logger.info(f"✅ [TRENDS] Ciclo finalizado. Nuevas señales: {count}")
-        except Exception as e:
-            logger.error(f"❌ [TRENDS] Error crítico en job: {str(e)}", exc_info=True)
-
-def listener(event):
-    if event.exception:
-        logger.warning(f"⚠️ El job {event.job_id} falló.")
-    else:
-        logger.info(f"Job {event.job_id} ejecutado exitosamente.")
+# --- INTERVALOS DE EJECUCIÓN (Segundos) ---
+# Reddit: Cada 30 min (Los feeds RSS cambian rápido)
+INTERVAL_REDDIT = 1800   
+# Trends: Cada 4 horas (Google Trends no cambia tan rápido y tiene rate limits estrictos)
+INTERVAL_TRENDS = 14400  
 
 def main():
-    print("=========================================")
-    print("   LEADBOOST AI - MICROSERVICE SCOUT")
-    print("   Production Scheduler (APScheduler)")
-    print("=========================================")
+    print("==========================================")
+    print("📡 LEADBOOST AI - MICROSERVICE SCOUT v2.0")
+    print("   Modo: Tactical Radar (RSS + Trends)")
+    print("==========================================")
 
-    service = ScoutService()
-    scheduler = BlockingScheduler()
-    
-    # Listener para monitoreo de salud de jobs
-    scheduler.add_listener(listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
-
-    # Configuración de Intervalos (Variables de entorno con fallbacks seguros)
-    reddit_interval = int(os.getenv("SCOUT_REDDIT_INTERVAL_MIN", 60))
-    trends_interval = int(os.getenv("SCOUT_TRENDS_INTERVAL_HOURS", 4))
-
-    # Job 1: Reddit
-    scheduler.add_job(
-        service.job_reddit_intelligence,
-        trigger=IntervalTrigger(minutes=reddit_interval),
-        id='reddit_scout_job',
-        name='Reddit Intelligence Cycle',
-        next_run_time=datetime.now() # Ejecutar inmediatamente al inicio
-    )
-
-    # Job 2: Trends
-    scheduler.add_job(
-        service.job_trends_intelligence,
-        trigger=IntervalTrigger(hours=trends_interval),
-        id='trends_scout_job',
-        name='Google Trends Cycle',
-        next_run_time=datetime.now()
-    )
-
-    logger.info(f"🕒 Scheduler iniciado. Reddit: {reddit_interval}min | Trends: {trends_interval}h")
-    
+    # 1. Inicialización de Componentes
     try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("🛑 Deteniendo Scout Service...")
+        db = DBAdapter()
+        trends_engine = TrendsScout()
+        reddit_engine = RedditScout()
+        normalizer = ScoutNormalizer()
+    except Exception as e:
+        print(f"❌ Error crítico inicializando componentes: {e}")
+        return
+
+    # Inicializar timers en 0 para ejecución inmediata al arranque
+    # O usar time.time() para esperar el primer intervalo
+    last_run_reddit = 0
+    last_run_trends = 0
+
+    print("✅ Sistema Scout Activo. Esperando ciclos de ejecución...")
+
+    while True:
+        current_time = time.time()
+
+        # ---------------------------------------------------------
+        # A. CICLO REDDIT (Pain Point Hunting)
+        # ---------------------------------------------------------
+        if current_time - last_run_reddit > INTERVAL_REDDIT:
+            print(f"\n[{time.strftime('%H:%M:%S')}] 🔵 Iniciando ciclo Reddit RSS...")
+            try:
+                raw_findings = reddit_engine.hunt_pain_points(TARGET_SUBREDDITS)
+                
+                if raw_findings:
+                    print(f"   📥 Normalizando y guardando {len(raw_findings)} señales...")
+                    count = 0
+                    for raw in raw_findings:
+                        signal = normalizer.normalize_reddit(raw)
+                        if db.save_signal(signal):
+                            count += 1
+                    print(f"   ✅ {count} señales de Reddit guardadas en DB.")
+                else:
+                    print("   😴 Sin actividad relevante en Reddit.")
+                
+                last_run_reddit = current_time
+
+            except Exception as e:
+                print(f"   ❌ Error en ciclo Reddit: {e}")
+
+        # ---------------------------------------------------------
+        # B. CICLO TRENDS (Phantom Demand)
+        # ---------------------------------------------------------
+        if current_time - last_run_trends > INTERVAL_TRENDS:
+            print(f"\n[{time.strftime('%H:%M:%S')}] 🟢 Iniciando ciclo Google Trends...")
+            try:
+                opportunities = trends_engine.detect_phantom_demand(TARGET_KEYWORDS)
+                
+                if opportunities:
+                    print(f"   📥 Normalizando y guardando {len(opportunities)} oportunidades...")
+                    count = 0
+                    for opp in opportunities:
+                        signal = normalizer.normalize_trends(opp)
+                        if db.save_signal(signal):
+                            count += 1
+                    print(f"   ✅ {count} oportunidades de Trends guardadas en DB.")
+                else:
+                    print("   📉 Mercado estable (sin picos detectados).")
+                
+                last_run_trends = current_time
+
+            except Exception as e:
+                print(f"   ❌ Error en ciclo Trends: {e}")
+
+        # ---------------------------------------------------------
+        # C. CONTROL DE RECURSOS
+        # ---------------------------------------------------------
+        # Pequeña pausa para no saturar CPU en el while True
+        time.sleep(10)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n🛑 DETENIENDO SISTEMA SCOUT...")
+        print("✅ Ejecución finalizada por el usuario. ¡Hasta pronto!")
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)

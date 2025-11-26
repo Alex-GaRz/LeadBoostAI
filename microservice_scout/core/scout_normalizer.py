@@ -3,64 +3,78 @@ from datetime import datetime, timezone
 
 class ScoutNormalizer:
     """
-    Transforma datos crudos de Reddit/Trends al esquema UniversalSignal.
+    Normaliza datos de Trends y Reddit al esquema UniversalSignal (Bloque 1/2).
+    Asegura consistencia antes de guardar en Firestore.
     """
 
     @staticmethod
-    def _generate_id(content: str, source: str) -> str:
-        """Genera un ID único basado en el contenido para evitar duplicados."""
-        raw = f"{source}-{content}-{datetime.now().strftime('%Y-%m-%d')}"
+    def _generate_id(source_id: str, source_type: str) -> str:
+        """Genera un ID hash determinístico para evitar duplicados en DB."""
+        raw = f"{source_type}-{source_id}-{datetime.now().strftime('%Y-%m')}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod
     def normalize_reddit(raw_post: dict) -> dict:
         """
-        Mapea un post de Reddit a UniversalSignal.
+        Convierte hallazgo de Reddit -> UniversalSignal
         """
-        content = f"{raw_post['title']} \n {raw_post.get('body', '')}"
+        # Formato de contenido legible para el analista (Bloque 4/5)
+        content_text = f"[REDDIT PAIN] Title: {raw_post['title']}\nContext: {raw_post['body']}..."
         
-        created_utc = raw_post.get('created_utc')
-        if created_utc is not None:
-            timestamp = datetime.fromtimestamp(created_utc, tz=timezone.utc).isoformat()
+        # Timestamp ISO 8601 UTC
+        ts_val = raw_post.get('created_utc')
+        if isinstance(ts_val, (int, float)):
+            timestamp = datetime.fromtimestamp(ts_val, tz=timezone.utc).isoformat()
         else:
             timestamp = datetime.now(timezone.utc).isoformat()
+            
+        # ID único basado en URL para no guardar el mismo post dos veces
+        unique_id = ScoutNormalizer._generate_id(raw_post['url'], "reddit")
+
         return {
-            "source": "reddit",
-            "source_id": raw_post.get('id', ''),
+            "id": unique_id,            # ID del documento
+            "source": "reddit_rss",     # Origen
+            "source_id": raw_post.get('url', ''), 
             "timestamp": timestamp,
-            "content": content,
+            "content": content_text,
             "url": raw_post.get('url', ''),
-            "type": "pain_point_detection", # Clasificación preliminar
+            "type": "pain_point",       # Clasificación para el sistema
             "scout_metadata": {
                 "subreddit": raw_post.get('subreddit', ''),
-                "score": raw_post.get('score', 0),
-                "upvote_ratio": raw_post.get('upvote_ratio', 0),
-                "num_comments": raw_post.get('num_comments', 0),
-                "pain_keywords_matched": raw_post.get('matched_keywords', [])
+                "pain_keywords": raw_post.get('matched_keywords', []),
+                "author": raw_post.get('author', '')
             },
-            # Campos requeridos por Bloque 2/Firestore
-            "analysis": None, # Se llenará en Bloque 2
-            "status": "pending_processing"
+            "status": "pending_processing",
+            "analysis": None            # Se llenará en Bloques posteriores
         }
 
     @staticmethod
     def normalize_trends(raw_trend: dict) -> dict:
         """
-        Mapea una alerta de Google Trends a UniversalSignal.
+        Convierte oportunidad de Trends -> UniversalSignal
         """
+        content_text = (
+            f"[MARKET SPIKE] Keyword: '{raw_trend['keyword']}'. "
+            f"Demand Spike: +{raw_trend['increase_pct']}% (Last 3 days). "
+            f"Current Vol: {raw_trend['current_volume']} vs Avg: {raw_trend['avg_volume']}."
+        )
+        
+        unique_id = ScoutNormalizer._generate_id(raw_trend['keyword'], "trends")
+
         return {
+            "id": unique_id,
             "source": "google_trends",
-            "source_id": f"trend-{raw_trend['keyword']}-{datetime.now().timestamp()}",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "content": f"Detectado pico de demanda inusual para '{raw_trend['keyword']}'. Volumen actual: {raw_trend['current_volume']} (Promedio: {raw_trend['avg_volume']:.2f}). Incremento: {raw_trend['increase_pct']:.1f}%",
-            "url": f"[https://trends.google.com/trends/explore?q=](https://trends.google.com/trends/explore?q=){raw_trend['keyword']}",
-            "type": "market_opportunity",
+            "source_id": f"trend-{raw_trend['keyword']}",
+            "timestamp": raw_trend.get('timestamp', datetime.now(timezone.utc).isoformat()),
+            "content": content_text,
+            "url": f"https://trends.google.com/trends/explore?q={raw_trend['keyword']}",
+            "type": "opportunity",
             "scout_metadata": {
                 "keyword": raw_trend['keyword'],
-                "current_volume": int(raw_trend['current_volume']),
-                "avg_30_days": float(raw_trend['avg_volume']),
-                "spike_percentage": float(raw_trend['increase_pct'])
+                "spike_pct": raw_trend['increase_pct'],
+                "volume_curr": raw_trend['current_volume'],
+                "volume_avg": raw_trend['avg_volume']
             },
-            "analysis": None,
-            "status": "pending_processing"
+            "status": "pending_processing",
+            "analysis": None
         }

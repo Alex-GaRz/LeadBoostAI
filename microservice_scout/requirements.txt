@@ -1,9 +1,13 @@
-feedparser>=6.0.10
-pytrends>=4.9.0
-firebase-admin>=6.4.0
-pandas>=2.2.0
-python-dotenv>=1.0.1
-# schedule eliminada a favor de APScheduler para manejo de procesos en background robusto
-APScheduler>=3.10.4
+fastapi>=0.109.0
+uvicorn>=0.27.0
+firebase-admin>=6.5.0
 requests>=2.31.0
-numpy>=1.26.4
+python-dotenv>=1.0.0
+# Dependencias Fase 6 (Radar Intel)
+pytrends>=4.9.2
+feedparser>=6.0.10
+beautifulsoup4>=4.12.3
+lxml>=5.1.0
+pandas>=2.2.0
+# --- FIX CRÍTICO GOOGLE TRENDS ---
+urllib3==1.26.15
