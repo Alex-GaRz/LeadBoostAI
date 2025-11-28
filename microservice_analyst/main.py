@@ -1,24 +1,29 @@
+# microservice_analyst/main.py
+
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
 from datetime import datetime
 import uvicorn
-from models.schemas import MarketSignal
-from services.analyst_service import AnalystService
-from api.routes.advisor import router as advisor_router
-from api.routes.governance import router as governance_router
-from api.routes.search import router as search_router
+from microservice_analyst.models.schemas import MarketSignal
+from microservice_analyst.services.analyst_service import AnalystService
 
-app = FastAPI(title="LeadBoostAI Analyst Engine (Block 4)")
+# Import Routes
+from microservice_analyst.api.routes.advisor import router as advisor_router
+from microservice_analyst.api.routes.governance import router as governance_router
+from microservice_analyst.api.routes.search import router as search_router
+from microservice_analyst.api.routes.simulation import router as simulation_router # Phase 4 Added
+
+app = FastAPI(title="LeadBoostAI Analyst Engine (Block 4 - Phase 4 Upgrade)")
 
 # --- MEMORIA COMPARTIDA DE ALERTAS (B6 escribe aquí, B9 lee de aquí) ---
 ALERT_MEMORY = []
 
 # Inyectar memoria en el Governance Engine (Monkey Patching para la demo)
-from core.governance_engine import GovernanceEngine
+from microservice_analyst.core.governance_engine import GovernanceEngine
 # Re-instanciamos el engine global usado en el router
-import api.routes.governance as gov_routes
+import microservice_analyst.api.routes.governance as gov_routes
 
 # Función para que Governance reporte aquí
 def report_alert(alert_data):
@@ -35,9 +40,11 @@ except Exception as e:
     print(f"⚠️ Error iniciando AnalystService: {e}")
     service = None
 
+# Register Routers
 app.include_router(advisor_router)
 app.include_router(governance_router)
 app.include_router(search_router)
+app.include_router(simulation_router) # Register Phase 4 Route
 
 @app.get("/alerts/active")
 def get_active_alerts():
@@ -45,13 +52,12 @@ def get_active_alerts():
     El BFF (Bloque 9) consulta este endpoint. 
     Ahora devuelve alertas reales generadas por Gobernanza.
     """
-    # Alertas base
     base_alerts = [
         {
             "id": "LIVE-B4-001",
             "type": "SYSTEM_STATUS",
             "severity": "LOW",
-            "message": "Bloque 4 Operativo - Monitoreando Mercado",
+            "message": "Bloque 4 Operativo - Audience Architect Active",
             "timestamp": datetime.now().isoformat()
         }
     ]
@@ -59,7 +65,11 @@ def get_active_alerts():
 
 @app.get("/")
 def health():
-    return {"status": "operational", "mode": "WAR_GAME_READY"}
+    return {
+        "status": "operational", 
+        "mode": "WAR_GAME_READY",
+        "modules": ["Analyst", "Advisor", "Governance", "Simulation"]
+    }
 
 @app.post("/predict")
 def predict(signal: MarketSignal):

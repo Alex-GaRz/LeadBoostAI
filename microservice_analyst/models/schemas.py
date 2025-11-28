@@ -3,7 +3,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
 
-# --- ENUMS (Vocabulario Común) ---
+# ==========================================
+# 1. ENUMS (Vocabulario Común)
+# ==========================================
+
 class Severity(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -18,7 +21,7 @@ class ActionType(str, Enum):
     DECREASE_BUDGET = "DECREASE_BUDGET"
     NOTIFY_HUMAN = "NOTIFY_HUMAN"
     DO_NOTHING = "DO_NOTHING"
-    # Acciones Legacy (Compatibilidad)
+    # Acciones Legacy
     MARKETING_CAMPAIGN = "MARKETING_CAMPAIGN"
     PRICING_ADJUSTMENT = "PRICING_ADJUSTMENT"
 
@@ -33,7 +36,52 @@ class GovernanceStatus(str, Enum):
     REJECTED = "REJECTED"
     HITL_REQUIRED = "HITL_REQUIRED"
 
-# --- MODELOS DE ENTRADA ---
+# ==========================================
+# 2. MODELOS DE FASE 4: AUDIENCE ARCHITECT
+# ==========================================
+
+class PersonaProfile(BaseModel):
+    """Deep psychological profile of a synthetic agent."""
+    id: str
+    name: str
+    age: int
+    occupation: str
+    # Behavioral Economics Attributes
+    financial_status: str = Field(..., description="High, Medium, Low, Debt-Ridden, etc.")
+    cognitive_biases: List[str] = Field(..., description="e.g., Loss Aversion, Confirmation Bias, FOMO")
+    current_stressors: List[str] = Field(..., description="e.g., Inflation, Job Security, Divorce")
+    media_diet: List[str] = Field(..., description="Where they get information")
+    values: List[str] = Field(..., description="Core values driving decisions")
+
+class SimulationInput(BaseModel):
+    """Request payload to start a simulation."""
+    target_audience_description: str = Field(..., description="Natural language description of the target.")
+    ad_copy: str = Field(..., description="The text, script, or concept to test.")
+    sample_size: int = Field(default=10, ge=1, le=50, description="Number of agents to instantiate.")
+
+class AgentReaction(BaseModel):
+    """The raw output from a single agent's simulation."""
+    agent_id: str
+    click_probability: float = Field(..., ge=0.0, le=1.0)
+    emotional_response: str
+    primary_objection: Optional[str] = None
+    purchase_intent: bool
+    reasoning: str
+
+class ResonanceReport(BaseModel):
+    """Final aggregated analysis of the simulation."""
+    simulation_id: str
+    timestamp: datetime
+    viral_score: float # 0-100
+    conversion_probability: float # 0-100
+    dominant_emotions: Dict[str, int]
+    top_objections: List[str]
+    demographic_breakdown: Dict[str, Any]
+    recommendations: List[str]
+
+# ==========================================
+# 3. MODELOS DE ENTRADA (Analyst & Governance)
+# ==========================================
 
 class MarketSignal(BaseModel):
     """Modelo principal de señal de mercado"""
@@ -51,13 +99,19 @@ class AnalysisRequest(BaseModel):
     signal: MarketSignal
     context_data: Dict[str, Any] = {} 
 
-# --- MODELOS DE ESTRATEGIA (OUTPUT) ---
+# ==========================================
+# 4. MODELOS DE ESTRATEGIA (OUTPUT)
+# ==========================================
 
 class CriticalAlert(BaseModel):
     signal_id: str
     timestamp: datetime
     severity: Severity
-    message: str
+    message: str # Campo requerido por Governance, a veces usado como details
+    anomaly_score: Optional[float] = None
+    trust_score: Optional[float] = None
+    context_data: Dict[str, Any] = {}
+    type: Optional[str] = "GENERAL"
 
 class AnomalyResult(BaseModel):
     is_anomaly: bool
