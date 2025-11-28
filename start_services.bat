@@ -21,7 +21,7 @@ REM Microservicio Memory (Python)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_memory && call .\venv\Scripts\activate && pip install -r requirements.txt && python main.py"
 
 REM Microservicio Optimizer (Python)
-start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_optimizer && call .\venv_b12\Scripts\activate && pip install -r requirements.txt && python api/api_optimizer.py"
+start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI && call microservice_optimizer\venv_b12\Scripts\activate && pip install -r microservice_optimizer\requirements.txt && python -m microservice_optimizer.main"
 
 REM Microservicio Scout (Python)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_scout && call .\venv\Scripts\activate && pip install -r requirements.txt && python main_scout.py"
