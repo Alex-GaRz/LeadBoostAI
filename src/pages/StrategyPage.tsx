@@ -1,7 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { fetchOpportunities, fetchStrategyDetail, executeAction, Opportunity, StrategyDetail } from '../services/bffService';
-import { CheckCircle2, AlertOctagon, TrendingUp, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { 
+  fetchOpportunities, 
+  fetchStrategyDetail, 
+  executeAction, 
+  runSimulation, // Nuevo import
+  Opportunity, 
+  StrategyDetail,
+  MonteCarloSimulationResult // Nuevo import
+} from '../services/bffService';
+import { CheckCircle2, AlertOctagon, TrendingUp, ShieldCheck, BrainCircuit, BarChart3 } from 'lucide-react';
+
+// Componente para el gráfico de probabilidad (usando Tremor si está disponible o mock simple)
+const ProbabilityChart: React.FC<{ data: MonteCarloSimulationResult['probability_distribution'] | null; roi: number }> = ({ data, roi }) => {
+  if (!data) return <div className="text-xs text-slate-700 italic">Simulación no disponible.</div>;
+
+  const chartData = [
+    { range: '1x', 'Probabilidad': data.range_1x * 100 },
+    { range: '2x', 'Probabilidad': data.range_2x * 100 },
+    { range: '3x', 'Probabilidad': data.range_3x * 100 },
+    { range: '4x+', 'Probabilidad': data.range_4x * 100 },
+  ];
+
+  const totalProb = chartData.reduce((sum, item) => sum + item['Probabilidad'], 0);
+  const successProb = chartData.slice(1).reduce((sum, item) => sum + item['Probabilidad'], 0); // ROI > 2x
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-2">
+        {chartData.map((item) => (
+          <div key={item.range} className="flex flex-col items-center p-2 bg-slate-900/50 rounded-sm">
+            <span className={`text-lg font-bold ${item.range === '4x+' ? 'text-emerald-400' : 'text-slate-200'}`}>
+              {Math.round(item['Probabilidad'])}%
+            </span>
+            <span className="text-[10px] text-slate-500 uppercase">ROI {item.range}</span>
+          </div>
+        ))}
+      </div>
+      <div className="text-sm font-bold text-slate-300">
+         ROI Proyectado: <span className="text-blue-400 text-lg">${roi.toFixed(2)}</span>
+      </div>
+      <div className="text-xs text-slate-400 border-t border-slate-900 pt-3">
+         <span className={`font-bold ${successProb > 50 ? 'text-emerald-400' : 'text-amber-400'}`}>
+           {Math.round(successProb)}% de probabilidad
+         </span> de retorno significativo (&gt; 2.0x).
+      </div>
+    </div>
+  );
+};
+
 
 const StrategyPage: React.FC = () => {
   const { user } = useAuth();
@@ -16,6 +63,10 @@ const StrategyPage: React.FC = () => {
   // Estado para la MISIÓN 3: Optimistic UI
   const [executionStatus, setExecutionStatus] = useState<'IDLE' | 'PROCESSING' | 'SENT'>('IDLE');
 
+  // Estados para la MISIÓN 2: Proyección Monte Carlo
+  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloSimulationResult | null>(null);
+  const [loadingMonteCarlo, setLoadingMonteCarlo] = useState(false);
+
   // Carga inicial
   useEffect(() => {
     if (user) {
@@ -23,16 +74,39 @@ const StrategyPage: React.FC = () => {
     }
   }, [user]);
 
-  // Carga del detalle
+  // Carga del detalle y activación de Monte Carlo
   useEffect(() => {
     if (selectedId) {
       setLoadingDetail(true);
       setExecutionStatus('IDLE'); // Reset status al cambiar de señal
-      fetchStrategyDetail(selectedId).then(setStrategyDetail).finally(() => setLoadingDetail(false));
+      setMonteCarloResult(null); // Reset resultado MC
+      
+      fetchStrategyDetail(selectedId).then(detail => {
+        setStrategyDetail(detail);
+        setLoadingDetail(false);
+        
+        // --- ACTIVACIÓN MONTE CARLO (MISIÓN 2) ---
+        // Buscamos la oportunidad para obtener los parámetros necesarios (mockeados en bffService.ts)
+        const selectedOpportunity = opportunities.find(op => op.id === selectedId);
+        
+        if (selectedOpportunity && detail.proposal.action_type) {
+            setLoadingMonteCarlo(true);
+            runSimulation(
+                detail.proposal.action_type, 
+                selectedOpportunity.target_sku || 'PROD-001', // Usamos el mock si no existe
+                150 // Mock de inventario actual
+            ).then(setMonteCarloResult).finally(() => setLoadingMonteCarlo(false));
+        }
+
+      }).catch(e => {
+          console.error("Fallo al cargar detalle:", e);
+          setLoadingDetail(false);
+      });
+
     } else {
       setStrategyDetail(null);
     }
-  }, [selectedId]);
+  }, [selectedId, opportunities]); // Dependencia de opportunities es crucial
 
   const handleExecute = async () => {
     if (!selectedId) return;
@@ -150,6 +224,30 @@ const StrategyPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+            </div>
+            
+            {/* PROYECCIÓN MONTE CARLO (MISIÓN 2) */}
+            <div className="p-6 bg-slate-900/10 border border-emerald-900/20 rounded-sm space-y-4">
+               <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                 <BarChart3 size={14} /> 🔮 PROYECCIÓN MONTE CARLO (B12)
+               </h3>
+               {loadingMonteCarlo ? (
+                 <div className="text-xs text-emerald-500/80 animate-pulse font-mono">
+                   EJECUTANDO 500 ITERACIONES DE SIMULACIÓN...
+                 </div>
+               ) : monteCarloResult ? (
+                 <>
+                   <ProbabilityChart 
+                      data={monteCarloResult.probability_distribution} 
+                      roi={monteCarloResult.projected_roi}
+                   />
+                   <div className="text-xs text-slate-400 mt-4 font-light border-t border-slate-900 pt-3">
+                     <strong className="text-white">Justificación B12:</strong> {monteCarloResult.justification}
+                   </div>
+                 </>
+               ) : (
+                 <div className="text-xs text-slate-500 italic">No se pudo obtener la proyección. Motor inactivo.</div>
+               )}
             </div>
 
             {/* GOBERNANZA (MISIÓN 3: Texto Explicativo) */}

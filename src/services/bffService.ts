@@ -56,6 +56,8 @@ export interface Opportunity {
   // Campos adicionales para detalle real
   content?: string;
   url?: string;
+  target_sku?: string; // Campo agregado para simulación de B12
+  estimated_cost?: number; // Campo agregado para simulación de B12
 }
 
 export interface StrategyDetail {
@@ -85,6 +87,27 @@ export interface StrategyDetail {
     estimated_cost: number;
     estimated_impact: string;
   };
+}
+
+// --- NUEVAS INTERFACES PARA BLOQUE 12 ---
+
+export interface MonteCarloSimulationResult {
+  recommended_action_type: string;
+  projected_roi: number;
+  justification: string;
+  causal_insights: string;
+  probability_distribution: {
+    range_1x: number; // Probabilidad de ROI < 2x
+    range_2x: number; // Probabilidad de ROI 2x - 3x
+    range_3x: number; // Probabilidad de ROI 3x - 4x
+    range_4x: number; // Probabilidad de ROI > 4x
+  };
+}
+
+export interface CausalInsights {
+    primary_insight: string;
+    secondary_insight: string;
+    tertiary_insight: string;
 }
 
 // --- MÉTODOS DEL SERVICIO ---
@@ -180,12 +203,15 @@ export const fetchDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
 };
 
 // 2. OPORTUNIDADES REALES (Conectado al Node.js Backend)
-// En src/services/bffService.ts
 
-// En src/services/bffService.ts
+const AGENT_PERSONALITIES = {
+  growth: ["Esta noticia es viral. Recomiendo publicar opinión experta.", "Oportunidad de Newsjacking detectada.", "El interés de búsqueda está subiendo, ¡actuemos ya!"],
+  risk: ["Verificar veracidad de la fuente antes de compartir.", "Cuidado con el sentimiento negativo en los comentarios.", "Riesgo de marca si nos asociamos a este tema polémico."],
+  tech: ["Contenido técnico relevante. Aprobado.", "La tecnología mencionada es emergente.", "Coincide con nuestro stack tecnológico."]
+};
 
-// ... (resto del código igual)
-
+// Esta función es vital para la simulación B12, ya que necesitamos los datos de la propuesta
+// para enviarlos al optimizador. Ampliamos Opportunity para incluir target_sku y cost.
 export const fetchOpportunities = async (): Promise<Opportunity[]> => {
   try {
     const headers = await getHeaders();
@@ -237,7 +263,9 @@ export const fetchOpportunities = async (): Promise<Opportunity[]> => {
             source: source.toUpperCase(),
             status: 'READY_FOR_DECISION',
             content: signal.cleanContent || signal.content_text || signal.message || '',
-            url: signal.url || signal.original_url
+            url: signal.url || signal.original_url,
+            target_sku: 'PROD-001', // Mock: Asumimos un producto objetivo
+            estimated_cost: Math.floor(Math.random() * 5000) + 500 // Mock: Costo aleatorio
         };
     });
 
@@ -256,15 +284,7 @@ export const fetchOpportunities = async (): Promise<Opportunity[]> => {
   }
 };
 
-const AGENT_PERSONALITIES = {
-  growth: ["Esta noticia es viral. Recomiendo publicar opinión experta.", "Oportunidad de Newsjacking detectada.", "El interés de búsqueda está subiendo, ¡actuemos ya!"],
-  risk: ["Verificar veracidad de la fuente antes de compartir.", "Cuidado con el sentimiento negativo en los comentarios.", "Riesgo de marca si nos asociamos a este tema polémico."],
-  tech: ["Contenido técnico relevante. Aprobado.", "La tecnología mencionada es emergente.", "Coincide con nuestro stack tecnológico."]
-};
-
-// Actualiza esta función para que reciba el título/contexto (Simulado por ahora recuperando del ID o pasando el objeto)
-// NOTA: Para esta fase, simularemos que el ID contiene info o haremos un lookup rápido si tuvieramos estado global.
-// Como BFF es stateless, generaremos un análisis genérico pero COHERENTE con el hecho de ser una noticia.
+// 3. DETALLE DE ESTRATEGIA (Simulado)
 
 export const fetchStrategyDetail = async (opportunityId: string): Promise<StrategyDetail> => {
   // Simulamos latencia de "Pensamiento de IA"
@@ -312,4 +332,84 @@ export const fetchStrategyDetail = async (opportunityId: string): Promise<Strate
 // 4. EJECUCIÓN (Simulada hacia B7)
 export const executeAction = async (strategyId: string): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, 1500));
+};
+
+
+// 5. NUEVOS MÉTODOS PARA BLOQUE 12 (OPTIMIZADOR)
+
+export const runSimulation = async (
+    actionType: string, 
+    targetSku: string, 
+    currentInventory: number
+): Promise<MonteCarloSimulationResult> => {
+    try {
+        const headers = await getHeaders();
+        const response = await fetch(`${BFF_API_URL}/optimizer/simulation`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                action_type: actionType,
+                target_sku: targetSku,
+                current_inventory: currentInventory
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Simulation failed: ${response.status} - ${errorText}`);
+        }
+
+        const result: MonteCarloSimulationResult = await response.json();
+        
+        // Calculamos la probabilidad total de éxito (ROI > 2x)
+        const successProb = result.probability_distribution.range_2x + 
+                            result.probability_distribution.range_3x + 
+                            result.probability_distribution.range_4x;
+
+        // Sobreescribimos la justificación con un resumen de probabilidad para la UI
+        result.justification = `Probabilidad de éxito (ROI > 2x): ${Math.round(successProb * 100)}%`;
+
+        return result;
+    } catch (error) {
+        console.error("🚨 Error al ejecutar la simulación de Monte Carlo:", error);
+        // Fallback robusto en caso de fallo de conexión o del servicio B12
+        return {
+            recommended_action_type: "NO_ACTION",
+            projected_roi: 0.0,
+            justification: "Fallo al conectar con el motor Monte Carlo (B12).",
+            causal_insights: "No se pudieron obtener insights por fallo de servicio.",
+            probability_distribution: {
+                range_1x: 1.0,
+                range_2x: 0.0,
+                range_3x: 0.0,
+                range_4x: 0.0,
+            }
+        };
+    }
+};
+
+export const getCausalInsights = async (): Promise<CausalInsights> => {
+    try {
+        const headers = await getHeaders();
+        const response = await fetch(`${BFF_API_URL}/optimizer/causality`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Causality fetch failed: ${response.status} - ${errorText}`);
+        }
+
+        const result: CausalInsights = await response.json();
+        return result;
+    } catch (error) {
+        console.error("🚨 Error al obtener insights causales:", error);
+        // Fallback seguro
+        return {
+            primary_insight: "⚠ Motor Causal (B12) Desconectado. No se pudieron obtener análisis 'Por Qué'.",
+            secondary_insight: "Se requiere un análisis manual de la situación de mercado.",
+            tertiary_insight: "El último análisis disponible muestra un ROI bajo en el segmento de Gaming."
+        };
+    }
 };

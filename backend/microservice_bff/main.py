@@ -1,15 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# --- IMPORTS DE ROUTERS ---
-# Asegúrate de que existan dashboard.py y onboarding.py en la carpeta /routers
 from routers import dashboard
-from routers import onboarding 
-
-# Si tienes el websocket manager configurado, descomenta:
-# from websocket_manager import manager
-
-app = FastAPI(title="LeadBoost BFF & API Gateway", version="Phase 1.0")
+from routers import optimizer # Importamos el nuevo router
 
 # --- CONFIGURACIÓN CORS (CRÍTICO PARA REACT) ---
 origins = [
@@ -18,6 +10,12 @@ origins = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000"
 ]
+
+app = FastAPI(
+    title="LeadBoostAI BFF & API Gateway", 
+    version="Phase 1.0",
+    description="Orchestrates communication between Frontend and multiple Python Microservices (Analyst, Actuator, Optimizer)."
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,12 +26,8 @@ app.add_middleware(
 )
 
 # --- REGISTRO DE RUTAS ---
-# 1. Router del Dashboard (Legacy/Visualización)
-app.include_router(dashboard.router)
-
-# 2. Router de Onboarding (NUEVO - Fase 1)
-# Maneja la conexión segura de cuentas Meta/Google
-app.include_router(onboarding.router)
+app.include_router(dashboard.router, prefix="/dashboard")
+app.include_router(optimizer.router, prefix="/optimizer") # Registramos el router del optimizador
 
 @app.get("/")
 def health_check():
@@ -42,5 +36,5 @@ def health_check():
         "status": "online", 
         "system": "LeadBoost BFF Gateway",
         "phase": "1 - Data Foundation",
-        "services": ["Dashboard", "Onboarding Secure"]
+        "services": ["Dashboard", "Optimizer"]
     }
