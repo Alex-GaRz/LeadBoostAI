@@ -1,8 +1,7 @@
-// src/pages/StrategyPage.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { fetchOpportunities, fetchStrategyDetail, executeAction, Opportunity, StrategyDetail } from '../services/bffService';
+import { CheckCircle2, AlertOctagon, TrendingUp, ShieldCheck, BrainCircuit } from 'lucide-react';
 
 const StrategyPage: React.FC = () => {
   const { user } = useAuth();
@@ -13,19 +12,22 @@ const StrategyPage: React.FC = () => {
   const [strategyDetail, setStrategyDetail] = useState<StrategyDetail | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [processingAction, setProcessingAction] = useState(false);
+  
+  // Estado para la MISIÓN 3: Optimistic UI
+  const [executionStatus, setExecutionStatus] = useState<'IDLE' | 'PROCESSING' | 'SENT'>('IDLE');
 
-  // Carga inicial de la lista
+  // Carga inicial
   useEffect(() => {
     if (user) {
       fetchOpportunities().then(setOpportunities).finally(() => setLoadingList(false));
     }
   }, [user]);
 
-  // Carga del detalle al seleccionar
+  // Carga del detalle
   useEffect(() => {
     if (selectedId) {
       setLoadingDetail(true);
+      setExecutionStatus('IDLE'); // Reset status al cambiar de señal
       fetchStrategyDetail(selectedId).then(setStrategyDetail).finally(() => setLoadingDetail(false));
     } else {
       setStrategyDetail(null);
@@ -34,49 +36,61 @@ const StrategyPage: React.FC = () => {
 
   const handleExecute = async () => {
     if (!selectedId) return;
-    setProcessingAction(true);
-    await executeAction(selectedId);
-    alert("ORDER DISPATCHED TO ACTUATOR ENGINE (B7)");
-    setProcessingAction(false);
-    // Aquí idealmente recargaríamos la lista o marcaríamos como ejecutado
+    
+    // MISIÓN 3: UI Optimista Inmediata
+    setExecutionStatus('PROCESSING');
+    
+    try {
+      // Simulación de delay de red para realismo, pero la UI ya respondió
+      await executeAction(selectedId);
+      setTimeout(() => {
+        setExecutionStatus('SENT');
+      }, 800);
+    } catch (e) {
+      alert("Error en transmisión a B7");
+      setExecutionStatus('IDLE');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-slate-200 font-mono flex pt-16 h-screen overflow-hidden">
+    <div className="min-h-screen bg-[#050505] text-slate-200 font-mono flex h-screen overflow-hidden">
       
-      {/* LEFT COLUMN: OPPORTUNITY LIST (MASTER) */}
-      <div className="w-1/3 border-r border-slate-800 bg-slate-900/20 flex flex-col">
-        <div className="p-4 border-b border-slate-800 bg-[#050505]">
-          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+      {/* COLUMNA IZQUIERDA: LISTA DE OPORTUNIDADES */}
+      <div className="w-1/3 border-r border-slate-900 bg-slate-950/30 flex flex-col">
+        <div className="p-4 border-b border-slate-900 bg-[#050505] pt-6">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"/>
-            Tactical Alerts (B4)
+            Oportunidades Detectadas (B4)
           </h2>
         </div>
         
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-800">
           {loadingList ? (
-            <div className="p-4 text-xs text-slate-500 animate-pulse">SCANNING_HORIZON...</div>
+            <div className="p-6 text-xs text-slate-500 animate-pulse">ESCANEANDO MERCADO...</div>
           ) : (
             opportunities.map(op => (
               <div 
                 key={op.id}
                 onClick={() => setSelectedId(op.id)}
-                className={`p-4 border-b border-slate-800 cursor-pointer transition-all hover:bg-slate-800/40 relative
-                  ${selectedId === op.id ? 'bg-blue-900/10 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}
+                className={`p-5 border-b border-slate-900 cursor-pointer transition-all hover:bg-slate-900/60 relative group
+                  ${selectedId === op.id ? 'bg-blue-900/10 border-l-2 border-l-blue-500' : 'border-l-2 border-l-transparent'}
                 `}
               >
-                <div className="flex justify-between mb-1">
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                    op.severity === 'CRITICAL' ? 'bg-red-900/30 text-red-500' : 'bg-amber-900/30 text-amber-500'
+                <div className="flex justify-between mb-2">
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
+                    op.severity === 'CRITICAL' ? 'bg-rose-900/30 text-rose-500' : 'bg-amber-900/30 text-amber-500'
                   }`}>
-                    {op.severity}
+                    {op.severity === 'CRITICAL' ? 'ALTA PRIORIDAD' : 'OPORTUNIDAD'}
                   </span>
-                  <span className="text-[10px] text-slate-600">{new Date(op.detected_at).toLocaleTimeString()}</span>
+                  <span className="text-[10px] text-slate-600 font-mono">{new Date(op.detected_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                 </div>
-                <h3 className="text-sm text-slate-200 font-bold mb-1">{op.title}</h3>
-                <div className="flex justify-between items-end">
-                   <span className="text-[10px] text-slate-500 uppercase">{op.source}</span>
-                   <span className="text-[10px] text-slate-400">{op.status}</span>
+                <h3 className="text-sm text-slate-200 font-bold mb-2 leading-tight group-hover:text-blue-400 transition-colors">{op.title}</h3>
+                <div className="flex justify-between items-center">
+                   <div className="flex items-center gap-1 text-[10px] text-slate-500 uppercase">
+                      <TrendingUp size={12} />
+                      {op.source}
+                   </div>
+                   <span className="text-[10px] text-slate-500 font-mono bg-slate-900 px-1 rounded">{op.status}</span>
                 </div>
               </div>
             ))
@@ -84,49 +98,53 @@ const StrategyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: STRATEGY ROOM (DETAIL) */}
+      {/* COLUMNA DERECHA: SALA DE ESTRATEGIA (DETALLE) */}
       <div className="w-2/3 bg-[#080808] flex flex-col relative">
         {!selectedId ? (
-          <div className="flex-1 flex items-center justify-center text-slate-700 flex-col">
-            <div className="text-6xl mb-4 opacity-20">⬡</div>
-            <p className="text-xs tracking-widest">SELECT A SIGNAL TO INITIATE STRATEGY PROTOCOLS</p>
+          <div className="flex-1 flex items-center justify-center text-slate-700 flex-col opacity-50">
+            <div className="text-6xl mb-6 font-thin">⬡</div>
+            <p className="text-xs tracking-[0.2em] uppercase">Selecciona una señal para iniciar análisis</p>
           </div>
         ) : loadingDetail || !strategyDetail ? (
-          <div className="flex-1 flex items-center justify-center text-blue-500 animate-pulse text-xs">
-            loading_advisor_intelligence...
+          <div className="flex-1 flex items-center justify-center text-blue-500 animate-pulse text-xs font-mono">
+            CONSULTANDO CONSEJO DE ADMINISTRACIÓN AI (B5)...
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-8 space-y-8">
+          <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin scrollbar-thumb-slate-800">
             
-            {/* HEADER */}
-            <div className="flex justify-between items-start border-b border-slate-800 pb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-white mb-2">{opportunities.find(o => o.id === selectedId)?.title}</h1>
-                <p className="text-sm text-slate-500">{strategyDetail.analysis.summary}</p>
+            {/* ENCABEZADO ESTRATÉGICO */}
+            <div className="flex justify-between items-start border-b border-slate-900 pb-6">
+              <div className="max-w-2xl">
+                <h1 className="text-xl font-bold text-white mb-3 leading-snug">
+                  {opportunities.find(o => o.id === selectedId)?.title}
+                </h1>
+                <p className="text-sm text-slate-400 leading-relaxed border-l-2 border-slate-700 pl-4">
+                  {strategyDetail.analysis.summary}
+                </p>
               </div>
               <div className="text-right">
-                <div className="text-xs text-slate-500 mb-1">STRATEGY ID</div>
-                <div className="font-mono text-blue-400">{strategyDetail.id}</div>
+                <div className="text-[10px] text-slate-600 mb-1 uppercase tracking-wider">Strategy ID</div>
+                <div className="font-mono text-blue-500 text-xs">{strategyDetail.id}</div>
               </div>
             </div>
 
-            {/* AI ROUNDTABLE (BLOCK 5) */}
+            {/* MESA REDONDA AI (HUMANIZADA) */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                // Advisor Roundtable Protocol (B5)
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <BrainCircuit size={14} /> Análisis de Expertos (B5)
               </h3>
               <div className="grid gap-3">
                 {strategyDetail.analysis.ai_debate.map((msg, idx) => (
-                  <div key={idx} className="flex gap-4 p-4 bg-slate-900/40 border border-slate-800/50 rounded-sm">
-                    <div className="w-24 flex-shrink-0">
+                  <div key={idx} className="flex gap-4 p-4 bg-slate-900/30 border border-slate-800/50 rounded-sm hover:border-slate-700 transition-colors">
+                    <div className="w-28 flex-shrink-0">
                       <div className="text-xs font-bold text-slate-300">{msg.agent}</div>
-                      <div className={`text-[10px] uppercase mt-1 ${
-                        msg.sentiment === 'aggressive' ? 'text-red-400' : msg.sentiment === 'cautious' ? 'text-amber-400' : 'text-blue-400'
+                      <div className={`text-[9px] uppercase mt-1 font-bold ${
+                        msg.sentiment === 'aggressive' ? 'text-rose-400' : msg.sentiment === 'cautious' ? 'text-amber-400' : 'text-blue-400'
                       }`}>
-                        {msg.sentiment}
+                        {msg.sentiment === 'aggressive' ? 'AGRESIVO' : msg.sentiment === 'cautious' ? 'PRUDENTE' : 'ANALÍTICO'}
                       </div>
                     </div>
-                    <div className="text-sm text-slate-400 font-light border-l border-slate-700 pl-4">
+                    <div className="text-sm text-slate-400 font-light leading-relaxed">
                       "{msg.message}"
                     </div>
                   </div>
@@ -134,79 +152,117 @@ const StrategyPage: React.FC = () => {
               </div>
             </div>
 
-            {/* GOVERNANCE CHECK (BLOCK 6) */}
-            <div className="p-6 bg-slate-900/20 border border-slate-800">
+            {/* GOBERNANZA (MISIÓN 3: Texto Explicativo) */}
+            <div className="p-6 bg-slate-900/10 border border-slate-800 rounded-sm">
               <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                   // Enterprise Governance (B6)
+                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                   <ShieldCheck size={14} /> Validación de Gobernanza (B6)
                  </h3>
-                 <div className={`flex items-center gap-2 px-3 py-1 border ${
-                   strategyDetail.governance.status === 'APPROVED' ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' :
-                   strategyDetail.governance.status === 'REJECTED' ? 'border-rose-500 text-rose-500 bg-rose-500/10' :
-                   'border-amber-500 text-amber-500 bg-amber-500/10'
+                 <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-sm ${
+                   strategyDetail.governance.status === 'APPROVED' ? 'border-emerald-900/50 text-emerald-400 bg-emerald-950/20' :
+                   'border-rose-900/50 text-rose-400 bg-rose-950/20'
                  }`}>
-                   <span className="w-2 h-2 rounded-full bg-current animate-pulse"/>
-                   <span className="text-xs font-bold">{strategyDetail.governance.status}</span>
+                   <span className={`w-1.5 h-1.5 rounded-full ${strategyDetail.governance.status === 'APPROVED' ? 'bg-emerald-400' : 'bg-rose-400'}`}/>
+                   <span className="text-xs font-bold tracking-wide">
+                     {strategyDetail.governance.status === 'APPROVED' ? 'APROBADO PARA EJECUCIÓN' : 'BLOQUEO DE SEGURIDAD'}
+                   </span>
                  </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              {/* Texto explicativo de seguridad (Misión 3) */}
+              {strategyDetail.governance.status === 'APPROVED' && (
+                <div className="mb-6 text-xs text-emerald-500/80 bg-emerald-950/10 p-3 border-l-2 border-emerald-500/50">
+                  ✅ <strong>Aprobación Segura:</strong> Esta estrategia se encuentra dentro de los márgenes de seguridad financiera y operativa. No se detectan riesgos críticos de inventario.
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {strategyDetail.governance.checks.map((check, idx) => (
-                  <div key={idx} className="bg-black/40 p-3 border border-slate-800">
+                  <div key={idx} className="bg-black/40 p-3 border border-slate-800 rounded-sm">
                     <div className="flex justify-between mb-2">
-                      <span className="text-[10px] text-slate-500 uppercase">{check.rule}</span>
-                      <span className={check.passed ? 'text-emerald-500' : 'text-rose-500'}>
-                        {check.passed ? '✓' : '✗'}
-                      </span>
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider">{check.rule}</span>
+                      {check.passed ? <CheckCircle2 size={12} className="text-emerald-500" /> : <AlertOctagon size={12} className="text-rose-500" />}
                     </div>
-                    <div className="text-xs text-slate-300">{check.detail}</div>
+                    <div className="text-xs text-slate-300 font-mono">{check.detail}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ACTION PROPOSAL (BLOCK 7 PREVIEW) */}
-            <div className="p-6 border border-blue-900/30 bg-blue-900/5 mt-4">
+            {/* PROPUESTA DE ACCIÓN */}
+            <div className="p-6 border border-blue-900/20 bg-blue-950/5 rounded-sm mt-4 relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>
                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">
-                 // Recommended Execution (B7)
+                 // Plan de Ejecución (B7)
                </h3>
                <div className="grid grid-cols-2 gap-8 text-sm">
                  <div>
-                   <span className="text-slate-600 block text-xs mb-1">ACTION TYPE</span>
+                   <span className="text-slate-600 block text-[10px] uppercase mb-1 tracking-wider">Tipo de Acción</span>
                    <span className="text-white font-mono">{strategyDetail.proposal.action_type}</span>
                  </div>
                  <div>
-                   <span className="text-slate-600 block text-xs mb-1">ESTIMATED COST</span>
-                   <span className="text-white font-mono">${strategyDetail.proposal.estimated_cost}</span>
+                   <span className="text-slate-600 block text-[10px] uppercase mb-1 tracking-wider">Inversión Estimada</span>
+                   <span className="text-white font-mono text-lg">${strategyDetail.proposal.estimated_cost}</span>
                  </div>
                  <div className="col-span-2">
-                   <span className="text-slate-600 block text-xs mb-1">PARAMETERS</span>
-                   <code className="text-xs text-blue-300 font-mono">
-                     {JSON.stringify(strategyDetail.proposal.parameters)}
-                   </code>
+                   <span className="text-slate-600 block text-[10px] uppercase mb-1 tracking-wider">Parámetros Técnicos</span>
+                   <div className="bg-black/50 p-3 rounded border border-blue-900/20 font-mono text-xs text-blue-200/80">
+                     {JSON.stringify(strategyDetail.proposal.parameters, null, 2)}
+                   </div>
                  </div>
                </div>
             </div>
 
-            {/* CONTROL DECK */}
             <div className="h-24" /> {/* Spacer */}
-            
           </div>
         )}
 
-        {/* BOTTOM ACTION BAR */}
+        {/* BARRA DE ACCIÓN INFERIOR (MISIÓN 3: Optimistic UI) */}
         {selectedId && strategyDetail && (
-          <div className="absolute bottom-0 w-full bg-[#0a0a0a] border-t border-slate-800 p-4 flex justify-end gap-4">
-            <button className="px-6 py-3 border border-slate-700 text-slate-400 hover:bg-slate-800 text-xs font-mono tracking-widest transition-all">
-              DISCARD SIGNAL
-            </button>
-            <button 
-              onClick={handleExecute}
-              disabled={processingAction}
-              className={`px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-bold tracking-widest transition-all flex items-center gap-2 ${processingAction ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {processingAction ? 'TRANSMITTING...' : 'AUTHORIZE EXECUTION [ENTER]'}
-            </button>
+          <div className="absolute bottom-0 w-full bg-[#0a0a0a] border-t border-slate-900 p-5 flex justify-between items-center z-10">
+            <div className="text-xs text-slate-500 font-mono">
+              ESTADO DE SALA: <span className="text-slate-300">ESPERANDO ORDEN</span>
+            </div>
+            
+            <div className="flex gap-4">
+              <button 
+                className="px-6 py-3 border border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-600 text-xs font-bold tracking-widest uppercase transition-all"
+                disabled={executionStatus !== 'IDLE'}
+              >
+                Descartar
+              </button>
+              
+              <button 
+                onClick={handleExecute}
+                disabled={executionStatus !== 'IDLE' || strategyDetail.governance.status !== 'APPROVED'}
+                className={`
+                  px-8 py-3 text-xs font-bold tracking-widest uppercase transition-all flex items-center gap-3
+                  ${executionStatus === 'SENT' 
+                    ? 'bg-emerald-600 text-white cursor-default shadow-[0_0_20px_rgba(16,185,129,0.3)]' 
+                    : executionStatus === 'PROCESSING'
+                    ? 'bg-blue-900 text-blue-200 cursor-wait'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'}
+                  ${strategyDetail.governance.status !== 'APPROVED' ? 'opacity-50 cursor-not-allowed grayscale' : ''}
+                `}
+              >
+                {executionStatus === 'SENT' ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    ORDEN ENVIADA A B7
+                  </>
+                ) : executionStatus === 'PROCESSING' ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                    TRANSMITIENDO...
+                  </>
+                ) : (
+                  <>
+                    AUTORIZAR EJECUCIÓN
+                    <span className="text-blue-200 opacity-50">↵</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

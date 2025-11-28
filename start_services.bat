@@ -13,6 +13,7 @@ start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microse
 
 REM Frontend (React/Vite)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI && npm run dev"
+
 REM Microservicio Actuator (Python)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_actuator && call .\.venv\Scripts\activate && pip install -r requirements.txt && python main.py"
 
