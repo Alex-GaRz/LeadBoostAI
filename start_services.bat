@@ -15,7 +15,7 @@ REM Frontend (React/Vite)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI && npm run dev"
 
 REM Microservicio Actuator (Python)
-start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_actuator && call .\.venv\Scripts\activate && pip install -r requirements.txt && python main.py"
+start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI && call microservice_actuator\.venv\Scripts\activate && pip install -r microservice_actuator\requirements.txt && python -m microservice_actuator.main"
 
 REM Microservicio Memory (Python)
 start cmd /k "cd /d C:\Users\Alejandro Ruiz\OneDrive\Desktop\LeadBoostAI\microservice_memory && call .\venv\Scripts\activate && pip install -r requirements.txt && python main.py"
