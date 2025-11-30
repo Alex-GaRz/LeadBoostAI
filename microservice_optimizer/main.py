@@ -1,38 +1,77 @@
-import uvicorn
+import asyncio
+import json
+import logging
+import os
+import sys
+from contextlib import asynccontextmanager
+
+
+# 1. FIX DE PATH: Permitir ver archivos en la raíz (math_core.py)
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from microservice_optimizer.api.api_optimizer import router as optimizer_router
+import redis.asyncio as redis 
+
+
+# 2. IMPORTS
 from microservice_optimizer.core.math_core import ROIPredictor
+from microservice_optimizer.core.trainer import ModelTrainer
 
-# Inicialización del Bloque 12
-app = FastAPI(title="Microservice Optimizer (B12 - MathCore)", version="2.0.0")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("OptimizerBrain")
 
-# Pre-carga del modelo al inicio para evitar latencia en la primera petición
-print("--- SISTEMA: Inicializando MathCore ---")
-try:
-    predictor = ROIPredictor()
-    state = "FITTED" if predictor.is_fitted else "COLD_START"
-    print(f"--- SISTEMA: MathCore cargado. Estado: {state} ---")
-except Exception as e:
-    print(f"--- ERROR CRITICO: Fallo al cargar MathCore: {e} ---")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Instancia Global del Modelo
+roi_model = ROIPredictor()
+# Instancia del Entrenador
+trainer = ModelTrainer(roi_model)
 
-app.include_router(optimizer_router, prefix="/optimizer", tags=["Optimizer"])
+async def redis_listener():
+    """Proceso en segundo plano que escucha el latido del sistema"""
+    try:
+        r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe("system_events")
+        
+        logger.info(f"👂 [Optimizer] Escuchando canal 'system_events' en Redis...")
 
-@app.get("/health")
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                data = message["data"]
+                try:
+                    event = json.loads(data)
+                    if event.get("type") == "NEW_DATA":
+                        logger.info(f"⚡ [TRIGGER] Señal recibida. Activando Trainer...")
+                        trainer.process_pending_data()
+                        
+                except json.JSONDecodeError:
+                    logger.warning(f"Mensaje corrupto: {data}")
+    except Exception as e:
+        logger.error(f"❌ Error en listener de Redis: {e}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(redis_listener())
+    yield
+    task.cancel()
+
+app = FastAPI(title="LeadBoost Optimizer API", lifespan=lifespan)
+
+@app.get("/")
 def health_check():
     return {
-        "status": "healthy", 
-        "engine": "SGD_Regressor", 
-        "training_mode": "online_incremental"
+        "status": "active", 
+        "model_fitted": roi_model.is_fitted,
+        "training_samples": roi_model.training_count
     }
 
+@app.post("/predict")
+def predict_roi(budget: float, platform: str, ctr: float):
+    roi, conf = roi_model.predict_roi(budget, platform, ctr)
+    return {"predicted_roi": roi, "confidence": conf}
+
 if __name__ == "__main__":
-    uvicorn.run("microservice_optimizer.main:app", host="0.0.0.0", port=8012, reload=True)
+    import uvicorn
+    uvicorn.run("microservice_optimizer.main:app", host="0.0.0.0", port=8000, reload=True)
