@@ -8,18 +8,28 @@ class RecursivePromptGenerator:
         self.client = client
         self.model_refiner = "gpt-4-turbo-preview"
 
-    def optimize_dalle_prompt(self, base_concept: str, audience: str) -> str:
+    def optimize_dalle_prompt(self, base_concept: str, audience: str, rag_context: str = "") -> str:
         """
-        Transforma un concepto de negocio en un prompt técnico para DALL-E 3.
+        Transforma un concepto de negocio en un prompt técnico para DALL-E 3,
+        inyectando sabiduría histórica (RAG) si está disponible.
         """
-        system_prompt = """
+        
+        # Inyectamos el contexto RAG directamente en las reglas del sistema
+        # para que tenga peso normativo sobre la generación.
+        system_prompt = f"""
         Eres un Ingeniero de Prompts para DALL-E 3. 
         Tu objetivo es convertir conceptos de marketing en descripciones visuales fotorrealistas.
+        
+        CONTEXTO ESTRATÉGICO (HISTORIAL DE ÉXITO/FRACASO):
+        {rag_context if rag_context else "No hay datos históricos disponibles. Usa mejores prácticas generales."}
+
         REGLAS:
-        1. No incluyas texto en la imagen.
-        2. Describe la iluminación (ej. Cinematic, Golden Hour).
-        3. Describe el estilo (ej. 8k, Photorealistic, Unreal Engine 5 render).
-        4. Evita contenido NSFW, violencia o marcas registradas.
+        1. Integra los estilos exitosos mencionados en el contexto estratégico.
+        2. EVITA ESTRICTAMENTE los elementos marcados como negativos en el contexto.
+        3. No incluyas texto en la imagen.
+        4. Describe la iluminación (ej. Cinematic, Golden Hour).
+        5. Describe el estilo (ej. 8k, Photorealistic, Unreal Engine 5 render).
+        6. Evita contenido NSFW, violencia o marcas registradas.
         """
         
         user_prompt = f"Concepto: {base_concept}. Audiencia objetivo: {audience}. Crea un prompt detallado."

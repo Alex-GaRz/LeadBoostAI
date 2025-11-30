@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage'; 
 import DashboardPage from './pages/DashboardPage';
 import StrategyPage from './pages/StrategyPage'; 
 import ExecutionPage from './pages/ExecutionPage';
@@ -17,7 +16,8 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          {/* PROTOCOLO WHITE GLOVE: Registro Público Deshabilitado */}
+          <Route path="/register" element={<Navigate to="/login" replace />} />
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           

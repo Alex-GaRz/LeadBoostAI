@@ -1,11 +1,11 @@
 -- Tabla para el Océano de Datos (Millones de Tweets/Posts)
 CREATE TABLE IF NOT EXISTS raw_signals (
-    id SERIAL PRIMARY KEY,
-    source VARCHAR(50) NOT NULL, -- 'reddit', 'twitter', 'tiktok'
-    content TEXT,
-    metadata JSONB, -- Likes, shares, autor
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processed BOOLEAN DEFAULT FALSE
+    id VARCHAR(50) PRIMARY KEY,
+    source VARCHAR(50),
+    content_text TEXT,
+    original_url TEXT,
+    analysis JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Tabla para el Historial de Entrenamiento (La "Sangre" del Optimizador)
@@ -30,5 +30,5 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 -- Índices para velocidad
-CREATE INDEX idx_signals_processed ON raw_signals(processed);
+-- CREATE INDEX idx_signals_processed ON raw_signals(processed);
 CREATE INDEX idx_training_date ON training_history(date);

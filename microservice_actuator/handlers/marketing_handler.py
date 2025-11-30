@@ -1,126 +1,79 @@
 import logging
-import asyncio 
-import os
-import requests
-from openai import OpenAI
-from microservice_actuator.interfaces.handler_interface import IActionHandler
-from microservice_actuator.models.schemas import ActionRequest, ExecutionResult, ActionStatus
-from datetime import datetime
+import asyncio
+from typing import Dict, Any
+
+# Importamos esquemas y modelos necesarios
+from microservice_actuator.models.schemas import ActionRequest, ActionResponse
+from microservice_actuator.models.extended_schemas import CreativeAsset, PlatformName
+# Importamos la fábrica (aunque usaremos la instancia inyectada)
+from microservice_actuator.core.creative_factory import CreativeFactory
 
 logger = logging.getLogger("MarketingHandler")
 
-# Configuración Mock ERP (Para MVP) - En prod sería URL real
-ERP_TRANSACTION_URL = "http://localhost:8011/enterprise/transaction"
-
-class MarketingHandler(IActionHandler):
-    
+class MarketingHandler:
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.client = OpenAI(api_key=self.api_key) if self.api_key else None
-        self.model = "gpt-4-turbo-preview"
+        # Inicializamos una fábrica por defecto, pero Main.py nos inyectará la buena (con memoria)
+        self.creative_factory = CreativeFactory() 
 
-    def _generate_creative_copy(self, strategy_reasoning: str, params: dict) -> str:
+    async def execute(self, action: ActionRequest) -> ActionResponse:
         """
-        Genera el texto final del anuncio utilizando marcos de persuasión (AIDA/PAS).
+        Ejecuta la lógica de negocio para campañas de marketing.
+        Delega la creatividad a CreativeFactory.
         """
-        if not self.client:
-            return "[SIMULATION] Copy generado por IA no disponible (Falta API Key)."
-
-        tone = params.get("ad_tone", "Profesional")
-        audience = params.get("target_audience", "General")
-        framework = "AIDA" if "oportunidad" in strategy_reasoning.lower() else "PAS"
-
-        prompt = f"""
-        Eres un Copywriter de élite experto en conversión directa.
+        logger.info(f"🚀 [ACTUATOR] Iniciando secuencia de lanzamiento para: {action.action_id}")
         
-        MISIÓN: Escribir el cuerpo de un anuncio para una campaña de: {audience}.
-        TONO: {tone}.
-        ESTRATEGIA: {strategy_reasoning}.
-        MARCO OBLIGATORIO: {framework} ({'Atención, Interés, Deseo, Acción' if framework == 'AIDA' else 'Problema, Agitación, Solución'}).
+        # 1. Extraer parámetros clave
+        params = action.parameters
+        platform_str = params.get("platform", "multi-channel")
+        target_audience = params.get("target_audience", "General Audience")
+        product_name = params.get("product_name", "Our Product")
         
-        REQUISITO:
-        - Sé breve, impactante y usa saltos de línea.
-        - Incluye un Call to Action (CTA) claro al final.
-        - No incluyas explicaciones, solo el texto del anuncio.
-        """
-        
+        # 2. Convertir string a Enum (o mantener string si no existe en Enum)
+        # Esto asegura que "instagram" pase a la fábrica correctamente
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.8
+            platform_enum = PlatformName(platform_str.lower())
+        except ValueError:
+            # Si no es un enum válido (ej. "instagram"), pasamos el string raw
+            # Nuestra CreativeFactory mejorada sabe manejar strings ahora.
+            platform_enum = platform_str 
+
+        # 3. Delegar a la Fábrica Creativa (Aquí ocurre la magia RAG)
+        # Usamos 'await' porque ahora generate_asset es asíncrono
+        try:
+            asset: CreativeAsset = await self.creative_factory.generate_asset(
+                platform=platform_enum,
+                reasoning=action.reasoning,
+                audience_desc=target_audience,
+                campaign_id=action.action_id
             )
-            return response.choices[0].message.content.strip()
         except Exception as e:
-            logger.error(f"Error generando copy: {e}")
-            return "¡Oferta exclusiva por tiempo limitado! Click aquí."
-
-    async def execute(self, action: ActionRequest) -> ExecutionResult:
-        """
-        Ejecuta la creación de la campaña:
-        1. Genera el Copy Creativo (IA).
-        2. Prepara el Payload.
-        3. Envía al ERP/Plataforma.
-        """
-        sku = action.parameters.get("sku", "GEN-SERVICE-001")
-        platform = action.parameters.get("platform_focus", "Multi-channel")
-        budget = action.parameters.get("budget_cap", 0)
-        
-        logger.info(f"🚀 [ACTUATOR] Iniciando secuencia de lanzamiento para: {sku}")
-        
-        # --- PASO 1: GENERACIÓN DE COPY (EL "CEREBRO" DEL ACTUADOR) ---
-        logger.info("✍️ Redactando anuncio publicitario...")
-        final_ad_copy = self._generate_creative_copy(action.reasoning, action.parameters)
-        
-        # Simulación de latencia de red
-        await asyncio.sleep(0.5) 
-        
-        erp_details = {"sync": "skipped"}
-        
-        # --- PASO 2: CONEXIÓN B11/PLATAFORMAS ---
-        try:
-            # Aquí "publicamos" el anuncio enviando la data al ERP/Simulador
-            tx_payload = {
-                "sku": sku,
-                "campaign_id": action.action_id,
-                "platform": platform,
-                "ad_content": final_ad_copy, # Enviamos el texto generado
-                "budget_allocated": budget,
-                "status": "ACTIVE"
-            }
-            
-            # Request síncrono en endpoint asíncrono (idealmente usar aiohttp, requests ok para MVP)
-            # Usamos un timeout corto para no bloquear
-            try:
-                response = requests.post(ERP_TRANSACTION_URL, json=tx_payload, timeout=2)
-                if response.status_code == 200:
-                    data = response.json()
-                    erp_details = {"sync": "success", "msg": data.get("message", "OK")}
-                    logger.info(f"✅ [ERP] Campaña registrada exitosamente.")
-                else:
-                    erp_details = {"sync": "failed", "http_code": response.status_code}
-            except requests.exceptions.ConnectionError:
-                logger.warning("⚠️ [ERP] No se pudo conectar con Enterprise Service (¿Está corriendo?). Simulando éxito.")
-                erp_details = {"sync": "simulated", "note": "ERP offline"}
-
-        except Exception as e:
-            logger.error(f"❌ [ACTUATOR] Error de ejecución: {e}")
-            return ExecutionResult(
-                action_id=action.action_id,
-                status=ActionStatus.FAILED,
-                details={"error": str(e)},
-                timestamp=datetime.now()
+            logger.error(f"❌ Error en Fábrica Creativa: {e}")
+            # Fallback de emergencia
+            asset = CreativeAsset(
+                headline="Error Generating Content", 
+                body_text="Please check logs.", 
+                call_to_action="Retry"
             )
 
-        # --- PASO 3: REPORTE FINAL ---
-        return ExecutionResult(
+        # 4. Simulación de ERP (Enterprise Resource Planning)
+        erp_status = self._notify_erp_system(action.action_id)
+
+        # 5. Construir Respuesta Final
+        return ActionResponse(
+            execution_id=action.action_id, # Usamos el mismo ID para trazar
             action_id=action.action_id,
-            status=ActionStatus.EXECUTED,
+            status="EXECUTED",
             details={
-                "platform": platform,
-                "generated_copy": final_ad_copy[:100] + "...", # Preview en logs
-                "full_copy": final_ad_copy,
-                "erp_feedback": erp_details
-            },
-            timestamp=datetime.now()
+                "platform": str(platform_enum),
+                "generated_copy": asset.headline + "\n\n" + asset.body_text[:50] + "...",
+                "full_copy": f"{asset.headline}\n\n{asset.body_text}\n\n{asset.call_to_action}",
+                "image_url": asset.image_url,  # <--- ¡IMPORTANTE! Devolvemos la URL
+                "erp_feedback": erp_status
+            }
         )
+
+    def _notify_erp_system(self, campaign_id: str) -> Dict[str, Any]:
+        """Simulación sincrónica de una llamada a otro microservicio"""
+        # Aquí iría un requests.post al servicio ERP
+        logger.warning(f"⚠️ [ERP] No se pudo conectar con Enterprise Serviice (¿Está corriendo?). Simulando éxito.")
+        return {"sync": "simulated", "note": "ERP offline"}
