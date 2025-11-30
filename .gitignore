@@ -39,3 +39,8 @@ microservice_analyst\serviceAccountKey.json
 # Ignorar archivos md
 *.md
 
+# Ignorar modelos y archivos binarios
+*.pkl
+*.bin
+/model_store
+
