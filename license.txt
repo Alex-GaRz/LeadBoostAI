@@ -1,0 +1,27 @@
+© 2025 Alejandro García Ruiz. Todos los derechos reservados.
+
+Este software, incluyendo pero no limitado a su código fuente, arquitectura, 
+archivos asociados, documentación, lógica interna, modelos y cualquier parte 
+derivada o componente relacionado, está protegido por leyes de derechos de 
+autor y propiedad intelectual.
+
+Queda estrictamente prohibido, sin autorización previa por escrito del titular:
+
+1. Copiar, reproducir o duplicar total o parcialmente el software.
+2. Modificar, descompilar, desensamblar, aplicar ingeniería inversa o crear
+   obras derivadas basadas en el software.
+3. Distribuir, publicar, compartir, subir a repositorios públicos o privados,
+   o poner el software a disposición de terceros por cualquier medio.
+4. Usar el software con fines comerciales, académicos, personales o 
+   profesionales por parte de terceros.
+5. Integrar el software, o partes de él, en otros programas, productos o
+   servicios.
+6. Vender, alquilar, licenciar, prestar, sublicenciar o transferir el software.
+
+Este software es de uso exclusivo del titular y no se concede ningún tipo de 
+derecho o permiso a terceros. Cualquier uso no autorizado constituye una 
+violación directa a las leyes de propiedad intelectual y puede generar 
+acciones legales civiles y/o penales.
+
+Si deseas solicitar permisos o acuerdos de uso en el futuro, deberás obtener 
+autorización expresa y por escrito del titular.
