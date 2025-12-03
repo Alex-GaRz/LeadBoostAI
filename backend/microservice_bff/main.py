@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import dashboard, optimizer, safety, vision # Importamos nuevos routers
+# --- NUEVOS IMPORTS ---
+from fastapi.staticfiles import StaticFiles
+from routers import dashboard, optimizer, safety, vision, strategy 
 
 # --- CONFIGURACIÓN CORS (CRÍTICO PARA REACT) ---
 origins = [
@@ -24,11 +26,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- SERVICIO DE ARCHIVOS ESTÁTICOS ---
+# NOTA: Debes crear una carpeta 'assets' en la raíz de tu proyecto para que esto funcione.
+# Por simplicidad, montaremos la carpeta 'assets' bajo la URL '/static'.
+app.mount("/static", StaticFiles(directory="assets"), name="static")
+
 # --- REGISTRO DE RUTAS ---
 app.include_router(dashboard.router, prefix="/dashboard")
 app.include_router(optimizer.router, prefix="/optimizer")
-app.include_router(safety.router, prefix="/safety")   # Nueva ruta de seguridad
-app.include_router(vision.router, prefix="/vision")   # Nueva ruta de visión
+app.include_router(safety.router, prefix="/safety")
+app.include_router(vision.router, prefix="/vision")
+app.include_router(strategy.router, prefix="") # Nuevo router de estrategia
 
 @app.get("/")
 def health_check():
@@ -37,5 +45,5 @@ def health_check():
         "status": "online", 
         "system": "LeadBoost BFF Gateway",
         "phase": "1.0 - Omniscient",
-        "services": ["Dashboard", "Optimizer", "Safety", "Vision"]
+        "services": ["Dashboard", "Optimizer", "Safety", "Vision", "Strategy (New)"]
     }
