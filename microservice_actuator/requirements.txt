@@ -9,3 +9,5 @@ Pillow>=10.0.0
 numpy>=1.26.0
 opencv-python-headless>=4.8.0
 httpx>=0.25.0
+# Added for robust retry logic if needed internally, though we built a custom loop
+tenacity>=8.2.0
