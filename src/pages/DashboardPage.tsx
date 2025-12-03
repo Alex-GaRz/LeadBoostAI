@@ -1,68 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { fetchDashboardSnapshot, DashboardSnapshot } from '../services/bffService';
+import React, { useState, useEffect } from 'react';
 import TerminalDashboard from '../components/Dashboard/TerminalDashboard';
+import OperationsTimeline from '../components/Dashboard/OperationsTimeline';
+import SystemBoot from '../components/SystemBoot';
+import { fetchDashboardSnapshot, DashboardSnapshot } from '../services/bffService';
+import { socketService } from '../services/socketService';
+
+// Datos iniciales vacíos para evitar parpadeos
+const INITIAL_DATA: DashboardSnapshot = {
+  meta: { user: 'COMMANDER', mode: 'INIT', status: 'LOADING' },
+  radar: { health_score: 0, active_alerts: [], market_intelligence: [] },
+  operations: { governance: { budget_remaining: 0 }, execution: [] }
+};
 
 const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
-  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<DashboardSnapshot>(INITIAL_DATA);
+  const [bootComplete, setBootComplete] = useState(false);
 
   useEffect(() => {
-    // Función de carga inicial de datos (Snapshot Básico)
-    const loadData = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        console.log("🔄 [DashboardPage] Solicitando Snapshot al BFF...");
-        const data = await fetchDashboardSnapshot();
-        console.log("✅ [DashboardPage] Snapshot recibido:", data);
-        setSnapshot(data);
-      } catch (err) {
-        console.error("❌ [DashboardPage] Error crítico:", err);
-        setError("Error de conexión con el Neural Link (BFF).");
-      } finally {
-        setLoading(false);
-      }
-    };
+    // 1. Conexión Socket
+    socketService.connect('COMMANDER_01');
 
-    loadData();
-  }, [user]);
+    // 2. Carga de datos
+    fetchDashboardSnapshot().then(setData).catch(console.error);
 
-  // Renderizado de Estados de Carga / Error
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center flex-col">
-        <div className="w-16 h-16 border-4 border-blue-900 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-        <div className="text-blue-500 font-mono text-xs animate-pulse">ESTABLECIENDO ENLACE NEURAL...</div>
-      </div>
-    );
+    // 3. MEMORIA DEL SISTEMA (REACTIVADA)
+    // Verifica si ya mostramos la intro en esta sesión
+    const hasBooted = sessionStorage.getItem('system_booted');
+    if (hasBooted) {
+       setBootComplete(true); // Si ya existe la marca, saltar intro
+    }
+  }, []);
+
+  const handleBootComplete = () => {
+    // 4. GUARDAR MARCA EN MEMORIA
+    // Al terminar la intro, guardamos la marca para no repetirla
+    sessionStorage.setItem('system_booted', 'true');
+    setBootComplete(true);
+  };
+
+  // Si no ha completado el boot, mostramos la secuencia
+  if (!bootComplete) {
+    return <SystemBoot onComplete={handleBootComplete} />;
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-rose-500 font-mono">
-        <div className="text-center">
-            <h1 className="text-4xl mb-2">⚠ ERROR DE SISTEMA</h1>
-            <p>{error}</p>
-            <button 
-                onClick={() => window.location.reload()}
-                className="mt-6 px-4 py-2 border border-rose-900 hover:bg-rose-900/20 text-xs uppercase tracking-widest transition-all"
-            >
-                Reiniciar Sistema
-            </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Renderizado Principal: Aquí es donde se llama a tu nuevo componente
+  // Si ya completó, mostramos el Dashboard Real
   return (
-    <>
-      {snapshot && <TerminalDashboard data={snapshot} />}
-    </>
+    <div className="animate-in fade-in duration-1000">
+      <div className="px-6 pt-6 -mb-6">
+        <OperationsTimeline />
+      </div>
+      <TerminalDashboard data={data} />
+    </div>
   );
 };
 
