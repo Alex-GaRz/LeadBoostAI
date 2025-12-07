@@ -44,3 +44,26 @@ microservice_analyst\serviceAccountKey.json
 *.bin
 /model_store
 
+# -----------------------------
+# Gitignore para Fase 1 - Migración Núcleo PostgreSQL
+# -----------------------------
+
+# Datos locales de PostgreSQL
+/pgdata/
+
+# Archivos de logs de pruebas o errores
+*.log
+*.tmp
+*.bak
+
+# Archivos de Docker locales que no se deben versionar
+/docker-volume/*
+/docker-compose.override.yml
+
+# Archivos de pgAdmin locales
+/pgadmin/*
+
+# Archivos generados por el entorno de testing
+*.sqlc
+*.dump
+*.seed
