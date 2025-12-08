@@ -1,0 +1,42 @@
+
+# =============================================================================
+# RFC-PHOENIX-02: Docker Compose Override for Development
+# Simplified configuration for local development without mTLS
+# =============================================================================
+
+version: '3.9'
+
+services:
+  kafka-broker-1:
+    environment:
+      # Disable SSL for development
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092
+      # Disable ACLs for development
+      KAFKA_AUTHORIZER_CLASS_NAME: ""
+      KAFKA_SUPER_USERS: ""
+    volumes:
+      - kafka_broker1_data:/var/lib/kafka/data
+      # Remove SSL volume mount
+
+  kafka-broker-2:
+    environment:
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-2:9092
+      KAFKA_AUTHORIZER_CLASS_NAME: ""
+      KAFKA_SUPER_USERS: ""
+    volumes:
+      - kafka_broker2_data:/var/lib/kafka/data
+
+  kafka-broker-3:
+    environment:
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-3:9092
+      KAFKA_AUTHORIZER_CLASS_NAME: ""
+      KAFKA_SUPER_USERS: ""
+    volumes:
+      - kafka_broker3_data:/var/lib/kafka/data
+
+# Usage:
+# Development: docker-compose -f docker-compose.messaging.yml -f docker-compose.messaging.override.yml up
+# Production:  docker-compose -f docker-compose.messaging.yml up

@@ -36,8 +36,6 @@ leadboost-ai-1966c-4819e22dad6b.json
 backend\serviceAccountKey.json
 microservice_analyst\serviceAccountKey.json
 
-# Ignorar archivos md
-*.md
 
 # Ignorar modelos y archivos binarios
 *.pkl
@@ -67,3 +65,6 @@ microservice_analyst\serviceAccountKey.json
 *.sqlc
 *.dump
 *.seed
+
+# REPORTE FINAL
+/advanced_reports/REPORTE_FINAL.md

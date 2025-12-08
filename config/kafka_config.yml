@@ -1,0 +1,303 @@
+
+# RFC-PHOENIX-02: Kafka Configuration for LeadBoostAI Microservices
+# Enterprise-Grade Messaging Configuration with mTLS, ACLs, and Resilience
+
+# ===========================
+# CLUSTER CONFIGURATION
+# ===========================
+cluster:
+  name: "leadboost-production"
+  bootstrap_servers:
+    - "kafka-broker-1:9092"
+    - "kafka-broker-2:9092"
+    - "kafka-broker-3:9092"
+  bootstrap_servers_ssl:
+    - "kafka-broker-1:9093"
+    - "kafka-broker-2:9093"
+    - "kafka-broker-3:9093"
+
+# ===========================
+# PRODUCER CONFIGURATION (At-Least-Once Semantics)
+# ===========================
+producer:
+  # Durability Guarantees (RFC Section 3.1)
+  acks: "all"  # Wait for all in-sync replicas
+  retries: 2147483647  # Max retries (effectively infinite)
+  max_in_flight_requests_per_connection: 5
+  enable_idempotence: true
+  
+  # Compression & Performance
+  compression_type: "snappy"
+  batch_size: 16384
+  linger_ms: 10
+  buffer_memory: 33554432
+  
+  # Timeouts
+  request_timeout_ms: 30000
+  delivery_timeout_ms: 120000
+  
+  # Security (mTLS)
+  security_protocol: "SSL"
+  ssl_ca_location: "/etc/kafka/secrets/ca-cert.pem"
+  ssl_cert_location: "/etc/kafka/secrets/producer-cert.pem"
+  ssl_key_location: "/etc/kafka/secrets/producer-key.pem"
+  ssl_key_password: "${KAFKA_SSL_KEY_PASSWORD}"
+
+# ===========================
+# CONSUMER CONFIGURATION (Manual Commit)
+# ===========================
+consumer:
+  # Offset Management (RFC Section 3.1)
+  enable_auto_commit: false  # Manual commit after DB transaction
+  auto_offset_reset: "earliest"  # For disaster recovery
+  
+  # Session & Heartbeat
+  session_timeout_ms: 30000
+  heartbeat_interval_ms: 10000
+  max_poll_interval_ms: 300000  # 5 minutes max processing time
+  
+  # Fetch Configuration
+  fetch_min_bytes: 1
+  fetch_max_wait_ms: 500
+  max_partition_fetch_bytes: 1048576
+  
+  # Security (mTLS)
+  security_protocol: "SSL"
+  ssl_ca_location: "/etc/kafka/secrets/ca-cert.pem"
+  ssl_cert_location: "/etc/kafka/secrets/consumer-cert.pem"
+  ssl_key_location: "/etc/kafka/secrets/consumer-key.pem"
+  ssl_key_password: "${KAFKA_SSL_KEY_PASSWORD}"
+
+# ===========================
+# TOPIC DEFINITIONS (RFC Section 2.2)
+# ===========================
+topics:
+  commands:
+    name: "core.commands.v1"
+    partitions: 12
+    replication_factor: 3
+    min_insync_replicas: 2
+    retention_ms: 604800000  # 7 days
+    partition_key: "tenant_id"
+    
+  events:
+    name: "core.events.v1"
+    partitions: 12
+    replication_factor: 3
+    min_insync_replicas: 2
+    retention_ms: 2592000000  # 30 days
+    partition_key: "tenant_id"
+    
+  deadletter:
+    name: "sys.deadletter.v1"
+    partitions: 6
+    replication_factor: 3
+    min_insync_replicas: 2
+    retention_ms: 2592000000  # 30 days
+    partition_key: "original_partition"
+    
+  audit:
+    name: "sys.audit.v1"
+    partitions: 12
+    replication_factor: 3
+    min_insync_replicas: 2
+    retention_ms: 7776000000  # 90 days
+    partition_key: "trace_id"
+
+# ===========================
+# CONSUMER GROUPS (RFC Section 2.1)
+# ===========================
+consumer_groups:
+  actuator_service:
+    group_id: "actuator-service"
+    topics:
+      - "core.commands.v1"
+    max_instances: 12
+    
+  finance_service:
+    group_id: "finance-service"
+    topics:
+      - "core.events.v1"
+    max_instances: 12
+    
+  audit_service:
+    group_id: "audit-service"
+    topics:
+      - "core.commands.v1"
+      - "core.events.v1"
+    max_instances: 12
+    
+  saga_coordinator:
+    group_id: "saga-coordinator"
+    topics:
+      - "core.events.v1"
+    max_instances: 4
+
+# ===========================
+# RESILIENCE CONFIGURATION (RFC Section 5)
+# ===========================
+resilience:
+  # Retry Strategy (RFC Section 5.1)
+  retry:
+    max_attempts: 3
+    backoff_strategy: "exponential"
+    initial_interval_ms: 1000
+    multiplier: 2.0
+    max_interval_ms: 5000
+    
+  # Circuit Breaker (RFC Section 5.2)
+  circuit_breaker:
+    failure_threshold: 5
+    success_threshold: 2
+    timeout_seconds: 60
+    half_open_max_calls: 3
+    
+  # Dead Letter Queue (RFC Section 5.1)
+  dlq:
+    enabled: true
+    topic: "sys.deadletter.v1"
+    include_headers: true
+    include_stacktrace: true
+    max_message_size_kb: 1024
+
+# ===========================
+# IDEMPOTENCY CONFIGURATION (RFC Section 3.2)
+# ===========================
+idempotency:
+  enabled: true
+  table_name: "sys.request_keys"
+  message_id_header: "Message-ID"
+  ttl_hours: 168  # 7 days (matches command retention)
+
+# ===========================
+# OBSERVABILITY & METRICS (RFC Section 8)
+# ===========================
+observability:
+  metrics:
+    enabled: true
+    port: 8000
+    namespace: "leadboost_kafka"
+    
+  health_check:
+    enabled: true
+    interval_seconds: 30
+    timeout_seconds: 10
+    
+  tracing:
+    enabled: true
+    sample_rate: 0.1  # 10% of messages
+    
+  logging:
+    level: "INFO"
+    format: "json"
+    include_message_payload: false  # Security: Don't log PII
+
+# ===========================
+# RATE LIMITING (RFC Section 5.3)
+# ===========================
+rate_limiting:
+  enabled: true
+  strategy: "token_bucket"
+  redis_url: "redis://localhost:6379/1"
+  limits:
+    per_tenant:
+      messages_per_second: 100
+      burst_size: 200
+    global:
+      messages_per_second: 1000
+      burst_size: 2000
+
+# ===========================
+# SECURITY & ACLs (RFC Section 7)
+# ===========================
+security:
+  # mTLS Configuration
+  mtls:
+    enabled: true
+    verify_mode: "required"
+    ca_cert_path: "/etc/kafka/secrets/ca-cert.pem"
+    
+  # Service Certificates
+  certificates:
+    analyst_service:
+      cert_path: "/etc/kafka/secrets/analyst-cert.pem"
+      key_path: "/etc/kafka/secrets/analyst-key.pem"
+      
+    actuator_service:
+      cert_path: "/etc/kafka/secrets/actuator-cert.pem"
+      key_path: "/etc/kafka/secrets/actuator-key.pem"
+      
+    audit_service:
+      cert_path: "/etc/kafka/secrets/audit-cert.pem"
+      key_path: "/etc/kafka/secrets/audit-key.pem"
+      
+    saga_coordinator:
+      cert_path: "/etc/kafka/secrets/saga-cert.pem"
+      key_path: "/etc/kafka/secrets/saga-key.pem"
+  
+  # ACL Policies (Applied via kafka_acls.sh)
+  acls:
+    analyst_service:
+      - resource: "topic:events.*"
+        operations: ["READ", "WRITE"]
+      - resource: "topic:commands.*"
+        operations: ["READ"]
+        
+    actuator_service:
+      - resource: "topic:commands.*"
+        operations: ["READ"]
+      - resource: "topic:events.*"
+        operations: ["WRITE"]
+        
+    audit_service:
+      - resource: "topic:*"
+        operations: ["READ"]
+
+# ===========================
+# ENVIRONMENT-SPECIFIC OVERRIDES
+# ===========================
+environments:
+  development:
+    producer:
+      acks: "1"  # Relaxed for dev
+    consumer:
+      auto_offset_reset: "latest"
+    security:
+      mtls:
+        enabled: false
+        
+  staging:
+    producer:
+      acks: "all"
+    consumer:
+      auto_offset_reset: "earliest"
+    security:
+      mtls:
+        enabled: true
+        
+  production:
+    producer:
+      acks: "all"
+    consumer:
+      auto_offset_reset: "earliest"
+    security:
+      mtls:
+        enabled: true
+    observability:
+      tracing:
+        sample_rate: 0.05  # 5% in prod (cost optimization)
+
+# ===========================
+# DATABASE CONNECTION (For Idempotency & Offset Logging)
+# ===========================
+database:
+  host: "${DB_HOST:-localhost}"
+  port: 5432
+  database: "${DB_NAME:-leadboost}"
+  user: "${DB_USER:-postgres}"
+  password: "${DB_PASSWORD}"
+  schema: "sys"
+  pool_size: 20
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
