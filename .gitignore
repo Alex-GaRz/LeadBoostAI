@@ -49,6 +49,15 @@ microservice_analyst\serviceAccountKey.json
 # Datos locales de PostgreSQL
 /pgdata/
 
+# -----------------------------
+# Fase 3: Security Keys & Certificates
+# -----------------------------
+certs/
+*.pem
+*.key
+*.crt
+.env.security
+
 # Archivos de logs de pruebas o errores
 *.log
 *.tmp

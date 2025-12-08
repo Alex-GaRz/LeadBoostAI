@@ -1,0 +1,103 @@
+# Service Identities Configuration
+# RFC-PHOENIX-03: Fase 3 - Identidades de Servicios
+#
+# Define las identidades y metadatos de cada microservicio.
+# Utilizado por el STS para emitir tokens y por mTLS para validación.
+
+services:
+  - service_id: "svc.analyst"
+    service_name: "Analyst Service"
+    role: "svc.analyst"
+    scopes:
+      - "read:signals"
+      - "write:insights"
+      - "execute:analysis"
+    base_url: "http://analyst:8002"
+    health_endpoint: "/health"
+    mtls_required: true
+    certificate_cn: "analyst.leadboostai.internal"
+
+  - service_id: "svc.optimizer"
+    service_name: "Optimizer Service"
+    role: "svc.optimizer"
+    scopes:
+      - "read:insights"
+      - "write:plans"
+      - "read:budget"
+      - "execute:optimization"
+    base_url: "http://optimizer:8003"
+    health_endpoint: "/health"
+    mtls_required: true
+    certificate_cn: "optimizer.leadboostai.internal"
+
+  - service_id: "svc.enterprise"
+    service_name: "Enterprise Nervous System"
+    role: "svc.enterprise"
+    scopes:
+      - "read:plans"
+      - "write:approvals"
+      - "write:rules"
+      - "read:budget"
+      - "write:budget"
+    base_url: "http://enterprise:8001"
+    health_endpoint: "/health"
+    mtls_required: true
+    certificate_cn: "enterprise.leadboostai.internal"
+
+  - service_id: "svc.actuator"
+    service_name: "Actuator Engine"
+    role: "svc.actuator"
+    scopes:
+      - "read:approvals"
+      - "execute:external"
+    base_url: "http://actuator:8000"
+    health_endpoint: "/health"
+    mtls_required: true
+    certificate_cn: "actuator.leadboostai.internal"
+
+  - service_id: "svc.memory"
+    service_name: "Memory Service"
+    role: "svc.memory"
+    scopes:
+      - "read:context"
+      - "write:context"
+    base_url: "http://memory:8004"
+    health_endpoint: "/health"
+    mtls_required: true
+    certificate_cn: "memory.leadboostai.internal"
+
+  - service_id: "svc.bff"
+    service_name: "Backend for Frontend"
+    role: "svc.bff"
+    scopes:
+      - "proxy:all"
+    base_url: "http://localhost:3000"
+    health_endpoint: "/health"
+    mtls_required: false  # BFF es el punto de entrada externo
+    certificate_cn: "bff.leadboostai.internal"
+
+  - service_id: "svc.scout"
+    service_name: "Scout Service"
+    role: "svc.scout"
+    scopes:
+      - "write:signals"
+      - "read:signals"
+    base_url: "http://scout:8005"
+    health_endpoint: "/health"
+    mtls_required: true
+    certificate_cn: "scout.leadboostai.internal"
+
+# Token settings per service
+token_settings:
+  default_expiration_minutes: 15
+  max_expiration_minutes: 60
+  refresh_enabled: false  # Future feature
+
+# Certificate Authority settings
+ca:
+  organization: "LeadBoostAI"
+  country: "ES"
+  state: "Madrid"
+  locality: "Madrid"
+  validity_days: 365
+  key_size: 2048

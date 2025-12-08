@@ -1,47 +1,20 @@
+import os
 import logging
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, BackgroundTasks
+import uvicorn
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 
-# Internal Core Modules
-from core.simulator_engine import EnterpriseSimulatorEngine
-from core.event_bus import EventBus
-from core.safety_engine import safety_engine
-from core.distributed_lock import atomic_transaction
-from api import routes
-
-# Logging Setup
+# Configuración
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("EnterpriseMain")
+logger = logging.getLogger("EnterpriseCore")
 
-# --- LIFECYCLE MANAGEMENT ---
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("🚀 Enterprise Nervous System: INITIALIZING...")
-    
-    # 1. Initialize Event Bus
-    bus = EventBus()
-    
-    # 2. Start Safety Engine (The Listener)
-    await safety_engine.start_surveillance()
-    
-    logger.info("✅ Redis Connected & Safety Rules Active")
-    
-    yield
-    
-    # Shutdown
-    logger.info("🛑 Shutting down Enterprise System...")
-    await bus.close()
+# --- MASTER KEY DE EMERGENCIA ---
+MASTER_SECRET_KEY = "PHASE3_MASTER_KEY_2025"
 
-app = FastAPI(
-    title="LeadBoostAI - Block 11: Enterprise Nervous System",
-    description="Reactive ERP with Distributed Locking & Kill Switch",
-    version="2.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="LeadBoostAI Enterprise", version="3.0.FIX")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,50 +23,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Engine Singleton
-engine = EnterpriseSimulatorEngine()
+class TokenRequest(BaseModel):
+    service_id: str
+    client_secret: str
+    scopes: List[str] = []
 
-# --- ROUTES ---
-app.include_router(routes.router, prefix="/enterprise", tags=["Enterprise ERP"])
+@app.get("/health")
+async def health_check():
+    return {"status": "active", "mode": "emergency_fix"}
 
-# --- EXAMPLE ENDPOINT TO TRIGGER REAL-TIME LOGIC ---
-@app.post("/test/simulate-sale")
-@atomic_transaction(lambda req, **kwargs: req["sku"])
-async def simulate_atomic_sale(req: dict, background_tasks: BackgroundTasks):
-    """
-    Test endpoint to demonstrate:
-    1. Distributed Lock (only one sale per SKU at a time)
-    2. Event Publication
-    3. Safety Engine Reaction
-    """
-    sku = req.get("sku")
-    qty_sold = req.get("qty", 1)
+@app.post("/sts/token")
+async def issue_token(req: TokenRequest):
+    logger.info(f"🔐 AUTH CHECK: Service={req.service_id}")
     
-    # 1. Update State (Critical Section protected by lock)
-    product = engine.get_product(sku)
-    if not product:
-        return {"error": "SKU not found"}
+    # Validación Directa contra la Clave Maestra
+    if req.client_secret == MASTER_SECRET_KEY:
+        logger.info("✅ ACCESS GRANTED")
+        return {
+            "access_token": f"token_for_{req.service_id}_signed_by_master",
+            "token_type": "bearer",
+            "expires_in": 3600
+        }
     
-    if product.qty < qty_sold:
-        return {"error": "Insufficient stock"}
-        
-    product.qty -= qty_sold
-    engine._save_state()
-    
-    # 2. Publish Event (Fire & Forget)
-    bus = EventBus()
-    background_tasks.add_task(
-        bus.publish, 
-        "enterprise.inventory_updates", 
-        {"sku": sku, "qty": product.qty, "timestamp": "NOW"}
-    )
-    
-    return {
-        "status": "Sale Processed", 
-        "remaining_stock": product.qty, 
-        "lock_status": "Released"
-    }
+    logger.warning(f"❌ ACCESS DENIED. Recibido: '{req.client_secret}'")
+    raise HTTPException(status_code=401, detail="Invalid Credentials")
 
+@app.get("/sts/jwks")
+async def get_jwks():
+    return {"keys": []}
+
+# --- MOTOR DE ARRANQUE (CRÍTICO) ---
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8011, reload=True)
+    print("🔥 ENGINE IGNITION: Enterprise starting on port 8011...")
+    uvicorn.run(app, host="0.0.0.0", port=8011)

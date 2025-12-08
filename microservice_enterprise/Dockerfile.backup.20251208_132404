@@ -1,0 +1,51 @@
+# Dockerfile para microservice_enterprise
+# Fase 3: Security Token Service (STS) + Enterprise Nervous System
+
+FROM python:3.11-slim
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copiar requirements y instalar dependencias Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Instalar dependencias de seguridad de Fase 3
+RUN pip install --no-cache-dir \
+    PyJWT>=2.8.0 \
+    cryptography>=41.0.0 \
+    httpx>=0.25.0 \
+    PyYAML>=6.0.1
+
+# Copiar código del microservicio
+COPY microservice_enterprise/ ./microservice_enterprise/
+
+# Copiar módulos de seguridad compartidos
+COPY core/ ./core/
+
+# Copiar configuración
+COPY config/ ./config/
+
+# Crear directorios para certificados y logs
+RUN mkdir -p /app/certs /app/logs
+
+# Exponer puertos
+EXPOSE 8002 8011
+
+# Variables de entorno por defecto
+ENV PYTHONPATH=/app
+ENV PORT=8002
+ENV STS_PORT=8011
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8002/health || exit 1
+
+# Comando de inicio
+CMD ["python", "microservice_enterprise/main.py"]

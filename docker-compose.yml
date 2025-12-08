@@ -1,27 +1,84 @@
 version: '3.8'
 
 services:
-  # 🧠 EL CEREBRO DE DATOS FRÍOS (PostgreSQL)
   postgres_db:
     image: postgres:15-alpine
     container_name: leadboost_db
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password_seguro_123
-      POSTGRES_DB: leadboost_cold_store
+      POSTGRES_USER: leadboost
+      POSTGRES_PASSWORD: leadboost_password
+      POSTGRES_DB: leadboost_db
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init_db.sql:/docker-entrypoint-initdb.d/init.sql # Script de inicio
+      - leadboost_postgres_data:/var/lib/postgresql/data
+    networks:
+      - leadboost_default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadboost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # ⚡ EL SISTEMA NERVIOSO (Redis)
   redis_bus:
-    image: redis:7-alpine
+    image: redis:alpine
     container_name: leadboost_bus
     ports:
       - "6379:6379"
-    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - leadboost_default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  enterprise:
+    build:
+      context: .
+      dockerfile: microservice_enterprise/Dockerfile
+    container_name: leadboost_enterprise
+    ports:
+      - "8002:8002"
+      - "8011:8011"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - POSTGRES_HOST=postgres_db
+      - REDIS_HOST=redis_bus
+      # LA CLAVE MAESTRA (FIX FASE 3)
+      - BFF_CLIENT_SECRET=PHASE3_MASTER_KEY_2025
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./config:/app/config:ro
+    networks:
+      - leadboost_default
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis_bus:
+        condition: service_healthy
+
+  bff:
+    build:
+      context: .
+      dockerfile: backend/microservice_bff/Dockerfile
+    container_name: leadboost_bff
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis_bus
+      - ENTERPRISE_URL=http://enterprise:8011
+      # LA CLAVE MAESTRA (FIX FASE 3)
+      - BFF_CLIENT_SECRET=PHASE3_MASTER_KEY_2025
+    networks:
+      - leadboost_default
+    depends_on:
+      - enterprise
+
+networks:
+  leadboost_default:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  leadboost_postgres_data:

@@ -1,0 +1,249 @@
+# IAM Policies Configuration
+# RFC-PHOENIX-03: Fase 3 - Identity and Access Management
+#
+# Define roles, permissions y policies para el sistema LeadBoostAI.
+# Basado en el principio de Zero Trust.
+
+roles:
+  # ========================================
+  # SERVICE ACCOUNTS (Microservicios)
+  # ========================================
+  
+  - role_id: "svc.analyst"
+    role_name: "Analyst Service"
+    description: "Analiza señales del mercado y genera insights estratégicos"
+    permissions:
+      - "read:signals"
+      - "write:insights"
+      - "execute:analysis"
+    policies:
+      - resource: "signals"
+        action: "read"
+        effect: "allow"
+      - resource: "insights"
+        action: "write"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"  # No puede ejecutar acciones externas
+      - resource: "rules"
+        action: "write"
+        effect: "deny"  # No puede modificar reglas de gobernanza
+      - resource: "budget"
+        action: "write"
+        effect: "deny"  # No puede modificar presupuesto
+
+  - role_id: "svc.optimizer"
+    role_name: "Optimizer Service"
+    description: "Optimiza estrategias y genera planes de acción"
+    permissions:
+      - "read:insights"
+      - "write:plans"
+      - "read:budget"
+      - "execute:optimization"
+    policies:
+      - resource: "insights"
+        action: "read"
+        effect: "allow"
+      - resource: "plans"
+        action: "write"
+        effect: "allow"
+      - resource: "budget"
+        action: "read"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"  # No puede ejecutar directamente
+      - resource: "budget"
+        action: "write"
+        effect: "deny"  # No puede modificar presupuesto
+
+  - role_id: "svc.enterprise"
+    role_name: "Enterprise Nervous System"
+    description: "Sistema central de gobernanza, aprobación y gestión de reglas"
+    permissions:
+      - "read:plans"
+      - "write:approvals"
+      - "write:rules"
+      - "read:budget"
+      - "write:budget"
+      - "read:insights"
+    policies:
+      - resource: "plans"
+        action: "read"
+        effect: "allow"
+      - resource: "approvals"
+        action: "write"
+        effect: "allow"
+      - resource: "rules"
+        action: "write"
+        effect: "allow"
+      - resource: "budget"
+        action: "*"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"  # No ejecuta directamente (delega al Actuator)
+
+  - role_id: "svc.actuator"
+    role_name: "Actuator Engine"
+    description: "Ejecuta acciones externas SOLO con aprobación válida"
+    permissions:
+      - "read:approvals"
+      - "execute:external"
+    policies:
+      - resource: "approvals"
+        action: "read"
+        effect: "allow"
+      - resource: "external"
+        action: "execute"
+        effect: "allow"
+        conditions:
+          requires: "approval_token"
+      - resource: "plans"
+        action: "write"
+        effect: "deny"  # No puede crear planes
+      - resource: "insights"
+        action: "write"
+        effect: "deny"  # No puede generar insights
+
+  - role_id: "svc.memory"
+    role_name: "Memory Service"
+    description: "Gestión de contexto y memoria vectorial (ChromaDB)"
+    permissions:
+      - "read:context"
+      - "write:context"
+    policies:
+      - resource: "context"
+        action: "*"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"
+      - resource: "rules"
+        action: "write"
+        effect: "deny"
+
+  - role_id: "svc.bff"
+    role_name: "Backend for Frontend"
+    description: "API Gateway para clientes web. Solo retransmite, no ejecuta"
+    permissions:
+      - "proxy:all"
+    policies:
+      - resource: "*"
+        action: "proxy"
+        effect: "allow"
+      - resource: "*"
+        action: "execute"
+        effect: "deny"  # No puede ejecutar directamente
+
+  - role_id: "svc.scout"
+    role_name: "Scout Service"
+    description: "Recolecta señales externas y métricas"
+    permissions:
+      - "write:signals"
+      - "read:signals"
+    policies:
+      - resource: "signals"
+        action: "*"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"
+
+  # ========================================
+  # HUMAN USERS (Usuarios)
+  # ========================================
+
+  - role_id: "user.admin"
+    role_name: "Administrator"
+    description: "Administrador del sistema con acceso total"
+    permissions:
+      - "admin:users"
+      - "admin:policies"
+      - "admin:audit"
+      - "read:budget"
+      - "write:budget"
+      - "write:rules"
+      - "read:plans"
+      - "read:insights"
+      - "read:signals"
+    policies:
+      - resource: "*"
+        action: "*"
+        effect: "allow"
+
+  - role_id: "user.manager"
+    role_name: "Manager"
+    description: "Gestor de negocio. Aprueba presupuestos y visualiza dashboards"
+    permissions:
+      - "read:budget"
+      - "write:budget"
+      - "read:plans"
+      - "read:insights"
+      - "read:signals"
+      - "write:approvals"
+    policies:
+      - resource: "budget"
+        action: "*"
+        effect: "allow"
+      - resource: "plans"
+        action: "read"
+        effect: "allow"
+      - resource: "approvals"
+        action: "write"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"
+
+  - role_id: "user.viewer"
+    role_name: "Viewer"
+    description: "Visualizador de métricas y dashboards. Solo lectura"
+    permissions:
+      - "read:plans"
+      - "read:insights"
+      - "read:signals"
+      - "read:budget"
+    policies:
+      - resource: "*"
+        action: "read"
+        effect: "allow"
+      - resource: "*"
+        action: "write"
+        effect: "deny"
+      - resource: "*"
+        action: "execute"
+        effect: "deny"
+
+  - role_id: "user.operator"
+    role_name: "Operator"
+    description: "Operador técnico. Gestiona servicios pero no ejecuta acciones de negocio"
+    permissions:
+      - "read:plans"
+      - "read:insights"
+      - "read:signals"
+      - "admin:audit"
+    policies:
+      - resource: "*"
+        action: "read"
+        effect: "allow"
+      - resource: "audit"
+        action: "read"
+        effect: "allow"
+      - resource: "actions"
+        action: "execute"
+        effect: "deny"
+      - resource: "budget"
+        action: "write"
+        effect: "deny"
+
+# ========================================
+# GLOBAL POLICY SETTINGS
+# ========================================
+
+settings:
+  default_policy: "deny"  # Default deny (Zero Trust)
+  token_expiration_minutes: 15
+  mtls_mode: "permissive"  # strict | permissive
+  audit_level: "all"  # all | security | none

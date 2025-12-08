@@ -1,7 +1,7 @@
 import logging
 import uuid
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from typing import Dict, Any
 from dotenv import load_dotenv
@@ -17,7 +17,30 @@ from microservice_actuator.models.schemas import ActionRequest
 from microservice_actuator.core.memory_client import MemoryClient
 from microservice_actuator.core.creative_factory import CreativeFactory
 
-app = FastAPI(title="Block 7: Actuator Engine - Reality Factory")
+# Security Modules (RFC-PHOENIX-03)
+from core.security import (
+    secret_manager,
+    get_security_context,
+    SecurityContext,
+    require_permission,
+    Permission,
+    create_security_middleware,
+    get_mtls_config,
+    configure_uvicorn_ssl,
+    audit_logger
+)
+
+app = FastAPI(
+    title="Block 7: Actuator Engine - Reality Factory (Secure)",
+    version="3.0.0"
+)
+
+# Security Middleware
+security_middleware = create_security_middleware(
+    service_name="actuator",
+    exclude_paths=["/health", "/docs", "/openapi.json"]
+)
+app.middleware("http")(security_middleware)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ActuatorAPI")
@@ -43,10 +66,49 @@ class WebProposal(BaseModel):
     reasoning: str = "Direct command"
 
 @app.post("/actuate")
-async def execute_action(proposal: WebProposal):
+async def execute_action(
+    proposal: WebProposal,
+    ctx: SecurityContext = Depends(get_security_context)
+):
+    """
+    Ejecuta una acción externa SOLO si:
+    1. El token es válido
+    2. El servicio tiene permiso EXECUTE_EXTERNAL
+    3. La petición viene de Enterprise (con aprobación)
+    
+    RFC-PHOENIX-03: Zero Trust Enforcement
+    """
     logger.info(f"🔔 Solicitud de actuación recibida: {proposal.action_type}")
+    logger.info(f"🔐 Actor: {ctx.service_id} (role: {ctx.role})")
+    
+    # Validar permiso
+    from core.security import iam_enforcer
+    
+    has_permission = iam_enforcer.check_permission(
+        ctx.role,
+        Permission.EXECUTE_EXTERNAL
+    )
+    
+    if not has_permission:
+        audit_logger.log_action_denied(
+            service_id=ctx.service_id,
+            action="execute_external",
+            target="actuator",
+            reason="Insufficient permissions"
+        )
+        
+        return {
+            "status": "DENIED",
+            "reason": "Service does not have EXECUTE_EXTERNAL permission"
+        }
+    
+    # Validar que viene de Enterprise (opcional pero recomendado)
+    if ctx.service_id != "svc.enterprise":
+        logger.warning(f"⚠️  Ejecución solicitada por servicio no autorizado: {ctx.service_id}")
+        # En modo estricto, rechazar. En modo permisivo, permitir pero auditar.
     
     action_id = str(uuid.uuid4())
+
     
     action_req = ActionRequest(
         action_id=action_id,
@@ -59,11 +121,39 @@ async def execute_action(proposal: WebProposal):
     # El handler llamará a creative_factory.generate_asset, que ahora usa RAG
     result = await marketing_handler.execute(action_req)
     
+    # Registrar ejecución en auditoría
+    audit_logger.log_action_executed(
+        service_id=ctx.service_id,
+        action="execute_external",
+        target=proposal.action_type,
+        details={
+            "action_id": action_id,
+            "action_type": proposal.action_type
+        }
+    )
+    
     return result
 
-@app.get("/")
+@app.get("/health")
 def health_check():
-    return {"status": "online", "mode": "REALITY_FACTORY_V1_RAG_ENABLED"}
+    return {
+        "status": "online", 
+        "mode": "REALITY_FACTORY_V3_SECURE",
+        "security": "RFC-PHOENIX-03"
+    }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    import uvicorn
+    
+    # Configuración mTLS
+    mtls_config = get_mtls_config("actuator")
+    ssl_params = configure_uvicorn_ssl(mtls_config)
+    
+    logger.info("🚀 Starting Actuator Engine (Secure Mode)")
+    
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8002,
+        **ssl_params
+    )

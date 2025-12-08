@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # 🧠 EL CEREBRO DE DATOS FRÍOS (PostgreSQL)
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: leadboost_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password_seguro_123
+      POSTGRES_DB: leadboost_cold_store
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init.sql # Script de inicio
+
+  # ⚡ EL SISTEMA NERVIOSO (Redis)
+  redis_bus:
+    image: redis:7-alpine
+    container_name: leadboost_bus
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+
+  # 🏛️ ENTERPRISE NERVOUS SYSTEM (con STS)
+  enterprise:
+    build:
+      context: .
+      dockerfile: microservice_enterprise/Dockerfile
+    container_name: leadboost_enterprise
+    ports:
+      - "8002:8002"  # Puerto principal de Enterprise
+      - "8011:8011"  # Puerto STS (mantenido para compatibilidad)
+    environment:
+      - SECRET_PROVIDER=local
+      - MTLS_ENABLED=false  # true en producción
+      - MTLS_MODE=permissive
+      - REDIS_HOST=redis_bus
+      - REDIS_PORT=6379
+      # STS Configuration
+      - STS_PRIVATE_KEY_PATH=/app/certs/sts/sts_private.pem
+      - STS_PUBLIC_KEY_PATH=/app/certs/sts/sts_public.pem
+      - STS_KEY_ID=key-001
+      - TOKEN_EXPIRATION_MINUTES=15
+      # Service Secrets
+      - ENTERPRISE_CLIENT_SECRET=${ENTERPRISE_CLIENT_SECRET:-dev_secret_enterprise_001}
+    volumes:
+      - ./certs:/app/certs:ro  # Certificados y claves STS (read-only)
+      - ./config:/app/config:ro
+    depends_on:
+      - redis_bus
+      - postgres_db
+
+  # 🎯 ACTUATOR ENGINE
+  actuator:
+    build:
+      context: .
+      dockerfile: microservice_actuator/Dockerfile
+    container_name: leadboost_actuator
+    ports:
+      - "8003:8003"  # Cambio de puerto para evitar conflicto con Enterprise
+    environment:
+      - SECRET_PROVIDER=local
+      - MTLS_ENABLED=false
+      - MTLS_MODE=permissive
+      - STS_URL=http://enterprise:8011/sts/token
+      - ACTUATOR_CLIENT_SECRET=${ACTUATOR_CLIENT_SECRET:-dev_secret_actuator_002}
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./config:/app/config:ro
+    depends_on:
+      - enterprise
+
+  # 🌐 BFF GATEWAY (Backend-for-Frontend)
+  bff:
+    build:
+      context: ./backend
+      dockerfile: microservice_bff/Dockerfile
+    container_name: leadboost_bff
+    ports:
+      - "8000:8000"  # Puerto del BFF Gateway
+    environment:
+      - SECRET_PROVIDER=local
+      - MTLS_ENABLED=false
+      - MTLS_MODE=permissive
+      - STS_URL=http://enterprise:8011/sts/token
+      - BFF_CLIENT_SECRET=${BFF_CLIENT_SECRET:-dev_secret_bff_006}
+      # URLs de microservicios internos
+      - ENTERPRISE_URL=http://enterprise:8002
+      - ACTUATOR_URL=http://actuator:8003
+      - ANALYST_URL=http://analyst:8004
+      - OPTIMIZER_URL=http://optimizer:8005
+      - MEMORY_URL=http://memory:8006
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./config:/app/config:ro
+    depends_on:
+      - enterprise
+      - redis_bus
+
+volumes:
+  postgres_data:

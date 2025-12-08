@@ -1,13 +1,19 @@
+
+
+
 import asyncio
 import json
 import logging
+import os
 import redis.asyncio as redis
 from websocket_manager import manager  # Importing the manager provided in context
 
 logger = logging.getLogger("uvicorn")
 
 # Configuration
-REDIS_URL = "redis://localhost:6379"
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"
 CHANNEL_NAME = "system_events"
 
 async def redis_connector():
