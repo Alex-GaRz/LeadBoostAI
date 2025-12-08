@@ -77,3 +77,23 @@ certs/
 
 # REPORTE FINAL
 /advanced_reports/REPORTE_FINAL.md
+
+# Entornos Virtuales
+.venv/
+venv/
+env/
+
+# Python Cache (Esto es lo que más ensucia tu tree)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Logs y herramientas temporales
+*.log
+tools/
