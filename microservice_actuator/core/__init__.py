@@ -1,1 +1,1 @@
-# Core module
+# Core domain layer - Business logic without external dependencies.

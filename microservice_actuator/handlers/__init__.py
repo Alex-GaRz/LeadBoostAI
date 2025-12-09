@@ -1,1 +1,1 @@
-# Handlers module
+"""Platform Handlers (Driven Adapters) - External integrations."""

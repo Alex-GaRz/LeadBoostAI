@@ -1,159 +1,100 @@
+"""
+Actuator Microservice - Entry Point
+Phase 4 Implementation of RFC-PHOENIX-04
+Hexagonal Architecture (Ports & Adapters)
+"""
+
 import logging
-import uuid
-import uvicorn
-from fastapi import FastAPI, Depends
-from pydantic import BaseModel
-from typing import Dict, Any
-from dotenv import load_dotenv
 import os
+from contextlib import asynccontextmanager
 
-# Cargar .env
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', '.env'))
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
-from microservice_actuator.handlers.marketing_handler import MarketingHandler
-from microservice_actuator.models.schemas import ActionRequest
-# Nuevas importaciones para Inyección de Dependencias
-from microservice_actuator.core.memory_client import MemoryClient
-from microservice_actuator.core.creative_factory import CreativeFactory
+from routers.execution import router as execution_router
+from core.db_repo import LedgerRepository
 
-# Security Modules (RFC-PHOENIX-03)
-from core.security import (
-    secret_manager,
-    get_security_context,
-    SecurityContext,
-    require_permission,
-    Permission,
-    create_security_middleware,
-    get_mtls_config,
-    configure_uvicorn_ssl,
-    audit_logger
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager.
+    Handles startup and shutdown events.
+    """
+    # Startup
+    logger.info("🚀 Starting Actuator Microservice (Phase 4)")
+    logger.info("Architecture: Hexagonal (Ports & Adapters)")
+    logger.info("DMC Compliance: Invariant #5 - 'Actuator does not think'")
+    
+    # Initialize database connection pool
+    ledger = LedgerRepository()
+    await ledger.initialize()
+    logger.info("✅ Database connection pool initialized")
+    
+    yield
+    
+    # Shutdown
+    logger.info("🛑 Shutting down Actuator Microservice")
+    await ledger.close()
+    logger.info("✅ Database connections closed gracefully")
+
+
+# FastAPI application instance
 app = FastAPI(
-    title="Block 7: Actuator Engine - Reality Factory (Secure)",
-    version="3.0.0"
+    title="LeadBoostAI - Actuator Engine",
+    description="Phase 4: Execution microservice with Hexagonal Architecture",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
-# Security Middleware
-security_middleware = create_security_middleware(
-    service_name="actuator",
-    exclude_paths=["/health", "/docs", "/openapi.json"]
+# CORS middleware (configure properly for production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO: Restrict in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-app.middleware("http")(security_middleware)
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("ActuatorAPI")
+# Include routers
+app.include_router(execution_router)
 
-# --- COMPOSITION ROOT ---
-# Inicializamos el cliente de memoria (Singleton en la app)
-memory_client = MemoryClient()
-
-# Inicializamos la Fábrica Creativa con el cliente de memoria
-creative_factory = CreativeFactory(memory_client=memory_client)
-
-# Inicializamos el Handler inyectando la fábrica personalizada
-# (Asumimos que MarketingHandler acepta creative_factory en init o lo seteamos manualmente)
-marketing_handler = MarketingHandler()
-# Monkey-patching o inyección por setter si el Handler no lo soporta en __init__
-# Idealmente MarketingHandler.__init__ debería aceptar la fábrica.
-# Para este ejercicio, asumimos que asignamos la instancia:
-marketing_handler.creative_factory = creative_factory
-
-class WebProposal(BaseModel):
-    action_type: str 
-    parameters: Dict[str, Any]
-    reasoning: str = "Direct command"
-
-@app.post("/actuate")
-async def execute_action(
-    proposal: WebProposal,
-    ctx: SecurityContext = Depends(get_security_context)
-):
-    """
-    Ejecuta una acción externa SOLO si:
-    1. El token es válido
-    2. El servicio tiene permiso EXECUTE_EXTERNAL
-    3. La petición viene de Enterprise (con aprobación)
-    
-    RFC-PHOENIX-03: Zero Trust Enforcement
-    """
-    logger.info(f"🔔 Solicitud de actuación recibida: {proposal.action_type}")
-    logger.info(f"🔐 Actor: {ctx.service_id} (role: {ctx.role})")
-    
-    # Validar permiso
-    from core.security import iam_enforcer
-    
-    has_permission = iam_enforcer.check_permission(
-        ctx.role,
-        Permission.EXECUTE_EXTERNAL
-    )
-    
-    if not has_permission:
-        audit_logger.log_action_denied(
-            service_id=ctx.service_id,
-            action="execute_external",
-            target="actuator",
-            reason="Insufficient permissions"
-        )
-        
-        return {
-            "status": "DENIED",
-            "reason": "Service does not have EXECUTE_EXTERNAL permission"
-        }
-    
-    # Validar que viene de Enterprise (opcional pero recomendado)
-    if ctx.service_id != "svc.enterprise":
-        logger.warning(f"⚠️  Ejecución solicitada por servicio no autorizado: {ctx.service_id}")
-        # En modo estricto, rechazar. En modo permisivo, permitir pero auditar.
-    
-    action_id = str(uuid.uuid4())
-
-    
-    action_req = ActionRequest(
-        action_id=action_id,
-        action_type=proposal.action_type,
-        priority="HIGH",
-        reasoning=proposal.reasoning,
-        parameters=proposal.parameters
-    )
-
-    # El handler llamará a creative_factory.generate_asset, que ahora usa RAG
-    result = await marketing_handler.execute(action_req)
-    
-    # Registrar ejecución en auditoría
-    audit_logger.log_action_executed(
-        service_id=ctx.service_id,
-        action="execute_external",
-        target=proposal.action_type,
-        details={
-            "action_id": action_id,
-            "action_type": proposal.action_type
-        }
-    )
-    
-    return result
-
-@app.get("/health")
-def health_check():
+# Root endpoint
+@app.get("/")
+async def root():
     return {
-        "status": "online", 
-        "mode": "REALITY_FACTORY_V3_SECURE",
-        "security": "RFC-PHOENIX-03"
+        "service": "actuator",
+        "phase": 4,
+        "architecture": "hexagonal",
+        "status": "operational",
+        "documentation": "/docs"
     }
+
 
 if __name__ == "__main__":
     import uvicorn
     
-    # Configuración mTLS
-    mtls_config = get_mtls_config("actuator")
-    ssl_params = configure_uvicorn_ssl(mtls_config)
+    # PORT 8003 IS MANDATORY FOR ACTUATOR (per RFC-PHOENIX-04)
+    port = int(os.getenv("PORT", 8003))
+    host = os.getenv("HOST", "0.0.0.0")
     
-    logger.info("🚀 Starting Actuator Engine (Secure Mode)")
+    logger.info(f"🌐 Starting server on {host}:{port}")
     
     uvicorn.run(
-        app, 
-        host="0.0.0.0", 
-        port=8002,
-        **ssl_params
+        "main:app",
+        host=host,
+        port=port,
+        reload=True,  # Disable in production
+        log_level="info"
     )

@@ -76,6 +76,28 @@ services:
     depends_on:
       - enterprise
 
+  actuator:
+    build:
+      context: ./microservice_actuator
+      dockerfile: Dockerfile
+    container_name: leadboost_actuator
+    ports:
+      - "8003:8003"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=postgres_db
+      - DB_PORT=5432
+      - DB_NAME=leadboost_db
+      - DB_USER=leadboost
+      - DB_PASSWORD=leadboost_password
+      - ACTUATOR_SECRET=PHASE4_ACTUATOR_SECRET_2025
+      - BFF_CLIENT_SECRET=PHASE3_MASTER_KEY_2025
+    networks:
+      - leadboost_default
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
 networks:
   leadboost_default:
     driver: bridge
