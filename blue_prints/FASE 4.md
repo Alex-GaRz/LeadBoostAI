@@ -1,269 +1,179 @@
 
-# 📄 RFC-PHOENIX-04: ACTUATOR & ORCHESTRATION ENGINE
+# 📄 RFC-PHOENIX-04: DETERMINISTIC VISUAL ENGINE (DVE)
 
 | Metadatos | Detalle |
 | :--- | :--- |
 | **Proyecto** | LeadBoostAI - Sistema Operativo Empresarial Autónomo |
-| **Fase** | FASE 4 - Actuator & Orchestration Engine |
-| **Autor** | Principal Systems Architect |
+| **Fase** | **FASE 4 - Motor Visual: Fidelidad de Producto** |
+| **Autor** | Principal ML & Computer Vision Architect |
 | **Estado** | `DRAFT` (Pendiente de Aprobación de Ingeniería) |
-| **Dependencias** | RFC-PHOENIX-03 (IAM/STS), DMC v1.0 (Cap. Ejecución) |
-| **Arquitectura** | Hexagonal (Ports & Adapters) |
+| **Dependencias** | RFC-PHOENIX-03 (Seguridad), PLAN 2 (Fase 4) |
+| **Arquitectura** | Pipeline Gráfico Basado en Nodos (DAG) |
 
 -----
 
 ## 1\. Resumen Ejecutivo
 
-### 1.1 El Problema
+### 1.1 El Problema (Alucinación Generativa)
 
-Hasta ahora, la ejecución de acciones (publicar tweets, lanzar campañas) estaba acoplada a la lógica de decisión o simulada. Esto viola el **Principio de Invariante \#5 del DMC**: *"El Actuator no piensa, solo ejecuta"*. Además, carecemos de un mecanismo de aislamiento que permita cambiar proveedores (ej. de Meta a TikTok) sin reescribir el núcleo del sistema.
+Los modelos generativos (DALL-E 3, Midjourney) son artistas, no ingenieros. Cuando se les pide "dibuja una lata de Coca-Cola", inventan los píxeles. En un contexto Enterprise, esto es inaceptable. **El producto (SKU) es sagrado.** Alterar un píxel del logo o deformar el envase constituye un riesgo de marca y legal. Además, la IA generativa es incapaz de renderizar tipografías corporativas con el kerning y espaciado exactos requeridos por un Brand Book.
 
-### 1.2 La Solución (Target Architecture)
+### 1.2 La Solución (Composición Determinista)
 
-Implementaremos el **Motor de Actuación (Microservice Actuator)** bajo una **Arquitectura Hexagonal**. Este servicio será un "brazo mecánico" tonto pero extremadamente robusto.
+No "generaremos" el anuncio completo. Lo **ensamblaremos**.
+Implementaremos un **Motor Visual Híbrido** basado en un Grafo Acíclico Dirigido (DAG).
 
-  * **Desacoplamiento:** El Core no conoce las APIs externas; usa interfaces (`Ports`). Los `Adapters` (Handlers) implementan la lógica sucia de cada proveedor.
-  * **Seguridad de Ejecución:** Implementación de un pipeline de validación criptográfica (`command_token`) y de estado (`HITL`) antes de cualquier llamada externa.
-
------
-
-## 2\. Arquitectura del Sistema
-
-### 2.1 Patrón Hexagonal (Ports & Adapters)
-
-El servicio se dividirá estrictamente en tres capas concéntricas:
-
-1.  **Dominio (Core):** Define *qué* se puede hacer (`IPlatformAdapter`, `ExecutionCommand`, `ExecutionResult`). No tiene dependencias externas.
-2.  **Puertos (Ports):** Interfaces que definen cómo el mundo exterior habla con el Core (API REST) y cómo el Core habla con el exterior (Interfaces de Adaptadores).
-3.  **Adaptadores (Infrastructure):** Implementaciones concretas.
-      * *Driving Adapters (Entrada):* FastAPI Router (`POST /execute`).
-      * *Driven Adapters (Salida):* `TwitterHandler`, `MetaHandler`, `PostgresRepository`.
-
-### 2.2 Diagrama de Secuencia: El Pipeline de Ejecución Seguro
-
-Este flujo garantiza que ninguna acción ocurra sin autorización explícita de `Enterprise` (Fase 3) y validación humana (HITL).
-
-```mermaid
-sequenceDiagram
-    participant BFF as API Gateway (BFF)
-    participant STS as Security Token Service
-    participant ACT as Actuator Service
-    participant DB as PostgreSQL (Ledger)
-    participant EXT as External API (Twitter/Meta)
-
-    Note over BFF, ACT: 1. Petición de Ejecución
-    BFF->>ACT: POST /execute (ServiceToken + CommandToken)
-    
-    Note over ACT, STS: 2. Validación de Identidad (Fase 3)
-    ACT->>STS: Validate ServiceToken (mTLS/JWT)
-    STS-->>ACT: Token Valid (Role: BFF, Scope: Proxy)
-
-    Note over ACT: 3. Validación de Autoridad (Fase 4)
-    ACT->>ACT: Verify CommandToken Signature (Firmado por Enterprise?)
-    
-    Note over ACT, DB: 4. Verificación de Estado HITL
-    ACT->>DB: SELECT status FROM actions_ledger WHERE id = action_id
-    
-    alt Status != APPROVED
-        DB-->>ACT: Status: PENDING / REJECTED
-        ACT-->>BFF: 403 Forbidden (Action not approved by Human)
-    else Status == APPROVED
-        DB-->>ACT: Status: APPROVED
-        
-        Note over ACT: 5. Bloqueo Optimista
-        ACT->>DB: UPDATE status = EXECUTING
-        
-        Note over ACT, EXT: 6. Ejecución Polimórfica (Adapter)
-        ACT->>EXT: API Call (Post Tweet / Create Ad)
-        
-        alt Success
-            EXT-->>ACT: 200 OK {platform_id}
-            ACT->>DB: UPDATE status = COMPLETED, result = {...}
-            ACT-->>BFF: 200 OK (Execution Report)
-        else Failure
-            EXT-->>ACT: 500 Error / Rate Limit
-            ACT->>DB: UPDATE status = FAILED, error = {...}
-            ACT-->>BFF: 502 Bad Gateway (Execution Failed)
-        end
-    end
-```
+1.  **El Producto:** Se extrae quirúrgicamente (segmentación) y se trata como una capa inmutable.
+2.  **El Contexto:** Se genera o selecciona (fondo) alrededor del producto.
+3.  **El Mensaje:** Se renderiza programáticamente (HTML/CSS) para garantizar perfección tipográfica.
+4.  **La Auditoría:** Un "fiscal" OCR valida que el precio en la imagen coincida con la base de datos antes de guardar.
 
 -----
 
-## 3\. Especificación Técnica de Componentes
+## 2\. Arquitectura del Microservicio (`microservice_visual`)
 
-### 3.1 Estructura del Proyecto (`microservice_actuator/`)
+El sistema no es un script lineal. Es un orquestador de nodos de procesamiento independientes.
+
+### 2.1 Estructura de Archivos
 
 ```text
-microservice_actuator/
+microservice_visual/
 ├── core/
 │   ├── __init__.py
-│   ├── domain_models.py       # Pydantic Schemas (Input/Output neutros)
-│   ├── interfaces.py          # Clases Abstractas (Ports)
-│   └── exceptions.py          # Excepciones de dominio (ej. PlatformError)
-├── handlers/                  # Driven Adapters (Plugins)
+│   ├── pipeline.py            # Orquestador del DAG
+│   ├── context.py             # Objeto de estado que viaja por el tubo (Blackboard pattern)
+│   └── interfaces.py          # Clase Abstracta IPipelineNode
+├── nodes/                     # Implementaciones concretas de cada paso
 │   ├── __init__.py
-│   ├── factory.py             # Factory Pattern para instanciar handlers
-│   ├── twitter_handler.py     # Implementación real
-│   └── meta_handler.py        # Implementación real
-├── routers/                   # Driving Adapters
-│   ├── __init__.py
-│   └── execution.py           # Endpoint FastAPI
-├── services/
-│   └── execution_service.py   # Lógica de orquestación (Glue code)
-├── main.py                    # Entrypoint & DI Container
+│   ├── input_node.py          # Carga y validación de assets crudos
+│   ├── segmentation_node.py   # rembg (u2net) + Alpha Matting
+│   ├── background_node.py     # GenAI Inpainting / Stock Fetcher
+│   ├── composition_node.py    # Pillow Layering (Pixel Immutable Logic)
+│   ├── typography_node.py     # Playwright HTML Renderer
+│   └── forensic_node.py       # Tesseract/EasyOCR Validation
+├── templates/                 # Plantillas HTML/CSS (Jinja2) para anuncios
+│   ├── promo_retail.html
+│   └── luxury_showcase.html
+├── api/
+│   └── routes.py              # Endpoint FastAPI (Trigger)
+├── main.py                    # Entrypoint
 └── requirements.txt
 ```
 
-### 3.2 Definición de Interfaces (`core/interfaces.py`)
+-----
 
-El contrato que todos los plugins deben cumplir.
+## 3\. Diseño del Grafo (DAG Architecture)
+
+### 3.1 El Contrato (`core/interfaces.py`)
+
+Cada operación visual es un `Node`. Los nodos no saben quién viene antes o después, solo transforman el `VisualContext`.
 
 ```python
 from abc import ABC, abstractmethod
-from typing import Dict, Any
-from .domain_models import ExecutionResult, ActionPayload
+from typing import Any, Dict
 
-class ISocialPlatformAdapter(ABC):
-    """
-    Puerto de salida (Driven Port).
-    Define las capacidades genéricas requeridas por el Actuator.
-    """
+class VisualContext:
+    """La 'cinta transportadora' que lleva los datos entre nodos."""
+    def __init__(self, sku_data: Dict):
+        self.sku_id = sku_data['id']
+        self.raw_image = None       # PIL Image Original
+        self.mask = None            # Alpha Channel Mask
+        self.product_layer = None   # Producto Recortado (RGBA)
+        self.background_layer = None
+        self.text_layer = None
+        self.final_composition = None
+        self.metadata = {}          # Log de auditoría
 
+class IPipelineNode(ABC):
+    """Contrato estricto para cada paso del proceso visual."""
     @abstractmethod
-    async def authenticate(self) -> bool:
-        """Valida credenciales con el proveedor externo."""
-        pass
-
-    @abstractmethod
-    async def post_content(self, payload: ActionPayload) -> ExecutionResult:
+    async def process(self, context: VisualContext) -> VisualContext:
         """
-        Ejecuta la publicación de contenido.
-        Debe manejar sus propios reintentos y rate limits.
+        Recibe el contexto, realiza una transformación atómica y lo devuelve.
+        Debe lanzar VisualPipelineError si falla.
         """
-        pass
-
-    @abstractmethod
-    async def get_metrics(self, resource_id: str) -> Dict[str, Any]:
-        """Recupera métricas post-ejecución."""
         pass
 ```
 
-### 3.3 Implementación de Handler (`handlers/twitter_handler.py`)
+-----
 
-Ejemplo de cómo un adaptador encapsula la complejidad externa.
+## 4\. Estrategia Técnica por Nodo
+
+### 4.1 Nodo de Segmentación (`nodes/segmentation_node.py`)
+
+**Objetivo:** Aislar el producto con precisión quirúrgica.
+**Tecnología:** `rembg` (u2net model) con Alpha Matting activado para bordes suaves (pelo, transparencias).
+
+  * **Configuración Crítica:**
+      * `alpha_matting=True`: Para evitar bordes "duros" o pixelados.
+      * `alpha_matting_foreground_threshold=240`: Preservar detalles del objeto.
+      * **Validación de Integridad:** Calcular el Hash (SHA-256) de los píxeles visibles del producto post-recorte. Este hash debe coincidir con el "Golden Master" del SKU si existe.
+
+### 4.2 Nodo de Fondo (`nodes/background_node.py`)
+
+**Objetivo:** Crear atmósfera sin tocar el producto.
+**Estrategia:**
+
+  * Si es GenAI: Usar Inpainting (Stable Diffusion XL / DALL-E) enviando la máscara del producto como "área negativa" (do not touch) o componiendo el fondo *a posteriori*.
+  * Si es Stock: Descargar asset de banco de imágenes compatible con la iluminación del producto.
+
+### 4.3 Nodo de Tipografía (`nodes/typography_node.py`)
+
+**Objetivo:** Texto perfecto. Ninguna IA generativa sabe escribir "50% OFF" consistentemente.
+**Estrategia: Renderizado Headless Browser.**
+
+1.  **Templating:** Usar `Jinja2` para inyectar variables (`{{ price }}`, `{{ copy_text }}`) en una plantilla HTML/CSS real que respeta el Brand Book (fuentes WOFF2, colores HEX, kerning).
+2.  **Renderizado:** `Playwright` levanta un navegador headless, carga el HTML (con fondo transparente `background: transparent;`) y toma un *screenshot* en alta resolución.
+3.  **Resultado:** Una capa PNG (RGBA) con texto vectorial rasterizado perfectamente.
+
+### 4.4 Nodo de Composición (`nodes/composition_node.py`)
+
+**Objetivo:** El ensamblaje final (Layering).
+**Lógica (Pillow):**
 
 ```python
-import tweepy
-from ..core.interfaces import ISocialPlatformAdapter
-from ..core.domain_models import ExecutionResult, ActionPayload, ActionStatus
-
-class TwitterHandler(ISocialPlatformAdapter):
-    def __init__(self, api_key: str, api_secret: str, access_token: str, access_secret: str):
-        self.client = tweepy.Client(
-            consumer_key=api_key, consumer_secret=api_secret,
-            access_token=access_token, access_token_secret=access_secret
-        )
-
-    async def post_content(self, payload: ActionPayload) -> ExecutionResult:
-        try:
-            # Lógica específica de Twitter
-            response = self.client.create_tweet(text=payload.content_text)
-            
-            return ExecutionResult(
-                action_id=payload.action_id,
-                status=ActionStatus.COMPLETED,
-                platform_ref_id=str(response.data['id']),
-                metadata={"raw_response": response.data}
-            )
-        except tweepy.TooManyRequests:
-            # Manejo específico de Rate Limit
-            return ExecutionResult(
-                action_id=payload.action_id,
-                status=ActionStatus.RATE_LIMITED,
-                error_message="Twitter API Rate Limit Exceeded"
-            )
-        except Exception as e:
-            return ExecutionResult(
-                action_id=payload.action_id,
-                status=ActionStatus.FAILED,
-                error_message=str(e)
-            )
+final_image = Image.new("RGBA", size)
+final_image.alpha_composite(background_layer)
+final_image.alpha_composite(product_layer, position=(x, y)) # EL PRODUCTO VA ARRIBA
+final_image.alpha_composite(text_layer)
 ```
 
------
+  * **Invariante:** La capa del producto **jamás** se modifica (no filtros, no distorsión). Solo se posiciona.
 
-## 4\. Contrato de API (OpenAPI Specification)
+### 4.5 Nodo Forense (`nodes/forensic_node.py`)
 
-Endpoint expuesto por el microservicio para el BFF u otros orquestadores internos.
+**Objetivo:** Validación de Negocio Automatizada.
+**Tecnología:** `pytesseract` (Tesseract OCR) o `EasyOCR`.
 
-**Endpoint:** `POST /api/v1/actuator/execute`
-
-**Headers:**
-
-  * `Authorization`: `Bearer <Service_JWT_Token>` (Identidad de la máquina)
-  * `X-Command-Signature`: `<HMAC_SHA256>` (Firma de Enterprise sobre el payload)
-
-**Request Body (JSON Schema):**
-
-```json
-{
-  "action_id": "uuid-v4",
-  "platform": "TWITTER | META | LINKEDIN",
-  "command_token": "jwt.signed.by.enterprise",
-  "payload": {
-    "content_text": "Texto del post o anuncio...",
-    "media_urls": ["https://assets.leadboost.ai/img1.png"],
-    "target_audience": {
-      "age_range": [25, 45],
-      "interests": ["AI", "Tech"]
-    },
-    "budget_bid": 15.50,
-    "schedule_time": "2025-10-20T10:00:00Z"
-  },
-  "governance_hash": "sha256_of_approved_policy"
-}
-```
+1.  **Extracción:** Leer todo el texto de `final_image`.
+2.  **Regex Matching:** Buscar patrones de precio (ej. `$1,200`, `20%`).
+3.  **Cruce de Datos:**
+      * ¿El precio leído ($990) coincide con `db.products.get(sku).price` ($990)?
+      * **Si SÍ:** `context.metadata['ocr_check'] = PASS`.
+      * **Si NO:** `raise IntegrityError("Precio en imagen no coincide con DB")`. **RECHAZO AUTOMÁTICO**.
 
 -----
 
-## 5\. Integración con Base de Datos (HITL Ledger)
+## 5\. Plan de Implementación (Modular)
 
-El actuador no tiene base de datos propia para reglas de negocio, pero debe tener acceso de **lectura/escritura** a la tabla de `execution_ledger` (definida en Fase 1) para validar el estado HITL.
+Este orden garantiza que cada pieza sea testeable por separado antes de la integración.
 
-**SQL Check (Pseudocódigo):**
-
-```sql
-SELECT status 
-FROM governance.actions_ledger 
-WHERE id = :action_id 
-AND tenant_id = :tenant_id
-AND status = 'APPROVED_BY_HUMAN'; -- Invariante crítico
-```
+1.  **Cimientos:** Configurar entorno Docker con dependencias pesadas (`playwright install`, modelos `u2net`).
+2.  **Módulo de Segmentación:** Implementar `SegmentationNode` y crear test unitario que tome una foto de zapato y devuelva PNG transparente.
+3.  **Módulo de Tipografía:** Crear `typography_node` y una plantilla HTML base. Test: Generar PNG con precio dinámico.
+4.  **Core Pipeline:** Implementar la clase `VisualPipeline` que encadene nodos.
+5.  **Ensamblaje:** Crear `CompositionNode` y probar la superposición de capas.
+6.  **Policía Visual:** Implementar `ForensicNode` con OCR. Testear con imágenes que tengan precios correctos e incorrectos.
+7.  **Exposición:** Crear endpoint FastAPI `POST /generate_asset` que reciba el SKU y el Copy, y devuelva la URL de la imagen generada.
 
 -----
 
-## 6\. Plan de Implementación (Paso a Paso)
+## 6\. Criterios de Aceptación (DoD)
 
-1.  **Skeleton & Core:** Crear la estructura de carpetas y definir `domain_models.py` e `interfaces.py`. Sin lógica real.
-2.  **Factory Pattern:** Implementar `handlers/factory.py` que devuelva la instancia correcta basada en el string `platform` ("TWITTER" -\> `TwitterHandler`).
-3.  **Mock Adapters:** Crear `handlers/mock_handler.py` que simule latencia y respuestas exitosas para pruebas locales sin gastar cuota de API.
-4.  **Database Integration:** Implementar la conexión a PostgreSQL para realizar el check de `APPROVED_BY_HUMAN`.
-5.  **Security Layer:** Integrar el middleware de validación de tokens (STS Client) creado en Fase 3.
-6.  **Twitter Implementation:** Implementar `TwitterHandler` real con credenciales inyectadas (vía Secret Manager).
-7.  **API Router:** Conectar todo en `routers/execution.py` y exponerlo en `main.py`.
+  * [ ] **Zero Hallucination:** El producto en la imagen final es bit-a-bit idéntico al recorte original (validado por inspección visual y Hash).
+  * [ ] **Tipografía Perfecta:** El texto es legible, usa la fuente de la marca y no tiene "glitches" de IA.
+  * [ ] **Validación Forense:** El sistema rechaza automáticamente cualquier imagen donde el precio OCR difiera del precio DB.
+  * [ ] **Persistencia:** La imagen final y sus capas (raw, mask, text) se guardan en disco/S3 con IDs trazables.
+  * [ ] **Performance:** Tiempo total de generación \< 15 segundos por asset.
 
 -----
-
-## 7\. Criterios de Aceptación (DoD)
-
-  * [ ] El servicio levanta en Docker y pasa el Health Check.
-  * [ ] Si envío un `POST /execute` con un `action_id` que no está en estado `APPROVED` en la BD, recibo un 403.
-  * [ ] Si envío un token inválido, recibo un 401.
-  * [ ] Puedo ejecutar una acción en "Mock Mode" y ver el cambio de estado en la base de datos a `COMPLETED`.
-  * [ ] El código del handler de Twitter no está mezclado con la lógica de validación HTTP (Separación de intereses).
-  * [ ] Existe un diagrama de secuencia actualizado en la documentación del repositorio.
-
------
-
-**FIN DEL RFC-PHOENIX-04**

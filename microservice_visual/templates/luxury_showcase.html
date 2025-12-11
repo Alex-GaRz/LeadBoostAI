@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxury Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: transparent;
+            font-family: 'Garamond', 'Georgia', serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+        }
+        
+        .luxury-frame {
+            border: 3px solid #d4af37;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(212, 175, 55, 0.2);
+            text-align: center;
+        }
+        
+        .product-name {
+            font-size: 42px;
+            font-weight: 300;
+            color: #2c2c2c;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        
+        .separator {
+            width: 120px;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #d4af37, transparent);
+            margin: 20px auto;
+        }
+        
+        .copy-text {
+            font-size: 24px;
+            font-weight: 400;
+            color: #4a4a4a;
+            font-style: italic;
+            line-height: 1.6;
+            max-width: 500px;
+            margin: 0 auto 30px;
+        }
+        
+        .price-section {
+            margin-top: 30px;
+        }
+        
+        .price-label {
+            font-size: 18px;
+            color: #888;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .price {
+            font-size: 56px;
+            font-weight: 400;
+            color: #d4af37;
+            letter-spacing: -1px;
+        }
+        
+        .currency {
+            font-size: 36px;
+        }
+        
+        /* Subtle animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .luxury-frame {
+            animation: scaleIn 0.8s ease-out;
+        }
+        
+        .product-name, .copy-text, .price-section {
+            animation: fadeIn 1s ease-out;
+        }
+        
+        .product-name {
+            animation-delay: 0.2s;
+        }
+        
+        .copy-text {
+            animation-delay: 0.4s;
+        }
+        
+        .price-section {
+            animation-delay: 0.6s;
+        }
+    </style>
+</head>
+<body>
+    <div class="luxury-frame">
+        <div class="product-name">
+            {{ product_name }}
+        </div>
+        
+        <div class="separator"></div>
+        
+        {% if copy_text %}
+        <div class="copy-text">
+            {{ copy_text }}
+        </div>
+        {% endif %}
+        
+        <div class="price-section">
+            <div class="price-label">
+                Price
+            </div>
+            <div class="price">
+                <span class="currency">$</span>{{ "%.2f"|format(price) }}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

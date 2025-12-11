@@ -1,0 +1,62 @@
+# .gitignore for microservice_visual
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+visual_engine.log
+
+# Generated assets
+output/*.png
+output/*.jpg
+output/*.jpeg
+
+# Uploaded product images (ignore actual files, keep directory)
+assets/*.png
+assets/*.jpg
+assets/*.jpeg
+assets/*.webp
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Playwright
+.playwright/
+
+# Model cache (rembg downloads u2net model)
+.u2net/

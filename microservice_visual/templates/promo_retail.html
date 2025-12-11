@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;700;900&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1024px;
+            height: 1024px; /* O el tamaño que uses en tu canvas */
+            background: transparent; /* Importante: deja ver el fondo generado por Python */
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .container {
+            padding: 60px;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* Elementos Decorativos de Marca */
+        .brand-badge {
+            position: absolute;
+            top: 60px;
+            right: 60px;
+            background: #000;
+            color: #fff;
+            padding: 10px 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        /* Títulos Principales */
+        .headline {
+            font-size: 80px;
+            font-weight: 900;
+            color: #1a1a1a;
+            line-height: 0.9;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.5);
+            max-width: 80%;
+            margin-top: 40px;
+        }
+
+        .headline span {
+            color: #e63946; /* Color de acento */
+            display: block;
+        }
+
+        /* Sección de Precio */
+        .price-tag {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            align-self: flex-start;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .price-label {
+            font-size: 16px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .price-amount {
+            font-size: 72px;
+            font-weight: 900;
+            color: #1a1a1a;
+            line-height: 1;
+        }
+
+        .discount-badge {
+            background: #e63946;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 700;
+            vertical-align: middle;
+            margin-left: 15px;
+        }
+
+        /* Footer / Disclaimer */
+        .footer {
+            font-size: 14px;
+            color: #888;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            padding-top: 20px;
+            width: 100%;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="brand-badge">{{ sku_name }}</div>
+
+        <div class="headline">
+            {{ campaign_copy }}
+            <span>AHORA MISMO</span>
+        </div>
+
+        <div style="flex-grow: 1;"></div>
+
+        <div class="price-tag">
+            <div class="price-label">Precio Exclusivo</div>
+            <div class="price-amount">
+                ${{ price }}
+                {% if discount > 0 %}
+                <span class="discount-badge">-{{ discount }}%</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="footer">
+            Oferta válida hasta agotar existencias. Términos y condiciones aplican.
+        </div>
+    </div>
+</body>
+</html>

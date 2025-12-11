@@ -98,6 +98,21 @@ services:
       postgres_db:
         condition: service_healthy
 
+  visual_engine:
+    build:
+      context: ./microservice_visual
+      dockerfile: Dockerfile
+    container_name: leadboost_visual
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./microservice_visual/assets:/app/assets
+      - ./microservice_visual/output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - leadboost_default
+
 networks:
   leadboost_default:
     driver: bridge
