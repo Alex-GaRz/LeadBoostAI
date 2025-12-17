@@ -1,0 +1,50 @@
+Metadata-Version: 2.4
+Name: leadboost-contracts
+Version: 1.0.0
+Summary: Shared contracts library for LeadBoostAI Phoenix V5
+Author: LeadBoostAI Team
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: typing-extensions>=4.8.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: mypy>=1.6.0; extra == "dev"
+
+# LeadBoostAI Contracts Library
+
+Shared contracts library for LeadBoostAI Phoenix V5 - Fase 5 implementation.
+
+## Installation
+
+From the repository root:
+
+```bash
+cd shared_lib
+pip install -e .
+```
+
+## Usage
+
+```python
+from contracts.payload import CampaignPayload
+from contracts.enums import CampaignState
+from contracts.artifacts import StrategyBrief, QualityReport
+
+# Create a campaign payload
+payload = CampaignPayload(
+    campaign_id=uuid4(),
+    tenant_id=uuid4(),
+    execution_id=uuid4(),
+    current_state=CampaignState.IDLE
+)
+```
+
+## Structure
+
+- `contracts/base.py` - Base models with UUIDs and time mixins
+- `contracts/enums.py` - All system enumerations
+- `contracts/artifacts.py` - Business artifacts (StrategyBrief, QualityReport)
+- `contracts/payload.py` - The master CampaignPayload with idempotency

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leadboost-contracts"
+version = "1.0.0"
+description = "Shared contracts library for LeadBoostAI Phoenix V5"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "LeadBoostAI Team"}
+]
+
+dependencies = [
+    "pydantic>=2.5.0",
+    "typing-extensions>=4.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "mypy>=1.6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]

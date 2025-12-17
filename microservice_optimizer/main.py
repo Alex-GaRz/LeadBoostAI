@@ -57,7 +57,27 @@ async def lifespan(app: FastAPI):
     yield
     task.cancel()
 
-app = FastAPI(title="LeadBoost Optimizer API", lifespan=lifespan)
+app = FastAPI(
+    title="LeadBoost Optimizer API",
+    description="Optimization engine with ROI prediction and Brand Genome governance",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+# ============================================================
+# INCLUDE GOVERNANCE ROUTER (Phase 5.2)
+# ============================================================
+try:
+    from microservice_optimizer.api.governance_routes import router as governance_router
+    app.include_router(governance_router)
+    logger.info("✅ Governance API routes registered")
+except ImportError as e:
+    logger.warning(f"⚠️ Could not load governance routes: {e}")
+    logger.warning("Install shared_lib first: cd shared_lib && pip install -e .")
+
+# ============================================================
+# LEGACY ENDPOINTS (ROI Prediction)
+# ============================================================
 
 @app.get("/")
 def health_check():
