@@ -172,6 +172,24 @@ class OrchestratorFSM:
     async def _after_strategy_gen(self):
         """Execute strategy generation service call."""
         try:
+            # PHASE 6.2: Retrieve historical memories before strategy generation
+            try:
+                query = f"Campaign for {self.payload.tenant_id}"
+                memories = await self.service_client.call_memory_retrieve(
+                    tenant_id=self.payload.tenant_id,
+                    query=query,
+                    limit=3
+                )
+                if memories:
+                    logger.info(f"Retrieved {len(memories)} historical memories for campaign {self.payload.campaign_id}")
+                    self.payload.add_trace("memory_service", "memories_retrieved", {"count": len(memories)})
+                    # Store memories in execution log for context
+                    if not hasattr(self.payload, 'historical_context'):
+                        # Add to execution log as trace for now
+                        self.payload.add_trace("memory_service", "historical_context", {"memories": memories[:3]})
+            except Exception as mem_error:
+                logger.warning(f"Memory retrieval failed, continuing without historical context: {str(mem_error)}")
+            
             # Call analyst service
             strategy = await self.service_client.call_strategy_generation(self.payload)
             self.payload.strategy = strategy
@@ -295,13 +313,17 @@ class OrchestratorFSM:
     async def _after_learn(self):
         """Execute learning service call."""
         try:
-            # Call memory service (learning)
-            result = await self.service_client.call_learn_from_campaign(self.payload)
-            self.payload.add_trace("memory_service", "learning_completed", result)
-            logger.info(f"Learning completed for campaign {self.payload.campaign_id}")
+            # PHASE 6.2: Ingest completed campaign into memory
+            memory_id = await self.service_client.call_memory_ingest(self.payload)
+            if memory_id:
+                self.payload.add_trace("memory_service", "campaign_ingested", {"memory_id": memory_id})
+                logger.info(f"Campaign {self.payload.campaign_id} ingested into memory: {memory_id}")
+            else:
+                logger.warning(f"Memory ingestion returned no ID for campaign {self.payload.campaign_id}")
         except Exception as e:
-            logger.error(f"Learning phase failed: {str(e)}")
-            raise
+            # Don't fail the workflow if memory ingestion fails
+            logger.error(f"Learning phase failed (non-blocking): {str(e)}")
+            self.payload.add_trace("memory_service", "ingestion_failed", {"error": str(e)})
     
     # --- ERROR HANDLING ---
     

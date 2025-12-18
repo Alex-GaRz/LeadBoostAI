@@ -1,10 +1,24 @@
+# Memory Service - FASE 6.1 Dependencies
+
+# FastAPI Core
 fastapi>=0.104.1
-uvicorn>=0.24.0
-sqlalchemy>=2.0.23
+uvicorn[standard]>=0.24.0
 pydantic>=2.5.0
-requests>=2.31.0
+pydantic-settings>=2.0.0
+
+# Vector Database
 chromadb>=0.4.22
+
+# Embeddings
 openai>=1.12.0
+sentence-transformers>=2.2.0  # Fallback local embeddings
+
+# Utilities
 tenacity>=8.2.3
-numpy>=1.26.0
 python-dotenv>=1.0.1
+numpy>=1.26.0
+
+# HTTP Client
+httpx>=0.25.0
+
+pytest>=7.0.0

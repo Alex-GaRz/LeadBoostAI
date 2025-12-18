@@ -32,6 +32,7 @@ class ServiceClient:
         analyst_url: str,
         visual_url: str,
         optimizer_url: str,
+        memory_url: str = "http://localhost:8006",
         timeout: float = 30.0,
         max_retries: int = 2,
         backoff_base: float = 0.5,
@@ -44,6 +45,7 @@ class ServiceClient:
             analyst_url: URL of the Analyst service
             visual_url: URL of the Visual engine
             optimizer_url: URL of the Optimizer service
+            memory_url: URL of the Memory service (default: http://localhost:8006)
             timeout: Request timeout in seconds
             max_retries: Maximum retry attempts for network errors (default: 2)
             backoff_base: Base delay for exponential backoff in seconds (default: 0.5)
@@ -52,6 +54,7 @@ class ServiceClient:
         self.analyst_url = analyst_url.rstrip('/')
         self.visual_url = visual_url.rstrip('/')
         self.optimizer_url = optimizer_url.rstrip('/')
+        self.memory_url = memory_url.rstrip('/')
         self.timeout = timeout
         self.max_retries = max_retries
         self.backoff_base = backoff_base
@@ -278,29 +281,58 @@ class ServiceClient:
         
         return result
     
-    async def call_learn_from_campaign(self, payload: CampaignPayload) -> Dict[str, Any]:
+    async def call_memory_retrieve(self, tenant_id: UUID, query: str, limit: int = 3) -> List[Dict]:
         """
-        Call the Memory service to learn from the campaign.
+        Call the Memory service to retrieve similar past campaigns.
+        
+        Args:
+            tenant_id: Tenant ID for isolation
+            query: Natural language query
+            limit: Maximum number of results
+            
+        Returns:
+            List of memory entries (empty list if fails)
+        """
+        try:
+            url = f"{self.memory_url}/api/v1/memory/retrieve"
+            data = {
+                "tenant_id": str(tenant_id),
+                "query_text": query,
+                "limit": limit
+            }
+            
+            logger.info(f"Retrieving memories for tenant {tenant_id}: {query[:50]}...")
+            result = await self._post(url, data)
+            memories = result.get("results", [])
+            logger.info(f"Retrieved {len(memories)} memories for tenant {tenant_id}")
+            return memories
+            
+        except Exception as e:
+            logger.error(f"Memory retrieval failed: {str(e)}", exc_info=True)
+            return []  # Don't break the flow
+    
+    async def call_memory_ingest(self, payload: CampaignPayload) -> Optional[str]:
+        """
+        Call the Memory service to ingest a completed campaign.
         
         Args:
             payload: Completed campaign payload
             
         Returns:
-            Learning results
+            Memory ID if successful, None if fails
         """
-        # Note: Using optimizer_url as a placeholder - adjust when Memory service is available
-        url = f"{self.optimizer_url}/api/v1/learn"
-        
-        data = {
-            "campaign_id": str(payload.campaign_id),
-            "tenant_id": str(payload.tenant_id),
-            "execution_id": str(payload.execution_id),
-            "execution_log": [entry.model_dump() for entry in payload.execution_log],
-            "quality_report": payload.quality_audit.model_dump() if payload.quality_audit else None,
-        }
-        
-        logger.info(f"Calling Memory service to learn from campaign {payload.campaign_id}")
-        result = await self._post(url, data)
-        logger.info(f"Learning completed for campaign {payload.campaign_id}")
-        
-        return result
+        try:
+            url = f"{self.memory_url}/api/v1/memory/ingest"
+            data = {
+                "payload": payload.model_dump(mode='json')
+            }
+            
+            logger.info(f"Ingesting campaign {payload.campaign_id} into memory")
+            result = await self._post(url, data)
+            memory_id = result.get("memory_id")
+            logger.info(f"Campaign {payload.campaign_id} ingested: memory_id={memory_id}")
+            return memory_id
+            
+        except Exception as e:
+            logger.error(f"Memory ingestion failed: {str(e)}", exc_info=True)
+            return None  # Don't break the flow

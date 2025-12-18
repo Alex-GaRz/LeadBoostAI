@@ -1,137 +1,85 @@
-from fastapi import FastAPI, Depends, HTTPException, APIRouter, BackgroundTasks
-from sqlalchemy.orm import Session
-from database import engine, Base, get_db
-from services.traceability import TraceabilityService
-from services.learning_core import LearningCore
-from models.memory_models import DecisionTrace, VectorMemoryItem, FeedbackSignal
-from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
+"""
+Memory Service - FASE 6.1
+Servicio de memoria corporativa con RAG (Retrieval-Augmented Generation).
+
+Este microservicio implementa el almacenamiento y recuperación de experiencias
+basado en Triadas Contexto-Acción-Resultado usando ChromaDB y embeddings.
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 import logging
 
-# --- IMPORTACIONES FASE 1: MEMORIA EVOLUTIVA ---
-from core.vector_store import ChromaDBAdapter
-from core.retrieval_engine import StrategicRetriever
-from datetime import datetime
+from api.routes import router
+from core.config import get_settings, configure_logging
 
-# Logging Setup
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("MemoryAPI")
+# Configurar logging
+logger = configure_logging()
 
-# Inicialización DB SQL
-Base.metadata.create_all(bind=engine)
+# Crear aplicación FastAPI
+settings = get_settings()
 
-# Inicialización Vector DB (Singleton)
-# Esto asegura que Chroma y OpenAI estén listos al arrancar
-try:
-    vector_db = ChromaDBAdapter()
-    retriever = StrategicRetriever()
-except Exception as e:
-    logger.critical(f"Failed to initialize AI Memory Core: {e}")
+app = FastAPI(
+    title="Memory Service - LeadBoostAI",
+    description="Servicio de memoria corporativa con búsqueda vectorial semántica",
+    version=settings.SERVICE_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
-app = FastAPI(title="LeadBoostAI Block 10: Evolutionary Memory Brain")
-router = APIRouter(prefix="/memory")
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # En producción, especificar orígenes permitidos
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --- MODELOS ---
-class LogCycleRequest(BaseModel):
-    action_type: str
-    context_data: Dict[str, Any]
-    strategy_data: Dict[str, Any]
-    governance_data: Dict[str, Any]
-    execution_data: Optional[Dict[str, Any]] = None
-    outcome_value: Optional[float] = None
-    outcome_details: Optional[Dict[str, Any]] = None
+# Registrar rutas
+app.include_router(router, prefix="/api/v1/memory", tags=["Memory"])
 
-class RetrievalRequest(BaseModel):
-    query_context: str
-    current_metrics: Dict[str, Any]
 
-# --- ENDPOINTS ---
+@app.on_event("startup")
+async def startup_event():
+    """Ejecuta tareas de inicialización al arrancar el servicio."""
+    logger.info("=" * 60)
+    logger.info(f"Starting {settings.SERVICE_NAME} v{settings.SERVICE_VERSION}")
+    logger.info("=" * 60)
+    logger.info(f"Host: {settings.HOST}:{settings.PORT}")
+    logger.info(f"ChromaDB Path: {settings.CHROMA_PERSIST_DIRECTORY}")
+    logger.info(f"Collection: {settings.CHROMA_COLLECTION_NAME}")
+    logger.info(f"Embedding Model: {settings.EMBEDDING_MODEL}")
+    logger.info(f"OpenAI Configured: {bool(settings.OPENAI_API_KEY)}")
+    logger.info("=" * 60)
 
-@router.post("/log")
-async def log_decision_cycle(
-    request: LogCycleRequest, 
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """
-    Loguea en SQL y asíncronamente vectoriza la estrategia para el futuro.
-    """
-    # 1. Persistencia SQL (Traceability)
-    service = TraceabilityService(db) 
-    trace = service.log_full_cycle(**request.model_dump())
-    
-    # 2. Persistencia Vectorial (Evolutionary Memory) - Background Task
-    # Solo vectorizamos si la estrategia fue aprobada y ejecutada
-    if request.governance_data.get('approved', False):
-        background_tasks.add_task(
-            _vectorize_memory, 
-            trace_id=trace.trace_id, 
-            text=str(request.strategy_data.get('reasoning_text', '')),
-            context=request.context_data
-        )
 
-    return {"status": "logged", "trace_id": trace.trace_id}
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Ejecuta tareas de limpieza al detener el servicio."""
+    logger.info("Shutting down Memory Service...")
+    logger.info("Service stopped successfully")
 
-def _vectorize_memory(trace_id: str, text: str, context: Dict[str, Any]):
-    """Helper function para vectorización en background."""
-    if not text: return
-    
-    metadata = {
-        "trace_id": trace_id,
-        "timestamp": datetime.now().isoformat(),
-        "month": datetime.now().month,
-        "sector": context.get('sector', 'general'),
-        "trust_score": 1.0 # Score inicial neutro
+
+@app.get("/")
+async def root():
+    """Endpoint raíz con información del servicio."""
+    return {
+        "service": settings.SERVICE_NAME,
+        "version": settings.SERVICE_VERSION,
+        "status": "running",
+        "description": "Corporate Memory Service with RAG capabilities",
+        "docs": "/docs",
+        "health": "/api/v1/memory/health"
     }
-    
-    vector_db.add_memory(
-        memory_id=trace_id,
-        text=text,
-        metadata=metadata,
-        trust_score=1.0
-    )
 
-@router.post("/retrieve_strategy")
-def retrieve_similar_strategies(request: RetrievalRequest):
-    """
-    Recupera estrategias pasadas exitosas basadas en el contexto actual.
-    Aplica Re-ranking por Trust Score.
-    """
-    strategies = retriever.retrieve_strategy(
-        query_text=request.query_context,
-        current_context=request.current_metrics
-    )
-    return {"strategies": strategies}
-
-@router.post("/feedback")
-def process_feedback_loop(signal: FeedbackSignal):
-    """
-    Recibe el resultado real vs esperado y ajusta el Trust Score de la memoria.
-    Esto permite al sistema 'aprender' y 'olvidar'.
-    """
-    retriever.process_feedback(
-        memory_id=signal.trace_id,
-        real_outcome=signal.real_outcome,
-        expected_outcome=signal.expected_outcome
-    )
-    return {"status": "feedback_processed"}
-
-# --- ENDPOINTS LEGACY (COMPATIBILIDAD) ---
-@router.get("/trace/{trace_id}")
-def get_trace_details(trace_id: str, db: Session = Depends(get_db)):
-    service = TraceabilityService(db) 
-    trail = service.get_audit_trail(trace_id)
-    if not trail:
-        raise HTTPException(status_code=404, detail="Trace not found")
-    return trail
-
-@router.get("/history")
-def get_system_timeline(limit: int = 20, db: Session = Depends(get_db)):
-    learner = LearningCore(db) 
-    return learner.get_recent_activity(limit)
-
-app.include_router(router)
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8010)
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=True,  # Solo para desarrollo
+        log_level=settings.LOG_LEVEL.lower()
+    )
