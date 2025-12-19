@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 from .enums import CampaignState, FailureReason
-from .artifacts import StrategyBrief, QualityReport
+from .artifacts import StrategyBrief, QualityReport, VisualAsset, CopyVariant
 
 
 class TraceEntry(BaseModel):
@@ -51,6 +51,14 @@ class CampaignPayload(BaseModel):
     strategy: Optional[StrategyBrief] = None
     assets: List[Dict[str, Any]] = Field(default_factory=list)  # Visual assets simplified here
     quality_audit: Optional[QualityReport] = None
+    
+    # Phase 7: Visual & Copy Execution
+    generated_assets: List[VisualAsset] = Field(default_factory=list)
+    copy_variants: List[CopyVariant] = Field(default_factory=list)
+    selected_asset_id: Optional[UUID] = None
+    selected_copy_id: Optional[UUID] = None
+    visual_attempts: int = 0
+    copy_attempts: int = 0
     
     # Execution Log
     execution_log: List[TraceEntry] = Field(default_factory=list)

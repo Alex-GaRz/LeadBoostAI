@@ -4,7 +4,17 @@ Shared data contracts for Phoenix V5 orchestration.
 """
 
 from .enums import CampaignState, QualityVerdict, Severity, FailureReason
-from .artifacts import QualityCheck, QualityReport, StrategyBrief
+from .artifacts import (
+    QualityCheck, 
+    QualityReport, 
+    StrategyBrief,
+    LayoutZone,
+    LayoutPlan,
+    VisualAsset,
+    CopyVariant,
+    ContentPackage,
+    ContentFailureReport
+)
 from .payload import TraceEntry, CampaignPayload
 
 __all__ = [
@@ -15,6 +25,12 @@ __all__ = [
     "QualityCheck",
     "QualityReport",
     "StrategyBrief",
+    "LayoutZone",
+    "LayoutPlan",
+    "VisualAsset",
+    "CopyVariant",
+    "ContentPackage",
+    "ContentFailureReport",
     "TraceEntry",
     "CampaignPayload",
 ]

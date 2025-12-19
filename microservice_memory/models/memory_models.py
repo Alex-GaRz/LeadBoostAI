@@ -10,8 +10,7 @@ from uuid import uuid4
 
 # Intentar importar desde shared_lib (contractos compartidos)
 try:
-    from shared_lib.contracts.state_machine import CampaignState
-    from shared_lib.contracts.quality import QualityVerdict
+    from contracts import CampaignState, QualityVerdict
 except ImportError:
     # Fallback: Definiciones locales si shared_lib no está disponible
     from enum import Enum
